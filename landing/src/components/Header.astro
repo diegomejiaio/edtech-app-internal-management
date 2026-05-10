@@ -1,0 +1,275 @@
+---
+import { appUrl } from "../config/site";
+
+const navLinks = [
+  { href: "/#unified-management", label: "Plataforma", sectionId: "unified-management" },
+  { href: "/#features", label: "Funcionalidades", sectionId: "features" },
+  { href: "/#declaracion-un-clic", label: "Declaración", sectionId: "declaracion-un-clic" },
+  { href: "/blog/", label: "Blog" },
+];
+---
+
+<header class="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-lg supports-backdrop-filter:bg-background/60">
+  <div class="container flex h-14 items-center justify-between sm:h-16">
+    <a href="/" class="flex min-w-0 items-center gap-2">
+      <img src="/logo-dark.svg" alt="Clearbook" width="135" height="28" fetchpriority="high" decoding="async" class="h-6 w-auto sm:h-7 dark:hidden" />
+      <img src="/logo-light.svg" alt="Clearbook" width="135" height="28" loading="lazy" decoding="async" class="hidden h-6 w-auto sm:h-7 dark:block" />
+    </a>
+
+    <nav class="hidden items-center gap-4 md:flex lg:gap-6" aria-label="Navegación principal">
+      {navLinks.map((link) => (
+        <a
+          href={link.href}
+          data-nav-link={link.sectionId ? `#${link.sectionId}` : link.href}
+          class="nav-link text-xs text-muted-foreground transition-colors hover:text-foreground aria-[current=location]:text-foreground aria-[current=location]:font-semibold lg:text-sm"
+        >
+          {link.label}
+        </a>
+      ))}
+    </nav>
+
+    <div class="flex items-center gap-1 sm:gap-2">
+      <!-- Theme toggle -->
+      <button
+        id="theme-toggle"
+        class="theme-toggle relative inline-flex h-9 w-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent"
+        aria-label="Cambiar tema"
+      >
+        <svg class="sun-icon h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        <svg class="moon-icon h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </button>
+
+      <a
+        href={appUrl("/sign-in")}
+        class="hidden h-9 items-center justify-center rounded-md px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground md:inline-flex"
+      >
+        Ingresar
+      </a>
+      <button
+        type="button"
+        data-waitlist-trigger
+        class="hidden h-9 cursor-pointer items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 md:inline-flex"
+      >
+        Crear cuenta
+      </button>
+
+      <!-- Mobile menu button -->
+      <button
+        id="mobile-menu-toggle"
+        class="inline-flex h-9 w-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent md:hidden"
+        aria-label="Abrir menú"
+        aria-expanded="false"
+        aria-controls="mobile-menu"
+      >
+        <svg id="menu-icon-open" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+        <svg id="menu-icon-close" class="hidden h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+</header>
+
+<div
+  id="mobile-menu-backdrop"
+  aria-hidden="true"
+  class="mobile-menu-backdrop pointer-events-none fixed inset-x-0 bottom-0 top-14 z-40 opacity-0 sm:top-16 md:hidden"
+></div>
+
+<!-- Mobile menu panel -->
+<div
+  id="mobile-menu"
+  aria-hidden="true"
+  class="mobile-menu-overlay pointer-events-none fixed inset-x-3 top-16 z-60 rounded-2xl border border-border/70 opacity-0 shadow-2xl sm:top-18 md:hidden"
+  inert
+>
+  <nav class="flex flex-col gap-1 p-3" aria-label="Navegación móvil">
+    {navLinks.map((link) => (
+      <a
+        href={link.href}
+        data-mobile-section-link={link.sectionId}
+        class="mobile-menu-link rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      >
+        {link.label}
+      </a>
+    ))}
+    <div class="mt-3 grid gap-2 border-t pt-4">
+      <a
+        href={appUrl("/sign-in")}
+        class="mobile-menu-link inline-flex h-11 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
+        Ingresar
+      </a>
+      <button
+        type="button"
+        data-waitlist-trigger
+        class="mobile-menu-link inline-flex h-11 cursor-pointer items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90"
+      >
+        Crear cuenta
+      </button>
+    </div>
+  </nav>
+</div>
+
+<style>
+  .mobile-menu-backdrop {
+    background: oklch(1 0 0 / 0.22);
+    transition: opacity 180ms ease;
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+  }
+
+  :global(.dark) .mobile-menu-backdrop {
+    background: oklch(0 0 0 / 0.28);
+  }
+
+  .mobile-menu-backdrop.is-open {
+    pointer-events: auto;
+    opacity: 1;
+  }
+
+  .mobile-menu-overlay {
+    background: color-mix(in oklch, var(--background) 96%, transparent);
+    transform: translateY(-0.35rem);
+    transition: opacity 180ms ease, transform 180ms ease;
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    backdrop-filter: blur(30px) saturate(180%);
+  }
+
+  :global(.dark) .mobile-menu-overlay {
+    background: color-mix(in oklch, var(--background) 94%, black 6%);
+  }
+
+  .mobile-menu-overlay.is-open {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  :global(body.mobile-menu-open main),
+  :global(body.mobile-menu-open footer) {
+    filter: blur(8px);
+    transition: filter 180ms ease;
+  }
+</style>
+
+<script>
+  const toggle = document.getElementById('theme-toggle');
+  toggle?.addEventListener('click', () => {
+    const isDark = document.documentElement.classList.contains('dark');
+    const newTheme = isDark ? 'light' : 'dark';
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+    document.documentElement.classList.toggle('light', newTheme !== 'dark');
+    localStorage.setItem('theme', newTheme);
+  });
+
+  const menuToggle = document.getElementById('mobile-menu-toggle');
+  const menuBackdrop = document.getElementById('mobile-menu-backdrop');
+  const mobileMenu = document.getElementById('mobile-menu');
+  const iconOpen = document.getElementById('menu-icon-open');
+  const iconClose = document.getElementById('menu-icon-close');
+
+  function setMobileMenuOpen(open: boolean) {
+    menuBackdrop?.classList.toggle('is-open', open);
+    mobileMenu?.classList.toggle('is-open', open);
+    iconOpen?.classList.toggle('hidden', open);
+    iconClose?.classList.toggle('hidden', !open);
+    menuToggle?.setAttribute('aria-expanded', String(open));
+    menuToggle?.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+    mobileMenu?.setAttribute('aria-hidden', String(!open));
+    mobileMenu?.toggleAttribute('inert', !open);
+    document.body.classList.toggle('mobile-menu-open', open);
+    document.body.style.overflow = open ? 'hidden' : '';
+  }
+
+  menuToggle?.addEventListener('click', () => {
+    const isOpen = mobileMenu?.classList.contains('is-open') === true;
+    setMobileMenuOpen(!isOpen);
+  });
+
+  menuBackdrop?.addEventListener('click', () => {
+    setMobileMenuOpen(false);
+  });
+
+  function isHomePath(pathname: string) {
+    return pathname === '/' || pathname === '/index.html';
+  }
+
+  function scrollToHomeSection(sectionId: string) {
+    const target = document.getElementById(sectionId);
+    if (!target) {
+      window.location.href = `/#${sectionId}`;
+      return;
+    }
+
+    const nextUrl = `/#${sectionId}`;
+    if (window.location.pathname + window.location.hash === nextUrl) {
+      window.history.replaceState(null, '', nextUrl);
+    } else {
+      window.history.pushState(null, '', nextUrl);
+    }
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    });
+  }
+
+  document.querySelectorAll<HTMLAnchorElement>('.mobile-menu-link').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      const sectionId = link.dataset.mobileSectionLink;
+      setMobileMenuOpen(false);
+
+      if (!sectionId) return;
+      if (!isHomePath(window.location.pathname)) return;
+
+      event.preventDefault();
+      scrollToHomeSection(sectionId);
+    });
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') setMobileMenuOpen(false);
+  });
+
+  // Scroll-spy: mark the nav link whose section is currently in view with aria-current="location".
+  const navLinks = document.querySelectorAll<HTMLAnchorElement>('.nav-link[data-nav-link]');
+  if (navLinks.length > 0 && 'IntersectionObserver' in window) {
+    const linkByHref = new Map<string, HTMLAnchorElement>();
+    const sections: HTMLElement[] = [];
+    navLinks.forEach((link) => {
+      const href = link.dataset.navLink;
+      if (!href || !href.startsWith('#')) return;
+      linkByHref.set(href, link);
+      const target = document.querySelector(href) as HTMLElement | null;
+      if (target) sections.push(target);
+    });
+
+    let visible = new Map<string, number>(); // section id → intersection ratio
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = '#' + entry.target.id;
+          if (entry.isIntersecting) visible.set(id, entry.intersectionRatio);
+          else visible.delete(id);
+        }
+        // Pick the section with the highest ratio currently visible.
+        let topId: string | null = null;
+        let topRatio = 0;
+        for (const [id, ratio] of visible) {
+          if (ratio > topRatio) {
+            topRatio = ratio;
+            topId = id;
+          }
+        }
+        navLinks.forEach((link) => {
+          if (link.dataset.navLink === topId) link.setAttribute('aria-current', 'location');
+          else link.removeAttribute('aria-current');
+        });
+      },
+      { rootMargin: '-30% 0px -50% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+
+    sections.forEach((sec) => observer.observe(sec));
+  }
+</script>

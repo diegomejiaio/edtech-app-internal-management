@@ -1,0 +1,32 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import WaitlistModal from "../components/WaitlistModal.astro";
+---
+
+<BaseLayout title="Registrarme en la plataforma" description="Únete a la lista de espera de Clearbook — plataforma de gestión contable para estudios en Perú." noindex={true}>
+  <div class="flex min-h-svh flex-col">
+    <Header />
+    <main id="main-content" class="flex-1"></main>
+    <Footer />
+  </div>
+  <WaitlistModal />
+</BaseLayout>
+
+<script>
+  // Open the waitlist modal automatically on this dedicated route.
+  function openWaitlistFromRoute() {
+    if (location.hash !== "#form") {
+      history.replaceState(null, "", location.pathname + "#form");
+    }
+    // Trigger the hashchange handler wired by WaitlistModal.
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", openWaitlistFromRoute);
+  } else {
+    openWaitlistFromRoute();
+  }
+</script>

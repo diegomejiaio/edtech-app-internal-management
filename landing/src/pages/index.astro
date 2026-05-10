@@ -1,0 +1,30 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import HeroSection from "../components/HeroSection.astro";
+import SocialProofSection from "../components/SocialProofSection.astro";
+import UnifiedManagementSection from "../components/UnifiedManagementSection.astro";
+import FeaturesSection from "../components/FeaturesSection.astro";
+import ShowcaseSection from "../components/ShowcaseSection.astro";
+import DeclarationSection from "../components/DeclarationSection.astro";
+import CtaSection from "../components/CtaSection.astro";
+import Footer from "../components/Footer.astro";
+import WaitlistModal from "../components/WaitlistModal.astro";
+---
+
+<BaseLayout title="Clearbook — Gestión contable para estudios en Perú" description="Centraliza notificaciones SUNAT, comprobantes electrónicos y declaraciones de todos tus clientes en una sola plataforma. Hecha para estudios contables en Perú.">
+  <div class="flex min-h-svh flex-col">
+    <Header />
+    <main id="main-content" class="flex-1">
+      <HeroSection />
+      <SocialProofSection />
+      <UnifiedManagementSection />
+      <FeaturesSection />
+      <ShowcaseSection />
+      <DeclarationSection />
+      <CtaSection />
+    </main>
+    <Footer />
+  </div>
+  <WaitlistModal />
+</BaseLayout>

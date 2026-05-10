@@ -1,0 +1,193 @@
+# ================================
+# Monorepo .gitignore
+# ================================
+
+# ----------------
+# Environment & Secrets
+# ----------------
+.env
+.env.dev
+!.env.example
+!.env.*.example
+*.pem
+*.key
+**/secrets/
+.credentials/
+
+# ----------------
+# Dependencies
+# ----------------
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+.venv/
+venv/
+env/
+.pip/
+pip-log.txt
+
+# ----------------
+# Build outputs
+# ----------------
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Astro
+.astro/
+
+# Python
+*.egg-info/
+*.egg
+.eggs/
+*.whl
+*.so
+.ruff_cache
+.mypy_cache
+
+# ----------------
+# IDE & Editors
+# ----------------
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ----------------
+# OS generated
+# ----------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ----------------
+# Testing & Coverage
+# ----------------
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+.nyc_output/
+*.lcov
+.hypothesis/
+.playwright-mcp
+
+# ----------------
+# Logs & Debug
+# ----------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+logs/
+*.local.log
+
+# ----------------
+# TypeScript
+# ----------------
+*.tsbuildinfo
+next-env.d.ts
+
+# ----------------
+# Terraform
+# ----------------
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/*.tfvars
+!infra/terraform/*.tfvars.example
+infra/terraform/.terraform.lock.hcl
+infra/terraform/crash.log
+infra/terraform/override.tf
+infra/terraform/override.tf.json
+infra/terraform/*_override.tf
+infra/terraform/*_override.tf.json
+
+# ----------------
+# Docker
+# ----------------
+docker-compose.override.yml
+.docker/
+
+# ----------------
+# Misc
+# ----------------
+*.bak
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+.turbo/
+.vercel/
+.netlify/
+
+# ----------------
+# Local development
+# ----------------
+*.local
+local/
+scratch/
+tmp/
+temp/
+
+# ----------------
+# E2E / Playwright artifacts
+# ----------------
+e2e/test-results/
+e2e/playwright-report/
+e2e/.last-run.json
+
+# ----------------
+# Notebooks with credentials
+# ----------------
+docs/features/notebooks
+
+# ----------------
+# AI Skills backups
+# ----------------
+.claude/skills.backup.*
+.codex/skills.backup.*
+.gemini/skills.backup.*.envrc
+
+# ----------------
+# Engram (persistent memory)
+# ----------------
+# Ignore database files, but allow chunks/ for git sync
+.engram/*
+!.engram/chunks/
+!.engram/manifest.json
+
+# ----------------
+# OpenSpec (SDD artifacts)
+# ----------------
+# Ignore active changes, keep config and archive
+openspec/changes/
+openspec/specs/
+!openspec/config.yaml
+!openspec/archive/
+.issues/
+.copilot-tracking/

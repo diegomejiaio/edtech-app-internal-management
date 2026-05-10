@@ -1,0 +1,200 @@
+---
+const icons: Record<string, string> = {
+  building: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>',
+  bell: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+  file: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
+  sparkles: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>',
+  user: '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+};
+
+const features = [
+  { title: "Gestión Multi-Empresa", description: "Administra todos tus clientes desde un solo panel.", icon: "building", mockup: "dashboard" },
+  { title: "Buzón Electrónico SUNAT", description: "Recibe alertas automáticas de todas las notificaciones de tus clientes.", icon: "bell", mockup: "notifications" },
+  { title: "CPEs Automáticos", description: "Descarga comprobantes de compras y ventas sin esfuerzo.", icon: "file", mockup: "documents" },
+  { title: "Agente AI", description: "Accede rápidamente a cualquier herramienta con lenguaje natural.", icon: "sparkles", mockup: "ai" },
+];
+---
+
+<section id="features" class="py-16 lg:py-24">
+  <div class="container">
+    <div class="animate-fade-in mx-auto max-w-2xl text-center">
+      <p class="text-sm font-medium uppercase tracking-wider text-primary-text">
+        Todo lo que necesitas
+      </p>
+      <h2 class="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+        Hecho para estudios contables modernos
+      </h2>
+      <p class="mt-4 text-lg text-muted-foreground">
+        Diseñado para la realidad del contador peruano. Simplifica la gestión
+        tributaria de múltiples empresas en una sola plataforma.
+      </p>
+    </div>
+
+    <div class="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {features.map((feature, index) => (
+        <div class={`animate-fade-in group relative h-full overflow-hidden rounded-xl border bg-card/50 p-6 transition-all hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 animate-delay-${(index + 1) * 100}`}>
+          <div class="pointer-events-none absolute inset-0 -z-10 bg-linear-to-br from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+          <div class="flex h-full flex-col gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Fragment set:html={icons[feature.icon]} />
+            </div>
+            <h3 class="text-base font-semibold">{feature.title}</h3>
+            <p class="text-sm text-muted-foreground">{feature.description}</p>
+
+            {/* Dashboard mockup */}
+            {feature.mockup === "dashboard" && (
+              <div aria-hidden="true" class="mt-4 flex-1 rounded-lg border bg-muted/30 p-4">
+                <div class="flex h-full min-h-50 flex-col gap-3">
+                  <div class="grid grid-cols-3 gap-2">
+                    <div class="rounded-md bg-background/50 p-2 text-center">
+                      <div class="text-[16px] font-bold text-primary-text">12</div>
+                      <div class="text-[8px] text-muted-foreground">Empresas</div>
+                    </div>
+                    <div class="rounded-md bg-background/50 p-2 text-center">
+                      <div class="text-[16px] font-bold text-green-600">8</div>
+                      <div class="text-[8px] text-muted-foreground">Al día</div>
+                    </div>
+                    <div class="rounded-md bg-background/50 p-2 text-center">
+                      <div class="text-[16px] font-bold text-amber-600">4</div>
+                      <div class="text-[8px] text-muted-foreground">Pendientes</div>
+                    </div>
+                  </div>
+                  <div class="flex-1 space-y-2">
+                    {[
+                      { name: "Comercial Lima S.A.C.", status: "ok", docs: "156 CPEs" },
+                      { name: "Inversiones Sur E.I.R.L.", status: "warning", docs: "3 notif." },
+                      { name: "Tech Solutions S.A.", status: "ok", docs: "89 CPEs" },
+                    ].map((company) => (
+                      <div class="flex items-center gap-2 rounded-md bg-background/50 p-2">
+                        <div class={`h-2 w-2 rounded-full ${company.status === "ok" ? "bg-green-500" : "bg-amber-500"}`}></div>
+                        <div class="min-w-0 flex-1">
+                          <div class="truncate text-[9px] font-medium">{company.name}</div>
+                        </div>
+                        <div class="text-[8px] text-muted-foreground">{company.docs}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Notifications mockup */}
+            {feature.mockup === "notifications" && (
+              <div aria-hidden="true" class="mt-auto flex-1 rounded-lg border bg-muted/30 p-3">
+                <div class="space-y-2">
+                  {[
+                    { type: "danger", title: "Resolución de Multa", code: "0140340012345", time: "1h" },
+                    { type: "warning", title: "Orden de Pago", code: "0230340098765", time: "3h" },
+                    { type: "info", title: "Esquela de Citación", code: "ESQ-2026-00123", time: "1d" },
+                  ].map((item) => (
+                    <div class="flex items-center gap-2 rounded bg-background/50 p-2">
+                      <div class={`flex h-5 w-5 items-center justify-center rounded-full ${item.type === "danger" ? "bg-red-500/20" : item.type === "warning" ? "bg-amber-500/20" : "bg-blue-500/20"}`}>
+                        <div class={`h-2.5 w-2.5 rounded-full ${item.type === "danger" ? "bg-red-500" : item.type === "warning" ? "bg-amber-500" : "bg-blue-500"}`}></div>
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <div class="truncate text-[9px] font-medium">{item.title}</div>
+                        <div class="truncate text-[8px] text-muted-foreground">{item.code}</div>
+                      </div>
+                      <div class="text-[9px] text-muted-foreground">{item.time}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Documents mockup */}
+            {feature.mockup === "documents" && (
+              <div aria-hidden="true" class="mt-auto flex-1 rounded-lg border bg-muted/30 p-3">
+                <div class="space-y-2">
+                  {["F001-00012", "B001-00543"].map((doc) => (
+                    <div class="flex items-center gap-2 rounded bg-background/50 p-2">
+                      <div class="flex h-6 w-6 items-center justify-center rounded bg-primary/10">
+                        <Fragment set:html={`<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>`} />
+                      </div>
+                      <div class="flex-1">
+                        <div class="text-[10px] font-medium">{doc}</div>
+                      </div>
+                      <div class="text-[10px] text-primary-text">S/ 1,250</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* AI mockup */}
+            {feature.mockup === "ai" && (
+              <div aria-hidden="true" class="mt-auto flex-1 rounded-lg border bg-muted/30 p-3">
+                <div class="space-y-2">
+                  <!-- User message -->
+                  <div class="flex flex-row-reverse items-start gap-2">
+                    <div class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-muted">
+                      <Fragment set:html={icons.user} />
+                    </div>
+                    <div class="rounded-lg bg-background/50 px-2 py-1">
+                      <div class="text-[9px] text-muted-foreground">Dame las ventas de ABC S.A.C.</div>
+                    </div>
+                  </div>
+                  <!-- AI response -->
+                  <div class="flex items-start gap-2">
+                    <div class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/20">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+                    </div>
+                    <div class="flex-1 space-y-1.5">
+                      <div class="rounded-lg bg-primary/10 px-2 py-1">
+                        <div class="text-[9px] text-foreground">Encontré 4 facturas:</div>
+                      </div>
+                      <div class="overflow-hidden rounded border bg-background/80">
+                        <div class="grid grid-cols-3 gap-px bg-muted/50 text-[7px]">
+                          <div class="bg-muted/30 px-1.5 py-0.5 font-medium">Factura</div>
+                          <div class="bg-muted/30 px-1.5 py-0.5 font-medium text-right">Monto</div>
+                          <div class="bg-muted/30 px-1.5 py-0.5 font-medium text-center">Estado</div>
+                          {[
+                            { doc: "F001-0012", amount: "S/ 2,450", ok: true },
+                            { doc: "F001-0013", amount: "S/ 1,890", ok: false },
+                            { doc: "F001-0014", amount: "S/ 3,200", ok: true },
+                            { doc: "F001-0015", amount: "S/ 980", ok: false },
+                          ].map((row) => (
+                            <Fragment>
+                              <div class="bg-background px-1.5 py-0.5">{row.doc}</div>
+                              <div class="bg-background px-1.5 py-0.5 text-right">{row.amount}</div>
+                              <div class="flex items-center justify-center bg-background px-1.5 py-0.5">
+                                <div class={`h-1.5 w-1.5 rounded-full ${row.ok ? "bg-green-500" : "bg-amber-500"}`}></div>
+                              </div>
+                            </Fragment>
+                          ))}
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5">
+                        <div class="h-1.5 w-1.5 rounded-full bg-amber-500"></div>
+                        <div class="text-[8px] text-amber-700 dark:text-amber-400">2 facturas sin documentación</div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- User follow-up -->
+                  <div class="flex flex-row-reverse items-start gap-2">
+                    <div class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-muted">
+                      <Fragment set:html={icons.user} />
+                    </div>
+                    <div class="rounded-lg bg-background/50 px-2 py-1">
+                      <div class="text-[9px] text-muted-foreground">Ok, envíale un recordatorio</div>
+                    </div>
+                  </div>
+                  <!-- AI confirmation -->
+                  <div class="flex items-start gap-2">
+                    <div class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/20">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+                    </div>
+                    <div class="flex items-center gap-1.5 rounded-lg bg-green-500/10 px-2 py-1">
+                      <div class="h-1.5 w-1.5 rounded-full bg-green-500"></div>
+                      <div class="text-[9px] text-green-700 dark:text-green-400">Email enviado ✓</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

@@ -1,0 +1,769 @@
+---
+// Hero hub-and-spoke animation built with SVG inline + animejs v4.
+// Composition: central laptop "hub" + 8 satellite source nodes connected by lines.
+// Animation: entrance (lines draw, nodes pop in), then continuous loop of data
+// "packets" flowing from each source into the hub.
+
+type NodeDef = {
+  id: string;
+  label: string;
+  cx: number;
+  cy: number;
+  icon: string;
+  token: string;
+  brand: string;     // accent color (oklch)
+  detail: string;    // short detail line shown inside the card
+  meta?: string;     // optional secondary line (badge / value)
+};
+
+const nodes: NodeDef[] = [
+  { id: "sunat",    label: "SUNAT",        cx: 200,  cy: 180, icon: "building", token: "Notif. recibida",     brand: "oklch(0.55 0.22 25)",   detail: "Constancia fiscal",       meta: "Nuevo" },
+  { id: "sunafil",  label: "SUNAFIL",      cx: 200,  cy: 580, icon: "shield",   token: "Inspección",          brand: "oklch(0.58 0.20 18)",   detail: "Cumplimiento laboral" },
+  { id: "whatsapp", label: "WhatsApp",     cx: 600,  cy: 95,  icon: "message",  token: "Mensaje cliente",     brand: "oklch(0.72 0.17 145)",  detail: "Chat con cliente",        meta: "3" },
+  { id: "gmail",    label: "Gmail",        cx: 600,  cy: 665, icon: "mail",     token: "Adjunto importado",   brand: "oklch(0.62 0.20 27)",   detail: "Adjuntos detectados",     meta: "12" },
+  { id: "erp",      label: "ERP",          cx: 1000, cy: 180, icon: "database", token: "Asiento creado",      brand: "oklch(0.62 0.18 245)",  detail: "Sincronizando datos" },
+  { id: "bank",     label: "Banco",        cx: 1000, cy: 580, icon: "bank",     token: "Pago detectado",      brand: "oklch(0.65 0.16 165)",  detail: "Conciliación autom.",    meta: "S/" },
+  { id: "fx",       label: "Tipo Cambio",  cx: 110,  cy: 380, icon: "trending", token: "TC: S/ 3.752",         brand: "oklch(0.78 0.16 85)",   detail: "USD / PEN",               meta: "3.752" },
+  { id: "pdf",      label: "PDF / CPE",    cx: 1090, cy: 380, icon: "file",     token: "F001-1234",            brand: "oklch(0.62 0.20 27)",   detail: "Comprobante CPE",         meta: "XML" },
+];
+
+// Curved bezier control points: perpendicular offset from line midpoint so
+// connectors arc around the hub (n8n-style "workflow canvas" feel).
+function controlPoint(nx: number, ny: number) {
+  const dx = nx - 600;
+  const dy = ny - 360;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  // Perpendicular (rotated 90° CCW) → all curves swirl in the same direction.
+  const px = -dy / len;
+  const py = dx / len;
+  const curvature = 42;
+  return {
+    cx: (600 + nx) / 2 + px * curvature,
+    cy: (360 + ny) / 2 + py * curvature,
+  };
+}
+
+// Inline lucide-style icon paths (28x28 viewBox 24, centered with translate(-12,-12))
+const iconPaths: Record<string, string> = {
+  building: '<rect x="-8" y="-10" width="16" height="20" rx="2"/><path d="M-3 10v-4h6v4"/><path d="M-4 -6h.01"/><path d="M4 -6h.01"/><path d="M0 -6h.01"/><path d="M0 -2h.01"/><path d="M0 2h.01"/><path d="M4 -2h.01"/><path d="M4 2h.01"/><path d="M-4 -2h.01"/><path d="M-4 2h.01"/>',
+  shield:   '<path d="M0 -10s-9 4-9 8c0 6 9 12 9 12s9-6 9-12c0-4-9-8-9-8z"/><path d="m-3 0 2 2 4-4"/>',
+  message:  '<path d="M9 4a8 8 0 0 1-12.5 6.6L-10 11l.4-3.5A8 8 0 1 1 9 4z" transform="translate(0 -1)"/>',
+  mail:     '<rect x="-10" y="-8" width="20" height="16" rx="2"/><path d="m-10 -7 9.4 6.6a2 2 0 0 0 1.2 0L10 -7"/>',
+  database: '<ellipse cx="0" cy="-7" rx="9" ry="3"/><path d="M-9 -7v14a9 3 0 0 0 18 0V-7"/><path d="M-9 0a9 3 0 0 0 18 0"/>',
+  bank:     '<path d="M-10 8h20"/><path d="M-8 -2v8"/><path d="M-3 -2v8"/><path d="M3 -2v8"/><path d="M8 -2v8"/><path d="M-11 -2h22"/><path d="M0 -10l-11 5h22z"/>',
+  trending: '<polyline points="-10,6 -3,-2 1,2 10,-7"/><polyline points="5,-7 10,-7 10,-2"/>',
+  file:     '<path d="M-5 -10h7l5 5v13a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2v-16a2 2 0 0 1 2-2z"/><path d="M2 -10v5h5"/>',
+};
+
+const HUB_CX = 600;
+const HUB_CY = 360;
+---
+
+<div id="hero-svg-container" class="relative mx-auto w-full max-w-6xl">
+  <svg
+    viewBox="0 0 1200 800"
+    preserveAspectRatio="xMidYMid meet"
+    class="hero-svg h-auto w-full"
+    data-anim-pending
+    overflow="visible"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    <defs>
+      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="3" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+      <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="8" />
+      </filter>
+      <radialGradient id="hub-glow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="oklch(0.546 0.245 262.881)" stop-opacity="0.45" />
+        <stop offset="60%" stop-color="oklch(0.546 0.245 262.881)" stop-opacity="0.12" />
+        <stop offset="100%" stop-color="oklch(0.546 0.245 262.881)" stop-opacity="0" />
+      </radialGradient>
+      <linearGradient id="screen-bg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="oklch(0.20 0.028 264.376)" />
+        <stop offset="100%" stop-color="oklch(0.14 0.022 264.376)" />
+      </linearGradient>
+      <linearGradient id="line-gradient" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="oklch(0.546 0.245 262.881 / 0.15)" />
+        <stop offset="50%" stop-color="oklch(0.546 0.245 262.881 / 0.55)" />
+        <stop offset="100%" stop-color="oklch(0.546 0.245 262.881 / 0.15)" />
+      </linearGradient>
+    </defs>
+
+    <!-- Ambient hub glow -->
+    <circle id="hub-glow-circle" cx={HUB_CX} cy={HUB_CY} r="280" fill="url(#hub-glow)" />
+
+    <!-- Connection lines (rendered before nodes so they sit underneath) -->
+    <g id="connections" stroke-linecap="round" fill="none">
+      {nodes.map((n) => {
+        const cp = controlPoint(n.cx, n.cy);
+        return (
+          <path
+            id={`line-${n.id}`}
+            class="connection-line"
+            d={`M ${HUB_CX} ${HUB_CY} Q ${cp.cx} ${cp.cy} ${n.cx} ${n.cy}`}
+            stroke="url(#line-gradient)"
+            stroke-width="1.5"
+          />
+        );
+      })}
+    </g>
+
+    <!-- Tokens render below the app screen so they disappear as the hub absorbs them. -->
+    <g id="tokens">
+      {nodes.map((n) => (
+        <g
+          id={`token-${n.id}`}
+          class="token"
+          transform={`translate(${n.cx} ${n.cy})`}
+        >
+          <rect
+            x="-62"
+            y="-13"
+            width="124"
+            height="26"
+            rx="13"
+            fill="oklch(0.22 0.04 262.881)"
+            stroke="oklch(0.546 0.245 262.881 / 0.55)"
+            stroke-width="1"
+            filter="url(#glow)"
+          />
+          <circle cx="-48" cy="0" r="2" fill="oklch(0.78 0.18 145)" />
+          <text
+            x="6"
+            y="4"
+            text-anchor="middle"
+            font-size="11"
+            font-weight="600"
+            font-family="Nunito Sans Variable, system-ui, sans-serif"
+            fill="oklch(1 0 0 / 0.92)"
+            letter-spacing="0.2"
+          >
+            {n.token}
+          </text>
+        </g>
+      ))}
+    </g>
+
+    <!-- Hub (laptop / dashboard) -->
+    <g id="hub" style="transform-origin: 600px 360px;">
+      <!-- Screen frame -->
+      <rect x="430" y="240" width="340" height="240" rx="14" fill="url(#screen-bg)" stroke="oklch(1 0 0 / 0.18)" stroke-width="1.5" />
+
+      <!-- Top traffic-light -->
+      <g opacity="0.9">
+        <circle cx="445" cy="255" r="3" fill="oklch(0.65 0.18 25)" />
+        <circle cx="455" cy="255" r="3" fill="oklch(0.78 0.15 85)" />
+        <circle cx="465" cy="255" r="3" fill="oklch(0.70 0.18 145)" />
+      </g>
+
+      <!-- Sidebar with real labels -->
+      <rect x="438" y="270" width="66" height="200" rx="8" fill="oklch(1 0 0 / 0.04)" />
+      <g font-family="Nunito Sans Variable, system-ui, sans-serif" font-size="6.5" font-weight="600" letter-spacing="0.2">
+        <rect x="442" y="278" width="58" height="14" rx="3" fill="oklch(0.546 0.245 262.881 / 0.22)" />
+        <circle cx="449" cy="285" r="2.2" fill="oklch(0.546 0.245 262.881)" />
+        <text x="455" y="287" fill="oklch(1 0 0 / 0.95)">Dashboard</text>
+
+        <circle cx="449" cy="302" r="2.2" fill="oklch(1 0 0 / 0.30)" />
+        <text x="455" y="304" fill="oklch(1 0 0 / 0.55)">Notificaciones</text>
+
+        <circle cx="449" cy="316" r="2.2" fill="oklch(1 0 0 / 0.30)" />
+        <text x="455" y="318" fill="oklch(1 0 0 / 0.55)">Comprobantes</text>
+
+        <circle cx="449" cy="330" r="2.2" fill="oklch(1 0 0 / 0.30)" />
+        <text x="455" y="332" fill="oklch(1 0 0 / 0.55)">Conciliación</text>
+
+        <circle cx="449" cy="344" r="2.2" fill="oklch(1 0 0 / 0.30)" />
+        <text x="455" y="346" fill="oklch(1 0 0 / 0.55)">Reportes</text>
+
+        <circle cx="449" cy="358" r="2.2" fill="oklch(1 0 0 / 0.30)" />
+        <text x="455" y="360" fill="oklch(1 0 0 / 0.55)">Empresas</text>
+      </g>
+
+      <!-- Header -->
+      <g font-family="Nunito Sans Variable, system-ui, sans-serif">
+        <text x="514" y="275" font-size="10" font-weight="700" fill="oklch(1 0 0 / 0.92)">Buenos días, María</text>
+        <text x="514" y="285" font-size="6.5" fill="oklch(1 0 0 / 0.50)">Tienes 8 empresas activas este mes</text>
+      </g>
+
+      <!-- Brand mark on screen -->
+      <g id="hub-logo" transform="translate(745 270)">
+        <circle r="9" fill="oklch(0.546 0.245 262.881)" />
+        <text text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="700" font-family="Nunito Sans Variable, system-ui, sans-serif" fill="white">C</text>
+      </g>
+
+      <!-- KPI cards with real-ish values -->
+      <g font-family="Nunito Sans Variable, system-ui, sans-serif">
+        <g>
+          <rect x="514" y="294" width="60" height="34" rx="5" fill="oklch(1 0 0 / 0.05)" stroke="oklch(1 0 0 / 0.08)" />
+          <text x="519" y="303" font-size="5.5" fill="oklch(1 0 0 / 0.55)" letter-spacing="0.2">NOTIF.</text>
+          <text x="519" y="316" font-size="11" font-weight="700" fill="oklch(0.546 0.245 262.881)">42</text>
+          <text x="519" y="324" font-size="5" fill="oklch(0.78 0.18 145)">+8 hoy</text>
+        </g>
+        <g>
+          <rect x="578" y="294" width="60" height="34" rx="5" fill="oklch(1 0 0 / 0.05)" stroke="oklch(1 0 0 / 0.08)" />
+          <text x="583" y="303" font-size="5.5" fill="oklch(1 0 0 / 0.55)" letter-spacing="0.2">VENTAS</text>
+          <text x="583" y="316" font-size="10" font-weight="700" fill="oklch(1 0 0 / 0.92)">S/ 128k</text>
+          <text x="583" y="324" font-size="5" fill="oklch(0.78 0.18 145)">+12.5%</text>
+        </g>
+        <g>
+          <rect x="642" y="294" width="60" height="34" rx="5" fill="oklch(1 0 0 / 0.05)" stroke="oklch(1 0 0 / 0.08)" />
+          <text x="647" y="303" font-size="5.5" fill="oklch(1 0 0 / 0.55)" letter-spacing="0.2">COMPRAS</text>
+          <text x="647" y="316" font-size="10" font-weight="700" fill="oklch(1 0 0 / 0.92)">S/ 84k</text>
+          <text x="647" y="324" font-size="5" fill="oklch(0.78 0.18 145)">+6.3%</text>
+        </g>
+        <g>
+          <rect x="706" y="294" width="58" height="34" rx="5" fill="oklch(1 0 0 / 0.05)" stroke="oklch(1 0 0 / 0.08)" />
+          <text x="711" y="303" font-size="5.5" fill="oklch(1 0 0 / 0.55)" letter-spacing="0.2">IGV</text>
+          <text x="711" y="316" font-size="10" font-weight="700" fill="oklch(1 0 0 / 0.92)">S/ 7.9k</text>
+          <text x="711" y="324" font-size="5" fill="oklch(0.65 0.18 25)">a pagar</text>
+        </g>
+      </g>
+
+      <!-- Chart card -->
+      <g>
+        <rect x="514" y="335" width="250" height="68" rx="5" fill="oklch(1 0 0 / 0.04)" stroke="oklch(1 0 0 / 0.06)" />
+        <text x="520" y="346" font-size="6" font-weight="600" fill="oklch(1 0 0 / 0.65)" font-family="Nunito Sans Variable, system-ui, sans-serif">Flujo de caja</text>
+        <text x="720" y="346" font-size="5" fill="oklch(1 0 0 / 0.40)" font-family="Nunito Sans Variable, system-ui, sans-serif">Últimos 6 meses</text>
+        <!-- Soft area under the line -->
+        <path d="M 520 395 L 520 386 L 540 380 L 560 384 L 580 372 L 600 376 L 620 360 L 640 364 L 660 350 L 680 354 L 700 342 L 720 348 L 740 336 L 758 339 L 758 395 Z"
+              fill="oklch(0.546 0.245 262.881 / 0.18)" />
+        <polyline id="hub-chart"
+          points="520,386 540,380 560,384 580,372 600,376 620,360 640,364 660,350 680,354 700,342 720,348 740,336 758,339"
+          fill="none" stroke="oklch(0.546 0.245 262.881)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+        />
+        <!-- Data point with tooltip -->
+        <circle cx="700" cy="342" r="2.5" fill="oklch(0.546 0.245 262.881)" stroke="white" stroke-width="1" />
+      </g>
+
+      <!-- Recent activity table -->
+      <g font-family="Nunito Sans Variable, system-ui, sans-serif">
+        <text x="514" y="418" font-size="6" font-weight="600" fill="oklch(1 0 0 / 0.65)">Movimientos recientes</text>
+        <text x="760" y="418" font-size="5" text-anchor="end" fill="oklch(0.546 0.245 262.881)">Ver todos</text>
+
+        <g id="hub-row-1">
+          <rect x="514" y="423" width="250" height="15" rx="3" fill="oklch(1 0 0 / 0.03)" />
+          <circle cx="522" cy="430.5" r="2.5" fill="oklch(0.78 0.18 145)" />
+          <text x="529" y="433" font-size="6" fill="oklch(1 0 0 / 0.78)">F001-1234 · Cliente ABC SAC</text>
+          <text x="724" y="433" font-size="6" font-weight="600" fill="oklch(1 0 0 / 0.85)">S/ 12,800</text>
+          <text x="758" y="433" font-size="5" text-anchor="end" fill="oklch(0.78 0.18 145)">Pagado</text>
+        </g>
+        <g id="hub-row-2">
+          <rect x="514" y="441" width="250" height="15" rx="3" fill="oklch(1 0 0 / 0.03)" />
+          <circle cx="522" cy="448.5" r="2.5" fill="oklch(0.546 0.245 262.881)" />
+          <text x="529" y="451" font-size="6" fill="oklch(1 0 0 / 0.78)">E001-0089 · Importadora XYZ</text>
+          <text x="724" y="451" font-size="6" font-weight="600" fill="oklch(1 0 0 / 0.85)">S/ 4,250</text>
+          <text x="758" y="451" font-size="5" text-anchor="end" fill="oklch(0.546 0.245 262.881)">Importado</text>
+        </g>
+        <g id="hub-row-3">
+          <rect x="514" y="459" width="250" height="15" rx="3" fill="oklch(1 0 0 / 0.03)" />
+          <circle cx="522" cy="466.5" r="2.5" fill="oklch(0.78 0.15 85)" />
+          <text x="529" y="469" font-size="6" fill="oklch(1 0 0 / 0.78)">Notif. SUNAT · Constancia fiscal</text>
+          <text x="724" y="469" font-size="6" font-weight="600" fill="oklch(1 0 0 / 0.85)">—</text>
+          <text x="758" y="469" font-size="5" text-anchor="end" fill="oklch(0.78 0.15 85)">Pendiente</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Satellite nodes (branded mini-cards) -->
+    <g id="nodes">
+      {nodes.map((n) => {
+        const W = 180;
+        const H = 108;
+        const x = n.cx - W / 2;
+        const y = n.cy - H / 2;
+        return (
+          <g id={`node-${n.id}`} class="node" style={`transform-origin: ${n.cx}px ${n.cy}px;`}>
+            {/* Card background */}
+            <rect
+              x={x}
+              y={y}
+              width={W}
+              height={H}
+              rx="14"
+              fill="oklch(0.18 0.024 264.376)"
+              stroke="oklch(1 0 0 / 0.10)"
+              stroke-width="1"
+            />
+            {/* Inner subtle gradient */}
+            <rect
+              x={x}
+              y={y}
+              width={W}
+              height={H}
+              rx="14"
+              fill="oklch(0.546 0.245 262.881 / 0.04)"
+            />
+            {/* Brand color accent stripe (left edge) */}
+            <rect x={x} y={y + 14} width="3" height={H - 28} rx="1.5" fill={n.brand} />
+
+            {/* Icon tile */}
+            <rect
+              x={x + 14}
+              y={y + 14}
+              width="32"
+              height="32"
+              rx="8"
+              fill={`color-mix(in oklch, ${n.brand} 18%, transparent)`}
+            />
+            <g
+              transform={`translate(${x + 30} ${y + 30}) scale(0.8)`}
+              stroke={n.brand}
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              fill="none"
+              set:html={iconPaths[n.icon]}
+            />
+
+            {/* Brand label */}
+            <text
+              x={x + 54}
+              y={y + 28}
+              font-size="15"
+              font-weight="700"
+              font-family="Nunito Sans Variable, system-ui, sans-serif"
+              fill="oklch(1 0 0 / 0.95)"
+              letter-spacing="0.2"
+            >
+              {n.label}
+            </text>
+            {/* Status dot — idle=muted; pulses bright during workflow step */}
+            <circle
+              class="node-status"
+              cx={x + W - 16}
+              cy={y + 20}
+              r="4"
+              fill={n.brand}
+              opacity="0.45"
+            />
+            <text
+              x={x + 54}
+              y={y + 42}
+              font-size="9"
+              fill="oklch(1 0 0 / 0.50)"
+              font-family="Nunito Sans Variable, system-ui, sans-serif"
+              letter-spacing="0.6"
+            >
+              {n.id.toUpperCase()}
+            </text>
+
+            {/* Detail line */}
+            <text
+              x={x + 14}
+              y={y + 70}
+              font-size="11"
+              font-weight="600"
+              font-family="Nunito Sans Variable, system-ui, sans-serif"
+              fill="oklch(1 0 0 / 0.82)"
+            >
+              {n.detail}
+            </text>
+
+            {/* Skeleton bars + optional badge */}
+            <rect x={x + 14} y={y + 80} width="86" height="4" rx="2" fill="oklch(1 0 0 / 0.18)" />
+            <rect x={x + 14} y={y + 90} width="52" height="4" rx="2" fill="oklch(1 0 0 / 0.10)" />
+
+            {n.meta && (
+              <g>
+                <rect
+                  x={x + W - 50}
+                  y={y + 80}
+                  width="38"
+                  height="16"
+                  rx="4"
+                  fill={`color-mix(in oklch, ${n.brand} 22%, transparent)`}
+                  stroke={`color-mix(in oklch, ${n.brand} 45%, transparent)`}
+                  stroke-width="0.8"
+                />
+                <text
+                  x={x + W - 31}
+                  y={y + 91}
+                  text-anchor="middle"
+                  font-size="10"
+                  font-weight="700"
+                  font-family="Nunito Sans Variable, system-ui, sans-serif"
+                  fill={n.brand}
+                >
+                  {n.meta}
+                </text>
+              </g>
+            )}
+          </g>
+        );
+      })}
+    </g>
+  </svg>
+</div>
+
+<style>
+  .hero-svg {
+    overflow: visible;
+  }
+
+  .connection-line {
+    stroke-linecap: round;
+    fill: none;
+  }
+
+  /* Tokens are always hidden by default — JS fades each in only when it's its
+     turn in the sequence. Without JS they should stay invisible (they live
+     on top of the lines and would look broken if frozen mid-flight). */
+  .token {
+    opacity: 0;
+  }
+
+  /* Pre-animation state: hide elements that the JS will fade in.
+     Only applied while [data-anim-pending] is on the SVG, so if JS fails
+     or reduced-motion strips the attribute, everything stays visible. */
+  .hero-svg[data-anim-pending] #hub,
+  .hero-svg[data-anim-pending] #hub-glow-circle,
+  .hero-svg[data-anim-pending] .node {
+    opacity: 0;
+  }
+  .hero-svg[data-anim-pending] #hub {
+    transform: scale(0.88);
+  }
+
+  /* Static fallback for users that prefer reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .hero-svg[data-anim-pending] #hub,
+    .hero-svg[data-anim-pending] #hub-glow-circle,
+    .hero-svg[data-anim-pending] .node {
+      opacity: 1;
+      transform: none;
+    }
+    .token {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  import { animate, createTimeline, stagger, svg } from "animejs";
+
+  type NodeId =
+    | "sunat"
+    | "sunafil"
+    | "whatsapp"
+    | "gmail"
+    | "erp"
+    | "bank"
+    | "fx"
+    | "pdf";
+
+  const NODE_IDS: NodeId[] = [
+    "sunat",
+    "whatsapp",
+    "erp",
+    "fx",
+    "sunafil",
+    "gmail",
+    "bank",
+    "pdf",
+  ];
+
+  let initialized = false;
+  let cleanupFns: Array<() => void> = [];
+
+  function initHero() {
+    if (initialized) return;
+    const container = document.getElementById("hero-svg-container");
+    if (!container) return;
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (prefersReducedMotion) {
+      initialized = true;
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          observer.disconnect();
+          runAnimation(container);
+        }
+      },
+      // Trigger as soon as the section starts entering the viewport (with a
+      // 200px bottom margin) so the entrance is finished by the time the user
+      // actually scrolls it into full view.
+      { threshold: 0, rootMargin: "0px 0px 200px 0px" },
+    );
+    observer.observe(container);
+    cleanupFns.push(() => observer.disconnect());
+    initialized = true;
+  }
+
+  function runAnimation(container: HTMLElement) {
+    const svgEl = container.querySelector<SVGSVGElement>(".hero-svg");
+    // Remove the pending flag so CSS pre-hide rules stop applying;
+    // animejs takes over via inline styles set on each element below.
+    svgEl?.removeAttribute("data-anim-pending");
+
+    // Pre-measure each connection path to drive stroke-dashoffset reliably.
+    const lines = container.querySelectorAll<SVGPathElement>(".connection-line");
+    lines.forEach((path) => {
+      const len = path.getTotalLength();
+      path.style.strokeDasharray = String(len);
+      path.style.strokeDashoffset = String(len);
+    });
+
+    // ---------- Phase 1: entrance ----------
+    animate("#hub", {
+      opacity: { from: 0, to: 1 },
+      scale: { from: 0.88, to: 1 },
+      duration: 600,
+      ease: "out(3)",
+    });
+
+    animate("#hub-glow-circle", {
+      opacity: { from: 0, to: 1 },
+      duration: 700,
+      delay: 100,
+      ease: "out(2)",
+    });
+
+    animate(".connection-line", {
+      strokeDashoffset: { to: 0 },
+      duration: 750,
+      delay: stagger(50, { start: 250 }),
+      ease: "inOut(2)",
+    });
+
+    animate(".node", {
+      opacity: { from: 0, to: 1 },
+      duration: 500,
+      delay: stagger(55, { start: 500 }),
+      ease: "out(3)",
+    });
+
+    animate(["#hub-row-1", "#hub-row-2", "#hub-row-3"], {
+      opacity: { from: 0, to: 1 },
+      translateX: { from: -6, to: 0 },
+      duration: 400,
+      delay: stagger(90, { start: 900 }),
+      ease: "out(2)",
+    });
+
+    animate("#hub-chart", {
+      strokeDashoffset: [
+        (el: SVGPolylineElement) => {
+          const len = (el as unknown as SVGGeometryElement).getTotalLength();
+          el.style.strokeDasharray = String(len);
+          return len;
+        },
+        0,
+      ],
+      duration: 1100,
+      delay: 700,
+      ease: "inOut(2)",
+    });
+
+    // ---------- Phase 2: idle floating on each node ----------
+    // Each node breathes vertically with a randomized phase so the composition
+    // never feels frozen. Pure CSS-like loop, independent of the workflow.
+    NODE_IDS.forEach((id, i) => {
+      animate(`#node-${id}`, {
+        translateY: [-3, 3],
+        duration: 3200 + i * 180,
+        loop: true,
+        alternate: true,
+        ease: "inOut(2)",
+        delay: 1500 + i * 220,
+      });
+    });
+
+    // ---------- Phase 3: sequential workflow loop (n8n-style) ----------
+    // One token at a time travels from a node into the hub. The connector
+    // lights up while the token travels; the hub pulses on arrival.
+    const tl = createTimeline({
+      loop: true,
+      defaults: { ease: "inOut(2)" },
+    });
+
+    const TOKEN_DURATION = 2800;
+    const GAP = 750; // breathing room between tokens
+    const STEP = TOKEN_DURATION + GAP;
+
+    NODE_IDS.forEach((id, i) => {
+      const lineSel = `#line-${id}`;
+      const tokenSel = `#token-${id}`;
+      const start = 1600 + i * STEP; // delay first run so entrance finishes
+
+      try {
+        // Token travels FROM the satellite node INTO the hub.
+        // Our path is M hub Q ctrl node → motionPath progresses 0 (hub) -> 1 (node);
+        // reversed: true makes it go node -> hub.
+        // We DESTRUCTURE motionPath and drop `rotate` so the token stays
+        // upright instead of pivoting along the path tangent.
+        const { rotate: _drop, ...motion } = svg.createMotionPath(lineSel) as Record<
+          string,
+          unknown
+        >;
+        tl.add(
+          tokenSel,
+          {
+            ...motion,
+            opacity: [
+              { to: 1, duration: 260 },
+              { to: 1, duration: TOKEN_DURATION - 620 },
+              { to: 0, duration: 360 },
+            ],
+            scale: [
+              { from: 0.9, to: 1, duration: 280, ease: "out(3)" },
+              { to: 1, duration: TOKEN_DURATION - 640 },
+              { to: 0.94, duration: 360, ease: "in(2)" },
+            ],
+            duration: TOKEN_DURATION,
+            ease: "inOut(1.4)",
+            reversed: true,
+          },
+          start,
+        );
+      } catch {
+        // motionPath helper unavailable — degrade gracefully.
+        tl.add(
+          tokenSel,
+          { opacity: [0, 1, 0], duration: TOKEN_DURATION },
+          start,
+        );
+      }
+
+      // Connector "lights up" along with the token.
+      tl.add(
+        lineSel,
+        {
+          opacity: [
+            { to: 1, duration: 220 },
+            { to: 1, duration: TOKEN_DURATION - 440 },
+            { to: 0.45, duration: 220 },
+          ],
+          strokeWidth: [
+            { to: 2.6, duration: 220 },
+            { to: 2.6, duration: TOKEN_DURATION - 440 },
+            { to: 1.5, duration: 220 },
+          ],
+          duration: TOKEN_DURATION,
+        },
+        start,
+      );
+
+      // Source node "emits" — quick pulse at the start.
+      tl.add(
+        `#node-${id}`,
+        {
+          scale: [
+            { to: 1.08, duration: 180, ease: "out(2)" },
+            { to: 1, duration: 320, ease: "out(2)" },
+          ],
+          duration: 500,
+        },
+        start,
+      );
+
+      // Hub "absorbs" the token on arrival.
+      tl.add(
+        "#hub-glow-circle",
+        {
+          scale: [
+            { to: 1.08, duration: 240, ease: "out(2)" },
+            { to: 1, duration: 420, ease: "in(2)" },
+          ],
+          opacity: [
+            { to: 1, duration: 240 },
+            { to: 0.65, duration: 420 },
+          ],
+          duration: 660,
+        },
+        start + TOKEN_DURATION - 200,
+      );
+
+      // Hub also pops slightly to acknowledge.
+      tl.add(
+        "#hub",
+        {
+          scale: [
+            { to: 1.012, duration: 180, ease: "out(2)" },
+            { to: 1, duration: 320, ease: "out(2)" },
+          ],
+          duration: 500,
+        },
+        start + TOKEN_DURATION - 180,
+      );
+    });
+
+    // Background hub "breathing" — independent low-frequency loop.
+    animate("#hub-glow-circle", {
+      scale: [1, 1.04, 1],
+      duration: 5200,
+      loop: true,
+      ease: "inOut(2)",
+      delay: 1800,
+    });
+
+    // ---------- Phase 3: parallax tilt (desktop only, rAF-throttled) ----------
+    const fineCursor = window.matchMedia("(pointer: fine)").matches;
+    if (fineCursor) {
+      let pendingX = 0;
+      let pendingY = 0;
+      let rafId = 0;
+      const flush = () => {
+        rafId = 0;
+        animate("#hub", {
+          translateX: pendingX * 14,
+          translateY: pendingY * 10,
+          duration: 700,
+          ease: "out(2)",
+        });
+      };
+      const onMove = (e: MouseEvent) => {
+        const rect = container.getBoundingClientRect();
+        pendingX = (e.clientX - rect.left) / rect.width - 0.5;
+        pendingY = (e.clientY - rect.top) / rect.height - 0.5;
+        if (rafId === 0) rafId = requestAnimationFrame(flush);
+      };
+      const onLeave = () => {
+        if (rafId !== 0) {
+          cancelAnimationFrame(rafId);
+          rafId = 0;
+        }
+        animate("#hub", {
+          translateX: 0,
+          translateY: 0,
+          duration: 900,
+          ease: "out(3)",
+        });
+      };
+      container.addEventListener("mousemove", onMove, { passive: true });
+      container.addEventListener("mouseleave", onLeave);
+      cleanupFns.push(() => {
+        if (rafId !== 0) cancelAnimationFrame(rafId);
+        container.removeEventListener("mousemove", onMove);
+        container.removeEventListener("mouseleave", onLeave);
+      });
+    }
+  }
+
+  function reset() {
+    cleanupFns.forEach((fn) => fn());
+    cleanupFns = [];
+    initialized = false;
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initHero);
+  } else {
+    initHero();
+  }
+
+  document.addEventListener("astro:before-swap", reset);
+  document.addEventListener("astro:after-swap", initHero);
+</script>

@@ -1,0 +1,50 @@
+---
+import { appUrl } from "../config/site";
+---
+
+<section class="py-16 lg:py-24">
+  <div class="container">
+    <div class="relative overflow-hidden rounded-2xl bg-linear-to-br from-primary/10 via-primary/5 to-transparent p-8 md:p-12 lg:p-16">
+      <!-- Background decoration -->
+      <div class="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/20 blur-3xl"></div>
+      <div class="pointer-events-none absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-primary/10 blur-3xl"></div>
+
+      <div class="relative mx-auto max-w-2xl text-center">
+        <div class="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm text-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+          Comienza hoy mismo
+        </div>
+
+        <h2 class="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+          Simplifica tu gestión tributaria
+        </h2>
+
+        <p class="mt-4 text-lg text-muted-foreground">
+          Únete a los estudios contables que ya automatizaron
+          la consulta de documentos SUNAT.
+        </p>
+
+        <div class="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <button
+            type="button"
+            data-waitlist-trigger
+            class="inline-flex h-12 cursor-pointer items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          >
+            Crear una cuenta
+            <svg class="ml-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>
+          </button>
+          <a
+            href={appUrl("/sign-in")}
+            class="inline-flex h-12 items-center justify-center rounded-md px-8 text-base font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Ya tengo cuenta
+          </a>
+        </div>
+
+        <p class="mt-6 text-sm text-muted-foreground">
+          Te avisamos apenas abramos el acceso • Sin spam
+        </p>
+      </div>
+    </div>
+  </div>
+</section>

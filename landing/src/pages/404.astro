@@ -1,0 +1,129 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+---
+
+<BaseLayout
+  title="Página no encontrada"
+  description="La página que buscas no existe o fue movida. Vuelve al inicio de Clearbook."
+  noindex={true}
+>
+  <Header />
+
+  <main class="relative isolate flex min-h-[calc(100vh-4rem)] items-center overflow-hidden bg-background">
+    <canvas id="matrix-canvas" class="absolute inset-0 h-full w-full" aria-hidden="true"></canvas>
+
+    <div
+      class="pointer-events-none absolute inset-0 bg-linear-to-b from-background/60 via-background/40 to-background"
+      aria-hidden="true"
+    ></div>
+
+    <div class="container relative z-10 mx-auto px-6 py-20">
+      <div class="max-w-2xl">
+        <p class="font-mono text-sm uppercase tracking-[0.3em] text-primary">Error 404</p>
+        <h1 class="mt-4 text-balance text-5xl font-bold leading-tight text-foreground md:text-7xl">
+          Página no encontrada.
+        </h1>
+        <p class="mt-6 max-w-lg text-balance text-lg text-muted-foreground">
+          Esta ruta se perdió entre tantos comprobantes. Revisa la URL o vuelve al
+          inicio para seguir explorando Clearbook.
+        </p>
+
+        <div class="mt-10 flex flex-wrap gap-4">
+          <a
+            href="/"
+            class="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground transition hover:opacity-90"
+          >
+            Volver al inicio
+          </a>
+          <a
+            href="/#features"
+            class="inline-flex items-center justify-center rounded-md border border-border bg-background/60 px-6 py-3 font-semibold text-foreground backdrop-blur transition hover:bg-background"
+          >
+            Ver funcionalidades
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <Footer />
+</BaseLayout>
+
+<script>
+  // Matrix-rain animation tuned to Clearbook (SUNAT / accounting glyphs).
+  const canvas = document.getElementById("matrix-canvas") as HTMLCanvasElement | null;
+  if (canvas) {
+    const ctx = canvas.getContext("2d");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (ctx && !reduceMotion) {
+      const glyphs = "SUNATCLEARBOOKRUC0123456789FEPDCNBVCTC".split("");
+      const fontSize = 16;
+      let columns = 0;
+      let drops: number[] = [];
+      let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      const resize = () => {
+        const { clientWidth, clientHeight } = canvas;
+        canvas.width = clientWidth * dpr;
+        canvas.height = clientHeight * dpr;
+        ctx.scale(dpr, dpr);
+        columns = Math.floor(clientWidth / fontSize);
+        drops = Array(columns).fill(0).map(() => Math.random() * -50);
+      };
+      resize();
+      window.addEventListener("resize", () => {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        resize();
+      });
+
+      const isDark = () =>
+        document.documentElement.classList.contains("dark") ||
+        window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+      const draw = () => {
+        const dark = isDark();
+        // Trail fade
+        ctx.fillStyle = dark ? "rgba(11, 11, 15, 0.08)" : "rgba(255, 255, 255, 0.10)";
+        ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+
+        ctx.font = `${fontSize}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+        ctx.fillStyle = dark ? "rgba(56, 189, 248, 0.85)" : "rgba(37, 99, 235, 0.55)";
+
+        for (let i = 0; i < drops.length; i++) {
+          const text = glyphs[Math.floor(Math.random() * glyphs.length)];
+          const x = i * fontSize;
+          const y = drops[i] * fontSize;
+          ctx.fillText(text, x, y);
+
+          if (y > canvas.clientHeight && Math.random() > 0.975) {
+            drops[i] = 0;
+          }
+          drops[i]++;
+        }
+      };
+
+      let raf = 0;
+      let last = 0;
+      const loop = (t: number) => {
+        if (t - last > 55) {
+          draw();
+          last = t;
+        }
+        raf = requestAnimationFrame(loop);
+      };
+      raf = requestAnimationFrame(loop);
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          cancelAnimationFrame(raf);
+        } else {
+          last = 0;
+          raf = requestAnimationFrame(loop);
+        }
+      });
+    }
+  }
+</script>

@@ -1,0 +1,857 @@
+---
+const icons: Record<string, string> = {
+  home: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  bell: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+  building: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>',
+  file: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>',
+  mail: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>',
+  sparkles: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v6m0 6v6M3 12h6m6 0h6"/></svg>',
+};
+
+const sidebarItems = [
+  { label: "Inicio", icon: "home" },
+  { label: "Notificaciones", icon: "bell" },
+  { label: "Empresas", icon: "building" },
+  { label: "Comprobantes", icon: "file" },
+  { label: "Comunicaciones", icon: "mail" },
+];
+
+// Animation timing (in seconds) — matches Next.js
+const TIMING = {
+  windowAppear: 0,
+  headerReveal: 0.3,
+  sidebarReveal: 0.6,
+  statsReveal: 1.0,
+  row1: 1.8,
+  row2: 2.2,
+  row3: 2.6,
+  row4: 3.0,
+  row5: 3.4,
+  row6: 3.8,
+  navigateToComprobantes: 8.5,
+  voucherRow1: 9.5,
+  voucherRow2: 9.9,
+  voucherRow3: 10.3,
+  voucherRow4: 10.7,
+  loopReset: 26,
+};
+---
+
+<div id="hero-mockup" aria-hidden="true" class="mockup-container relative mx-auto aspect-3/4 w-full max-w-6xl overflow-hidden rounded-xl border border-white/10 bg-[#0a0a0f] shadow-2xl sm:aspect-4/3 md:aspect-video">
+  <!-- Window chrome -->
+  <div id="mockup-header" class="mockup-header flex items-center gap-2 border-b border-white/10 bg-[#0f0f15] px-2 py-1.5 sm:gap-3 sm:px-4 sm:py-2">
+    <div class="flex gap-1 sm:gap-1.5">
+      <div class="h-2 w-2 rounded-full bg-red-500/80 sm:h-2.5 sm:w-2.5"></div>
+      <div class="h-2 w-2 rounded-full bg-yellow-500/80 sm:h-2.5 sm:w-2.5"></div>
+      <div class="h-2 w-2 rounded-full bg-green-500/80 sm:h-2.5 sm:w-2.5"></div>
+    </div>
+    <div class="ml-2 flex items-center gap-2 sm:ml-4">
+      <span class="text-[8px] font-semibold text-white/90 sm:text-[10px]">Clearbook</span>
+    </div>
+    <div class="flex-1"></div>
+    <div class="hidden items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2 py-1 sm:flex">
+      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-white/60"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/></svg>
+      <span class="text-[9px] text-white/80">Mi estudio contable</span>
+      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-white/40"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <div class="h-4 w-4 rounded-full bg-white/10 sm:h-5 sm:w-5"></div>
+  </div>
+
+  <!-- Main content area -->
+  <div class="flex h-[calc(100%-32px)] sm:h-[calc(100%-36px)]">
+    <!-- Sidebar -->
+    <div id="mockup-sidebar" class="mockup-sidebar hidden w-40 shrink-0 border-r border-white/10 bg-[#0c0c12] p-2 md:block">
+      <div class="mb-4 px-2 py-1.5">
+        <div class="flex items-center gap-2">
+          <div class="flex h-5 w-5 items-center justify-center rounded bg-primary/20">
+            <span class="text-[10px] font-bold text-primary">M</span>
+          </div>
+          <div>
+            <div class="text-[10px] font-semibold text-white/90">Clearbook</div>
+            <div class="text-[7px] text-white/40">Plataforma para contadores</div>
+          </div>
+        </div>
+      </div>
+      <div class="space-y-0.5">
+        {sidebarItems.map((item, i) => (
+          <div
+            class={`mockup-sidebar-item flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-300 ${i === 1 ? "bg-primary/15 text-primary" : "text-white/60"}`}
+            data-sidebar-idx={i}
+          >
+            <Fragment set:html={icons[item.icon]} />
+            <span class="text-[10px] font-medium">{item.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Main panel -->
+    <div class="flex-1 overflow-hidden p-2 sm:p-3 md:p-4">
+      <!-- PHASE 1: Notificaciones -->
+      <div id="phase-notif" class="h-full">
+        <div class="mockup-el mb-2 flex items-start justify-between gap-2 sm:mb-3">
+          <div class="min-w-0">
+            <h2 class="text-xs font-semibold text-white/90 sm:text-base">Notificaciones SUNAT</h2>
+            <p class="truncate text-[8px] text-white/50 sm:text-[10px]">Buzón electrónico SUNAT</p>
+          </div>
+          <div class="flex shrink-0 items-center gap-1 rounded-md bg-green-600 px-2 py-1 text-[8px] font-medium text-white sm:gap-1.5 sm:px-2.5 sm:py-1.5 sm:text-[10px]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-2.5 w-2.5 sm:h-3 sm:w-3"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <span class="hidden sm:inline">Sincronizar</span>
+          </div>
+        </div>
+        <!-- Stats -->
+        <div class="mockup-el mb-2 grid grid-cols-2 gap-1 sm:mb-3 sm:grid-cols-4 sm:gap-2">
+          <div class="rounded-lg border border-white/10 bg-white/5 p-2 sm:p-2.5">
+            <div class="mb-0.5 flex items-center justify-between"><span class="text-[7px] text-white/50 sm:text-[9px]">Total Notif.</span></div>
+            <div class="flex items-baseline gap-1">
+              <span class="text-base font-bold text-white sm:text-lg count-up" data-target="1229"></span>
+              <span class="flex items-center gap-0.5 text-[7px] text-green-400 sm:text-[9px]">↗ +12</span>
+            </div>
+            <span class="hidden text-[6px] text-white/40 sm:block">Desde inicio de mes</span>
+          </div>
+          <div class="rounded-lg border border-white/10 bg-white/5 p-2 sm:p-2.5">
+            <div class="mb-0.5"><span class="text-[7px] text-white/50 sm:text-[9px]">Últimas 24h</span></div>
+            <div class="flex items-baseline gap-1"><span class="text-base font-bold text-white sm:text-lg">0</span><span class="text-[7px] text-white/40">— 0</span></div>
+            <span class="hidden text-[6px] text-white/40 sm:block">Sin nuevas notificaciones</span>
+          </div>
+          <div class="rounded-lg border border-white/10 bg-white/5 p-2 sm:p-2.5">
+            <div class="mb-0.5"><span class="text-[7px] text-white/50 sm:text-[9px]">Tipos Docs</span></div>
+            <div class="flex items-baseline gap-1"><span class="text-base font-bold text-white sm:text-lg">0</span><span class="flex items-center gap-0.5 text-[7px] text-green-400">↗ +1</span></div>
+            <span class="hidden text-[6px] text-white/40 sm:block">Categorías activas</span>
+          </div>
+          <div class="rounded-lg border border-white/10 bg-white/5 p-2 sm:p-2.5">
+            <div class="mb-0.5"><span class="text-[7px] text-white/50 sm:text-[9px]">Clientes</span></div>
+            <div class="flex items-baseline gap-1"><span class="text-base font-bold text-white sm:text-lg count-up" data-target="116"></span><span class="flex items-center gap-0.5 text-[7px] text-green-400">↗ +3</span></div>
+            <span class="hidden text-[6px] text-white/40 sm:block">Desde el último mes</span>
+          </div>
+        </div>
+        <!-- Table header -->
+        <div class="mockup-el mb-2 flex items-center justify-between" data-delay="1300">
+          <div>
+            <span class="text-[11px] font-medium text-white/80 sm:text-xs">Notificaciones</span>
+            <span class="ml-2 text-[9px] text-white/40 sm:text-[10px]">Buzón electrónico SUNAT de todos los clientes</span>
+          </div>
+          <div class="flex items-center gap-1 rounded border border-white/10 px-2 py-1 text-[9px] text-white/50">Exportar</div>
+        </div>
+        <!-- Table -->
+        <div class="overflow-hidden rounded-lg border border-white/10 bg-white/2">
+          <div class="grid grid-cols-6 gap-1 border-b border-white/10 bg-white/5 px-2 py-1.5 text-[8px] font-medium text-white/50 sm:grid-cols-12 sm:gap-2 sm:px-3 sm:py-2 sm:text-[10px]">
+            <div class="hidden sm:block sm:col-span-1">#</div>
+            <div class="col-span-3 sm:col-span-3">Cliente</div>
+            <div class="hidden sm:block sm:col-span-5">Asunto</div>
+            <div class="col-span-2 sm:col-span-2">Fecha</div>
+            <div class="col-span-1 sm:col-span-1">Acc.</div>
+          </div>
+          <div class="divide-y divide-white/5" id="notif-rows">
+            {[
+              { num: 1, client: "SITECH DE PERU SAC", ruc: "20613555634", asunto: "Notificación Resolución Coactiva Retención...", fecha: "06/02/2026" },
+              { num: 2, client: "ANDES GOLDEN", ruc: "20614626136", asunto: "Notificación de Resolución de Ejecución...", fecha: "06/02/2026" },
+              { num: 3, client: "NANOSUD - GERT Y HUGO", ruc: "20612611620", asunto: "Resolución Coactiva Nº 029007990530", fecha: "06/02/2026" },
+              { num: 4, client: "LTM CONEXUS GROUP", ruc: "20607631477", asunto: "Notificación de Resolución Coactiva...", fecha: "06/02/2026" },
+              { num: 5, client: "INVERSIONES LIMA SAC", ruc: "20548712345", asunto: "Embargo en forma de retención...", fecha: "05/02/2026" },
+              { num: 6, client: "COMERCIAL ANDINA", ruc: "20512876543", asunto: "Resolución de Multa Nº 024001245...", fecha: "05/02/2026" },
+            ].map((n, i) => (
+              <div class="mockup-row grid grid-cols-6 gap-1 px-2 py-2 text-[9px] text-white/70 sm:grid-cols-12 sm:gap-2 sm:px-3 sm:py-2.5 sm:text-[11px]" data-row-idx={i}>
+                <div class="hidden text-white/40 sm:block sm:col-span-1">{n.num}</div>
+                <div class="col-span-3 sm:col-span-3">
+                  <div class="truncate text-[8px] font-medium text-white/90 sm:text-[11px]">{n.client}</div>
+                  <div class="text-[7px] text-white/40 sm:text-[9px]">{n.ruc}</div>
+                </div>
+                <div class="hidden truncate sm:block sm:col-span-5">{n.asunto}</div>
+                <div class="col-span-2 text-white/50 sm:col-span-2">{n.fecha}</div>
+                <div class="col-span-1 sm:col-span-1"><div class="rounded border border-white/20 bg-white/5 px-1 py-0.5 text-[6px] text-white/60 sm:px-1.5 sm:text-[7px]">PDF</div></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <!-- PHASE 2: Comprobantes (hidden initially) -->
+      <div id="phase-comp" class="hidden h-full">
+        <div class="mockup-el mb-2 flex items-start justify-between gap-2 sm:mb-3">
+          <div class="min-w-0">
+            <h2 class="text-xs font-semibold text-white/90 sm:text-base">Comprobantes Pendientes</h2>
+            <p class="truncate text-[8px] text-white/50 sm:text-[10px]">Docs pendientes de clientes</p>
+          </div>
+        </div>
+        <!-- Stats -->
+        <div class="mockup-el mb-2 grid grid-cols-2 gap-1 sm:mb-3 sm:grid-cols-4 sm:gap-2">
+          <div class="rounded-lg border border-white/10 bg-white/5 p-2 sm:p-2.5">
+            <div class="mb-0.5"><span class="text-[7px] text-white/50 sm:text-[9px]">Pendientes</span></div>
+            <div class="flex items-baseline gap-1"><span class="text-base font-bold text-amber-400 sm:text-lg">89</span><span class="text-[7px] text-amber-400/70">⏱ Pend.</span></div>
+            <span class="hidden text-[6px] text-white/40 sm:block">Comprobantes sin enviar</span>
+          </div>
+          <div class="rounded-lg border border-white/10 bg-white/5 p-2 sm:p-2.5">
+            <div class="mb-0.5"><span class="text-[7px] text-white/50 sm:text-[9px]">Monto S/</span></div>
+            <div class="flex items-baseline gap-1"><span class="text-base font-bold text-white sm:text-lg">S/ 205K</span></div>
+            <span class="hidden text-[6px] text-white/40 sm:block">Total acumulado</span>
+          </div>
+          <div class="rounded-lg border border-white/10 bg-white/5 p-2 sm:p-2.5">
+            <div class="mb-0.5"><span class="text-[7px] text-white/50 sm:text-[9px]">Monto USD</span></div>
+            <div class="flex items-baseline gap-1"><span class="text-base font-bold text-white sm:text-lg">$205K</span></div>
+            <span class="hidden text-[6px] text-white/40 sm:block">Total acumulado</span>
+          </div>
+          <div class="rounded-lg border border-white/10 bg-white/5 p-2 sm:p-2.5">
+            <div class="mb-0.5"><span class="text-[7px] text-white/50 sm:text-[9px]">Clientes</span></div>
+            <div class="flex items-baseline gap-1"><span class="text-base font-bold text-white sm:text-lg">2</span><span class="hidden text-[7px] text-amber-400 sm:inline">Con pend.</span></div>
+            <span class="hidden text-[6px] text-white/40 sm:block">Requieren atención</span>
+          </div>
+        </div>
+        <!-- Table header -->
+        <div class="mockup-el mb-2 flex items-center justify-between">
+          <div>
+            <span class="text-[11px] font-medium text-white/80 sm:text-xs">Clientes con Comprobantes Pendientes</span>
+            <span class="ml-2 text-[9px] text-white/40">Ordenados por monto</span>
+          </div>
+          <div class="flex items-center gap-1 rounded border border-white/10 px-2 py-1 text-[9px] text-white/50">Exportar</div>
+        </div>
+        <!-- Table -->
+        <div class="overflow-hidden rounded-lg border border-white/10 bg-white/2">
+          <div class="grid grid-cols-5 gap-1 border-b border-white/10 bg-white/5 px-2 py-1.5 text-[8px] font-medium text-white/50 sm:grid-cols-12 sm:gap-2 sm:px-3 sm:py-2 sm:text-[10px]">
+            <div class="hidden sm:block sm:col-span-2">RUC</div>
+            <div class="col-span-3 sm:col-span-4">Razón Social</div>
+            <div class="col-span-1 sm:col-span-1">Cant.</div>
+            <div class="hidden sm:block sm:col-span-2">Total S/</div>
+            <div class="hidden sm:block sm:col-span-2">Total USD</div>
+            <div class="col-span-1 sm:col-span-1">Estado</div>
+          </div>
+          <div class="divide-y divide-white/5" id="comp-rows">
+            {[
+              { ruc: "20614626136", razon: "ANDES GOLDEN", cant: 31, soles: "S/ 7,217.10", usd: "USD 11,749.28" },
+              { ruc: "20607022624", razon: "ARROYO JIMENEZ CAPITAL S.A.C.", cant: 58, soles: "S/ 198,451.45", usd: "USD 194,096.80" },
+              { ruc: "20548712345", razon: "INVERSIONES LIMA SAC", cant: 12, soles: "S/ 45,230.00", usd: "USD 12,100.50" },
+              { ruc: "20512876543", razon: "COMERCIAL ANDINA EIRL", cant: 8, soles: "S/ 18,750.80", usd: "USD 5,025.00" },
+            ].map((v, i) => (
+              <div class="mockup-row grid grid-cols-5 gap-1 px-2 py-2 text-[9px] text-white/70 sm:grid-cols-12 sm:gap-2 sm:px-3 sm:py-2.5 sm:text-[11px]" data-row-idx={i}>
+                <div class="hidden text-white/50 sm:block sm:col-span-2">{v.ruc}</div>
+                <div class="col-span-3 sm:col-span-4"><div class="truncate text-[8px] font-medium text-white/90 sm:text-[11px]">{v.razon}</div></div>
+                <div class="col-span-1 text-center font-medium text-white sm:col-span-1">{v.cant}</div>
+                <div class="hidden text-white/80 sm:block sm:col-span-2">{v.soles}</div>
+                <div class="hidden text-white/80 sm:block sm:col-span-2">{v.usd}</div>
+                <div class="col-span-1 sm:col-span-1">
+                  <span class="flex items-center gap-0.5"><span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span><span class="hidden text-[7px] text-amber-400 sm:inline">Pendiente</span></span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat widget ClearbookAI -->
+  <div id="chat-widget" class="absolute bottom-3 right-3 z-10 w-52 overflow-hidden rounded-xl border border-white/10 bg-[#12121a]/95 shadow-xl backdrop-blur-sm sm:bottom-4 sm:right-4 sm:w-64 md:bottom-5 md:right-5 md:w-72 pointer-events-none">
+    <!-- Chat header -->
+    <div class="flex items-center gap-2 border-b border-white/10 bg-primary/10 px-3 py-2">
+      <div class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+      </div>
+      <span class="text-[11px] font-medium text-white/90 sm:text-xs">ClearbookAI</span>
+      <div class="ml-auto h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+    </div>
+    <!-- Chat messages -->
+    <div class="max-h-56 space-y-2 overflow-hidden p-2.5 md:max-h-72">
+      <!-- PHASE 1: Resoluciones -->
+      <div id="chat-phase-1" class="space-y-2">
+        <!-- User message -->
+        <div id="chat-user-1" class="hidden flex-row-reverse items-start gap-1.5">
+          <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/10">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white/60"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div class="max-w-[85%] rounded-lg bg-primary/20 px-2.5 py-1.5">
+            <span class="text-[10px] leading-tight text-white/90 sm:text-[11px] typewriter" data-text="Resoluciones coactivas de hoy"></span>
+          </div>
+        </div>
+        <!-- AI response -->
+        <div id="chat-ai-1" class="hidden items-start gap-1.5">
+          <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+          </div>
+          <div class="flex-1 space-y-1.5">
+            <div class="rounded-lg bg-white/10 px-2.5 py-1.5">
+              <span class="text-[10px] leading-tight text-white/80 sm:text-[11px]">Encontré 4 resoluciones:</span>
+            </div>
+            <!-- Resolution table -->
+            <div id="chat-resolutions" class="hidden overflow-hidden rounded border border-white/10 bg-white/5">
+              <div class="divide-y divide-white/5">
+                <div class="flex items-center justify-between px-2 py-1.5 text-[9px] sm:text-[10px]">
+                  <span class="truncate text-white/70">SITECH DE PERU</span>
+                  <span class="text-white/50">Retención</span>
+                  <div class="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse"></div>
+                </div>
+                <div class="flex items-center justify-between px-2 py-1.5 text-[9px] sm:text-[10px]">
+                  <span class="truncate text-white/70">ANDES GOLDEN</span>
+                  <span class="text-white/50">Ejecución</span>
+                  <div class="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse"></div>
+                </div>
+                <div class="flex items-center justify-between px-2 py-1.5 text-[9px] sm:text-[10px]">
+                  <span class="truncate text-white/70">NANOSUD</span>
+                  <span class="text-white/50">Coactiva</span>
+                  <div class="h-1.5 w-1.5 rounded-full bg-green-500"></div>
+                </div>
+              </div>
+            </div>
+            <!-- Warning badge -->
+            <div id="chat-badge-1" class="hidden items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5">
+              <div class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></div>
+              <span class="text-[8px] text-amber-400 sm:text-[9px]">2 pendientes de atención</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- PHASE 2: Recordatorio -->
+      <div id="chat-phase-2" class="hidden space-y-2">
+        <!-- User message -->
+        <div id="chat-user-2" class="hidden flex-row-reverse items-start gap-1.5">
+          <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/10">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white/60"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div class="max-w-[85%] rounded-lg bg-primary/20 px-2.5 py-1.5">
+            <span class="text-[10px] leading-tight text-white/90 sm:text-[11px] typewriter" data-text="Envía recordatorio a ANDES GOLDEN"></span>
+          </div>
+        </div>
+        <!-- AI response -->
+        <div id="chat-ai-2" class="hidden items-start gap-1.5">
+          <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+          </div>
+          <div class="flex-1 space-y-1.5">
+            <div class="rounded-lg bg-white/10 px-2.5 py-1.5">
+              <span class="text-[10px] leading-tight text-white/80 sm:text-[11px]">Recordatorio enviado a ANDES GOLDEN para que envíe documentación de 2 comprobantes pendientes.</span>
+            </div>
+            <div id="chat-badge-2" class="hidden items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5">
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-green-400"><path d="M20 6 9 17l-5-5"/></svg>
+              <span class="text-[8px] text-green-400 sm:text-[9px]">Enviado correctamente</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Chat input -->
+    <div class="flex items-center gap-1.5 border-t border-white/10 bg-white/5 px-2.5 py-1.5">
+      <span class="flex-1 text-[9px] text-white/30 sm:text-[10px]">Escribe un mensaje...</span>
+      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white/40"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+    </div>
+  </div>
+</div>
+
+<style>
+  .mockup-container {
+    --mockup-tilt-x: 7deg;
+    --mockup-tilt-y: 0deg;
+    --mockup-lift: 0px;
+    transform-origin: center top;
+    transform-style: preserve-3d;
+    will-change: transform;
+    animation: mockup-appear 0.6s cubic-bezier(0.25, 0.4, 0.25, 1) both;
+    transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes mockup-appear {
+    from {
+      opacity: 0;
+      transform: perspective(1400px) rotateX(12.5deg) rotateY(0deg) scale(0.94) translateY(28px);
+    }
+    to {
+      opacity: 1;
+      transform: perspective(1400px) rotateX(var(--mockup-tilt-x)) rotateY(var(--mockup-tilt-y)) scale(1) translateY(var(--mockup-lift));
+    }
+  }
+
+  @media (min-width: 768px) {
+    .mockup-container {
+      box-shadow:
+        0 38px 90px -45px oklch(0.546 0.245 262.881 / 0.7),
+        0 22px 70px -38px oklch(0 0 0 / 0.9);
+    }
+  }
+  
+  #mockup-header {
+    opacity: 0;
+    animation: fade-in 0.4s ease-out 0.3s both;
+  }
+  
+  .mockup-sidebar {
+    opacity: 0;
+    transform: translateX(-20px);
+    animation: slide-in-left 0.5s ease-out 0.6s both;
+  }
+
+  .mockup-el {
+    opacity: 0;
+    transform: translateY(-10px);
+    animation: fade-in-up 0.4s ease-out both;
+  }
+
+  .mockup-sidebar-item {
+    opacity: 0;
+    transform: translateX(-10px);
+    animation: slide-in-left 0.3s ease-out both;
+  }
+
+  .mockup-row {
+    opacity: 0;
+    transform: translateX(-20px);
+    animation: slide-in-left-fast 0.4s cubic-bezier(0.25, 0.4, 0.25, 1) both;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-in-left {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slide-in-left-fast {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Phase transitions */
+  #phase-notif,
+  #phase-comp {
+    transition: opacity 0.3s ease-out;
+  }
+
+  #phase-notif.fade-out {
+    opacity: 0;
+  }
+
+  #phase-comp.fade-in {
+    opacity: 1;
+  }
+
+  /* Chat widget */
+  #chat-widget {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+    transition: opacity 0.4s cubic-bezier(0.25, 0.4, 0.25, 1),
+                transform 0.4s cubic-bezier(0.25, 0.4, 0.25, 1);
+  }
+  #chat-widget.show {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    pointer-events: auto;
+  }
+
+  /* Chat sub-elements use display:flex when shown */
+  #chat-user-1.show,
+  #chat-ai-1.show,
+  #chat-user-2.show,
+  #chat-ai-2.show {
+    display: flex;
+    animation: fade-in-up 0.3s ease-out both;
+  }
+
+  #chat-resolutions.show,
+  #chat-badge-1.show,
+  #chat-badge-2.show {
+    display: block;
+    animation: expand-in 0.3s ease-out both;
+  }
+
+  #chat-badge-1.show,
+  #chat-badge-2.show {
+    display: flex;
+  }
+
+  #chat-phase-2.show {
+    display: block;
+  }
+
+  @keyframes expand-in {
+    from {
+      opacity: 0;
+      max-height: 0;
+    }
+    to {
+      opacity: 1;
+      max-height: 100vh;
+    }
+  }
+
+  /* Typewriter cursor */
+  .typewriter::after {
+    content: "▋";
+    color: currentColor;
+    opacity: 0.5;
+    animation: blink 0.8s infinite;
+  }
+  .typewriter.done::after {
+    display: none;
+  }
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mockup-container,
+    #mockup-header,
+    .mockup-sidebar,
+    .mockup-el,
+    .mockup-sidebar-item,
+    .mockup-row,
+    #chat-widget {
+      animation: none;
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  let cleanupMockupTilt: (() => void) | undefined;
+
+  // CountUp animation
+  function animateCountUp(element: Element, target: number, duration: number = 1500) {
+    const startTime = Date.now();
+    const start = 0;
+
+    const updateCount = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const current = Math.floor(start + (target - start) * progress);
+
+      element.textContent = current.toLocaleString();
+
+      if (progress < 1) {
+        requestAnimationFrame(updateCount);
+      } else {
+        element.textContent = target.toLocaleString();
+      }
+    };
+
+    updateCount();
+  }
+
+  // Typewriter effect
+  function typewrite(element: Element, text: string, speed: number = 35): Promise<void> {
+    return new Promise((resolve) => {
+      element.textContent = "";
+      element.classList.remove("done");
+      let i = 0;
+      const tick = () => {
+        if (i < text.length) {
+          element.textContent = text.slice(0, ++i);
+          setTimeout(tick, speed);
+        } else {
+          element.classList.add("done");
+          resolve();
+        }
+      };
+      tick();
+    });
+  }
+
+  function showEl(id: string) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove("hidden");
+      el.classList.add("show");
+    }
+  }
+
+  function hideEl(id: string) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove("show");
+      el.classList.add("hidden");
+    }
+  }
+
+  function initMockupTilt() {
+    cleanupMockupTilt?.();
+
+    const el = document.getElementById("hero-mockup");
+    if (!el) return;
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const finePointer = window.matchMedia("(pointer: fine)").matches;
+    if (prefersReducedMotion || !finePointer) return;
+
+    const baseX = 7;
+    const baseY = 0;
+    let targetX = baseX;
+    let targetY = baseY;
+    let currentX = baseX;
+    let currentY = baseY;
+    let frame = 0;
+
+    const render = () => {
+      currentX += (targetX - currentX) * 0.12;
+      currentY += (targetY - currentY) * 0.12;
+      el.style.setProperty("--mockup-tilt-x", `${currentX.toFixed(2)}deg`);
+      el.style.setProperty("--mockup-tilt-y", `${currentY.toFixed(2)}deg`);
+      frame = requestAnimationFrame(render);
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      const rect = el.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / rect.width - 0.5;
+      const y = (event.clientY - rect.top) / rect.height - 0.5;
+      targetX = baseX - y * 6;
+      targetY = baseY + x * 8;
+      el.style.setProperty("--mockup-lift", "-3px");
+    };
+
+    const onPointerLeave = () => {
+      targetX = baseX;
+      targetY = baseY;
+      el.style.setProperty("--mockup-lift", "0px");
+    };
+
+    el.addEventListener("pointermove", onPointerMove);
+    el.addEventListener("pointerleave", onPointerLeave);
+    frame = requestAnimationFrame(render);
+
+    cleanupMockupTilt = () => {
+      el.removeEventListener("pointermove", onPointerMove);
+      el.removeEventListener("pointerleave", onPointerLeave);
+      cancelAnimationFrame(frame);
+    };
+  }
+
+  function initMockup() {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
+    const PHASE_SWITCH = 8500;
+    const LOOP_RESET = 26000;
+    let timers: number[] = [];
+
+    function clearAll() {
+      timers.forEach((t) => clearTimeout(t));
+      timers = [];
+    }
+
+    function restartAnim(el: Element, delay: number) {
+      const node = el as HTMLElement;
+      node.style.animation = "none";
+      // force reflow
+      void node.offsetWidth;
+      node.style.animation = "";
+      node.style.animationDelay = `${delay}ms`;
+    }
+
+    // Batched version: queue many restarts and only force ONE reflow for all of them.
+    // Avoids layout thrashing when restarting 5+ animations per cycle.
+    function restartAnimBatch(items: Array<{ el: Element; delay: number }>) {
+      // 1. WRITE phase: clear animation on all nodes
+      const nodes = items.map(({ el }) => {
+        const node = el as HTMLElement;
+        node.style.animation = "none";
+        return node;
+      });
+      // 2. READ phase: single forced reflow on the document
+      void document.body.offsetWidth;
+      // 3. WRITE phase: re-apply animations with delays
+      nodes.forEach((node, i) => {
+        node.style.animation = "";
+        node.style.animationDelay = `${items[i].delay}ms`;
+      });
+    }
+
+    function resetChat() {
+      const widget = document.getElementById("chat-widget");
+      if (widget) widget.classList.remove("show");
+      ["chat-user-1", "chat-ai-1", "chat-resolutions", "chat-badge-1", "chat-phase-2", "chat-user-2", "chat-ai-2", "chat-badge-2"].forEach(hideEl);
+      // Reset typewriter text
+      document.querySelectorAll(".typewriter").forEach((el) => {
+        el.textContent = "";
+        el.classList.remove("done");
+      });
+      const phase2 = document.getElementById("chat-phase-2");
+      const phase1 = document.getElementById("chat-phase-1");
+      if (phase2) phase2.classList.add("hidden");
+      if (phase1) phase1.classList.remove("hidden");
+    }
+
+    function runCycle() {
+      clearAll();
+      resetChat();
+
+      const phaseNotif = document.getElementById('phase-notif');
+      const phaseComp = document.getElementById('phase-comp');
+      const sidebarItems = document.querySelectorAll('.mockup-sidebar-item');
+
+      // Reset phases
+      if (phaseNotif) {
+        phaseNotif.classList.remove('fade-out', 'hidden');
+      }
+      if (phaseComp) {
+        phaseComp.classList.add('hidden');
+        phaseComp.classList.remove('fade-in');
+      }
+
+      // Reset sidebar active
+      sidebarItems.forEach((item, i) => {
+        item.classList.toggle('bg-primary/15', i === 1);
+        item.classList.toggle('text-primary', i === 1);
+        item.classList.toggle('text-white/60', i !== 1);
+      });
+
+      // Sidebar items stagger via animation-delay
+      restartAnimBatch(
+        Array.from(sidebarItems).map((item, i) => ({ el: item, delay: 600 + i * 80 }))
+      );
+
+      // Notif rows stagger (1800ms + i*400ms)
+      const notifRows = document.querySelectorAll('#notif-rows .mockup-row');
+      restartAnimBatch(
+        Array.from(notifRows).map((row, i) => ({ el: row, delay: 1800 + i * 400 }))
+      );
+
+      // Section headers + stats stagger
+      const mockupEls = document.querySelectorAll('#phase-notif .mockup-el');
+      restartAnimBatch(
+        Array.from(mockupEls).map((el, i) => {
+          let delay = 300;
+          if (i === 1) delay = 1000;
+          if (i === 2) delay = 1300;
+          return { el, delay };
+        })
+      );
+
+      // CountUp at 1s
+      timers.push(window.setTimeout(() => {
+        document.querySelectorAll('.count-up').forEach((el) => {
+          const target = parseInt((el as HTMLElement).dataset.target || '0');
+          const duration = (el as HTMLElement).dataset.target === '1229' ? 1200 : 1000;
+          animateCountUp(el, target, duration);
+        });
+      }, 1000));
+
+      // === CHAT PHASE 1 (during Notificaciones) ===
+      // Open chat widget at 4500ms
+      timers.push(window.setTimeout(() => showEl("chat-widget"), 4500));
+      // User typewrites at 5100ms
+      timers.push(window.setTimeout(() => {
+        showEl("chat-user-1");
+        const userText = document.querySelector("#chat-user-1 .typewriter") as HTMLElement;
+        if (userText) void typewrite(userText, userText.dataset.text || "", 35);
+      }, 5100));
+      // AI response at 6300ms
+      timers.push(window.setTimeout(() => showEl("chat-ai-1"), 6300));
+      // Resolutions table at 7000ms
+      timers.push(window.setTimeout(() => showEl("chat-resolutions"), 7000));
+      // Badge at 7500ms
+      timers.push(window.setTimeout(() => showEl("chat-badge-1"), 7500));
+
+      // === Switch to Comprobantes phase ===
+      timers.push(window.setTimeout(() => {
+        // Hide chat first
+        hideEl("chat-widget");
+
+        if (phaseNotif) phaseNotif.classList.add('fade-out');
+
+        setTimeout(() => {
+          if (phaseNotif) phaseNotif.classList.add('hidden');
+          if (phaseComp) {
+            phaseComp.classList.remove('hidden');
+            phaseComp.classList.add('fade-in');
+          }
+
+          // Update sidebar active to Comprobantes (index 3)
+          sidebarItems.forEach((item, i) => {
+            item.classList.toggle('bg-primary/15', i === 3);
+            item.classList.toggle('text-primary', i === 3);
+            item.classList.toggle('text-white/60', i !== 3);
+          });
+
+          // Comp rows stagger
+          const compRows = document.querySelectorAll('#comp-rows .mockup-row');
+          restartAnimBatch(
+            Array.from(compRows).map((row, i) => ({ el: row, delay: 100 + i * 400 }))
+          );
+
+          // Comp section elements
+          const compEls = document.querySelectorAll('#phase-comp .mockup-el');
+          restartAnimBatch(
+            Array.from(compEls).map((el, i) => {
+              let delay = 0;
+              if (i === 1) delay = 100;
+              if (i === 2) delay = 200;
+              return { el, delay };
+            })
+          );
+        }, 300);
+      }, PHASE_SWITCH));
+
+      // === CHAT PHASE 2 (during Comprobantes) ===
+      // Switch to phase 2 panel at 11000ms
+      timers.push(window.setTimeout(() => {
+        const phase1 = document.getElementById("chat-phase-1");
+        const phase2 = document.getElementById("chat-phase-2");
+        if (phase1) phase1.classList.add("hidden");
+        if (phase2) phase2.classList.remove("hidden");
+        showEl("chat-widget");
+      }, 11000));
+      // User message 2 at 11700ms
+      timers.push(window.setTimeout(() => {
+        showEl("chat-user-2");
+        const userText = document.querySelector("#chat-user-2 .typewriter") as HTMLElement;
+        if (userText) void typewrite(userText, userText.dataset.text || "", 35);
+      }, 11700));
+      // AI response 2 at 13500ms
+      timers.push(window.setTimeout(() => showEl("chat-ai-2"), 13500));
+      // Confirm badge at 14500ms
+      timers.push(window.setTimeout(() => showEl("chat-badge-2"), 14500));
+
+      // === Loop reset ===
+      timers.push(window.setTimeout(runCycle, LOOP_RESET));
+    }
+
+    // Start when visible
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        observer.disconnect();
+        runCycle();
+      }
+    }, { threshold: 0.2 });
+
+    const el = document.getElementById('hero-mockup');
+    if (el) observer.observe(el);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      initMockup();
+      initMockupTilt();
+    });
+  } else {
+    initMockup();
+    initMockupTilt();
+  }
+
+  document.addEventListener('astro:before-swap', () => cleanupMockupTilt?.());
+  document.addEventListener('astro:after-swap', () => {
+    initMockup();
+    initMockupTilt();
+  });
+</script>

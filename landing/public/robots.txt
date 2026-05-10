@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /form/
+
+Sitemap: https://clear-book.com/sitemap-index.xml
