@@ -20,7 +20,7 @@ backend/
 │   ├── EspacioPro.Infrastructure/      # Cosmos client, Clerk JWT validator, auth
 │   └── EspacioPro.Api/                 # Azure Functions host, middleware, DI wiring
 ├── tools/
-│   └── EspacioPro.Seed/                # One-shot console: seeds the 8 catalogs
+│   └── EspacioPro.Seed/                # Console importer: loads tmp/*.xlsx into Cosmos
 └── tests/
     └── EspacioPro.Tests/               # xUnit + FluentAssertions
 ```
@@ -79,30 +79,51 @@ backend/
    }
    ```
 
-## Seed catalogs
+## Seed initial data from Excel
 
-One-shot, idempotent. Creates the 8 catalogs from `docs/01-domain-model.md` §3.1
-(`courses`, `levels`, `paymentMethods`, `expenseCategories`, `weekdays`, `studentSources`).
-Existing catalog codes are skipped.
+One-shot importer that loads the seed dataset from `tmp/ESPACIO_PRO_SYSTEM.xlsx`
+into Cosmos. Imports, in order: catalogs (`courses`, `levels`, `paymentMethods`,
+`expenseCategories`, `weekdays`, `studentSources`), teachers, students, schedules,
+enrollments, student payments, and expenses. Source IDs (`PRF-0001`, `ALU-0002`, ...)
+are discarded; new GUIDs are generated and FKs are remapped automatically. Audit
+fields are stamped with the synthetic user `system@espaciopro.local`.
 
 ```bash
-# Uses the same env vars as the API
-export COSMOS_ACCOUNT_ENDPOINT="https://shared-cosmos-nosql.documents.azure.com:443/"
-export COSMOS_DATABASE_NAME="espaciopro-dev"
-az login   # ensures DefaultAzureCredential works
-
+# If src/EspacioPro.Api/local.settings.json already has COSMOS_* values
+# (Mode A or Mode B), the seeder reads them automatically — just run:
 dotnet run --project tools/EspacioPro.Seed
 ```
 
-Or pass overrides on the CLI:
+The seeder loads config in this precedence order (last wins):
+
+1. `src/EspacioPro.Api/local.settings.json` `Values` map (Functions host file)
+2. Environment variables
+3. CLI args (`--COSMOS_ACCOUNT_ENDPOINT=...`, `--COSMOS_DATABASE_NAME=...`, `--COSMOS_CONNECTION_STRING=...`)
+
+To override the Excel path or any setting:
 
 ```bash
 dotnet run --project tools/EspacioPro.Seed -- \
-  --COSMOS_ACCOUNT_ENDPOINT=https://... \
-  --COSMOS_DATABASE_NAME=espaciopro-dev
+  --excel /absolute/path/to/data.xlsx \
+  --COSMOS_DATABASE_NAME=espaciopro
 ```
 
-Audit fields on seeded docs use a synthetic `system@espaciopro.local` user.
+### Idempotency
+
+The seeder refuses to run if it finds **any** active document previously created
+by it (filtered by `createdBy.email = "system@espaciopro.local"`). To re-run a
+clean import:
+
+```bash
+# Soft-deletes every previously seeded doc, then re-seeds. Prompts for confirmation.
+dotnet run --project tools/EspacioPro.Seed -- --reset
+
+# Skip the prompt (CI / automation)
+dotnet run --project tools/EspacioPro.Seed -- --reset --yes
+```
+
+The reset path **only** touches docs whose `createdBy.email` matches the seed
+marker — real-user data is never modified.
 
 ## Tests
 

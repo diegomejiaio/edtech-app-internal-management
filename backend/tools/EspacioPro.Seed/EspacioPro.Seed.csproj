@@ -24,6 +24,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="*" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="*" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="*" />
+    <PackageReference Include="ClosedXML" Version="*" />
   </ItemGroup>
 
 </Project>
