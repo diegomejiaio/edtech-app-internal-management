@@ -65,6 +65,12 @@ resource db 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-11-15' = {
 //     - Catalog/Schedule repos OMIT the field entirely → coexist freely
 //   Indexing: custom (excludes verbose / never-filtered fields)
 //   Composite: (type ASC, dedupKey ASC) → speeds dedup pre-checks
+//   Composite: (updatedAt DESC, createdAt DESC) → required by the default
+//     listing order across every endpoint (CosmosRepository.GetAllAsync,
+//     StudentRepository.SearchAsync, TeacherRepository.SearchAsync, etc.).
+//     Cosmos rejects multi-property ORDER BY queries unless a composite
+//     index matching the columns and sort directions exists, even when the
+//     query is partition-scoped.
 // -----------------------------------------------------------------------------
 
 resource masterContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-11-15' = {
@@ -103,6 +109,10 @@ resource masterContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/con
             { path: '/type', order: 'ascending' }
             { path: '/dedupKey', order: 'ascending' }
           ]
+          [
+            { path: '/updatedAt', order: 'descending' }
+            { path: '/createdAt', order: 'descending' }
+          ]
         ]
       }
       defaultTtl: -1 // TTL disabled. Soft delete handled in app code.
@@ -120,6 +130,11 @@ resource masterContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/con
 //     (type, scheduleId, status)         → enrollment list-by-schedule
 //     (type, enrollmentId, date DESC)    → payment history per enrollment
 //     (type, scheduleId, date ASC)       → dashboard month queries (M9)
+//     (updatedAt DESC, createdAt DESC)   → default listing order shared with
+//                                          the master container; required by
+//                                          every multi-property ORDER BY in
+//                                          enrollment, payment, expense list
+//                                          endpoints.
 // -----------------------------------------------------------------------------
 
 resource operationsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-11-15' = {
@@ -161,6 +176,10 @@ resource operationsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases
             { path: '/type', order: 'ascending' }
             { path: '/scheduleId', order: 'ascending' }
             { path: '/date', order: 'ascending' }
+          ]
+          [
+            { path: '/updatedAt', order: 'descending' }
+            { path: '/createdAt', order: 'descending' }
           ]
         ]
       }

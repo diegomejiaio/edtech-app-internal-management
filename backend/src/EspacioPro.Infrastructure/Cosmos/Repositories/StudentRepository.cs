@@ -86,7 +86,7 @@ public sealed class StudentRepository : CosmosRepository<Student>
 
         var countDef = new QueryDefinition($"SELECT VALUE COUNT(1) FROM c WHERE {where}");
         var pageDef = new QueryDefinition(
-            $"SELECT * FROM c WHERE {where} ORDER BY c.lastName, c.firstName OFFSET @offset LIMIT @limit");
+            $"SELECT * FROM c WHERE {where} ORDER BY c.updatedAt DESC, c.createdAt DESC OFFSET @offset LIMIT @limit");
 
         countDef.WithParameter("@type", TypeDiscriminator);
         pageDef.WithParameter("@type", TypeDiscriminator)

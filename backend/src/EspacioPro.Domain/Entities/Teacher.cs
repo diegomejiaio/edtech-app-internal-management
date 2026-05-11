@@ -35,4 +35,9 @@ public sealed class Teacher : BaseEntity
     /// <summary>Populated post-MVP for teacher login. Null in v1.</summary>
     [JsonPropertyName("clerkUserId")]
     public string? ClerkUserId { get; set; }
+
+    /// <inheritdoc />
+    /// <remarks>One active <see cref="Teacher"/> per <c>(docType, docNumber)</c> pair.</remarks>
+    [JsonPropertyName("dedupKey")]
+    public override string DedupKey => $"{EnumToWire(DocType)}:{DocNumber}";
 }

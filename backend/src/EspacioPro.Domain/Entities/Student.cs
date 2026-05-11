@@ -35,4 +35,9 @@ public sealed class Student : BaseEntity
 
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
+
+    /// <inheritdoc />
+    /// <remarks>One active <see cref="Student"/> per <c>(docType, docNumber)</c> pair.</remarks>
+    [JsonPropertyName("dedupKey")]
+    public override string DedupKey => $"{EnumToWire(DocType)}:{DocNumber}";
 }

@@ -50,4 +50,24 @@ public abstract class BaseEntity
     /// </summary>
     [JsonIgnore]
     public string? ETag { get; set; }
+
+    /// <summary>
+    /// Value for the <c>master</c> container's unique-key constraint on <c>/dedupKey</c>.
+    /// Default uses <see cref="Id"/> so each document is trivially unique;
+    /// entities with a natural business key (e.g. <c>code</c>, <c>docType:docNumber</c>) override this.
+    /// Get-only: derived on every serialize, ignored on deserialize.
+    /// </summary>
+    [JsonPropertyName("dedupKey")]
+    public virtual string DedupKey => Id;
+
+    /// <summary>
+    /// Serializes an enum value to camelCase wire format, matching the global
+    /// <c>JsonStringEnumConverter(JsonNamingPolicy.CamelCase)</c> behavior.
+    /// Used by entities that derive <see cref="DedupKey"/> from enum-typed fields.
+    /// </summary>
+    protected static string EnumToWire<TEnum>(TEnum value) where TEnum : struct, Enum
+    {
+        var s = value.ToString();
+        return string.IsNullOrEmpty(s) ? s : char.ToLowerInvariant(s[0]) + s[1..];
+    }
 }

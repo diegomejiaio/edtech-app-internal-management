@@ -65,9 +65,13 @@ public abstract class CosmosRepository<T> : IRepository<T> where T : BaseEntity
 
     public async Task<IReadOnlyList<T>> GetAllAsync(bool includeInactive = false, CancellationToken ct = default)
     {
+        // Default ordering across all listings: most-recently-updated first,
+        // tie-break by createdAt DESC. Both fields are populated by BaseEntity
+        // initializers, so the composite ORDER BY is always defined. Requires
+        // a composite index (updatedAt DESC, createdAt DESC) on the container.
         var query = includeInactive
-            ? "SELECT * FROM c WHERE c.type = @type"
-            : "SELECT * FROM c WHERE c.type = @type AND c.active = true";
+            ? "SELECT * FROM c WHERE c.type = @type ORDER BY c.updatedAt DESC, c.createdAt DESC"
+            : "SELECT * FROM c WHERE c.type = @type AND c.active = true ORDER BY c.updatedAt DESC, c.createdAt DESC";
 
         var queryDef = new QueryDefinition(query)
             .WithParameter("@type", TypeDiscriminator);

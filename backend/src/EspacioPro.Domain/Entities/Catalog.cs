@@ -19,6 +19,11 @@ public sealed class Catalog : BaseEntity
     /// <summary>Inline array of catalog items.</summary>
     [JsonPropertyName("items")]
     public List<CatalogItem> Items { get; set; } = [];
+
+    /// <inheritdoc />
+    /// <remarks>One <see cref="Catalog"/> per <see cref="Code"/> (e.g. "courses", "paymentMethods").</remarks>
+    [JsonPropertyName("dedupKey")]
+    public override string DedupKey => Code;
 }
 
 /// <summary>
