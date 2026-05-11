@@ -1,0 +1,132 @@
+'use client';
+
+/**
+ * Catalogs management page — M1.
+ *
+ * Lists all catalogs and allows adding/disabling items within each.
+ */
+
+import { useState, type FormEvent } from 'react';
+import { toast } from 'sonner';
+import { useApiClient } from '@/hooks/use-api-client';
+import { useCatalogs, useAddCatalogItem, useDisableCatalogItem } from '@/hooks';
+import { PageHeader, FormDialog } from '@/components/data';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { isApiError } from '@/lib/api';
+import type { Catalog } from '@/lib/api';
+
+export default function CatalogsPage() {
+  const client = useApiClient();
+  const { data: catalogs, isLoading } = useCatalogs(client);
+
+  const [addingTo, setAddingTo] = useState<string | null>(null);
+  const addMutation = useAddCatalogItem(client, addingTo ?? '');
+
+  function handleAddSubmit(ev: FormEvent<HTMLFormElement>) {
+    ev.preventDefault();
+    if (!addingTo) return;
+    const fd = new FormData(ev.currentTarget);
+    const value = fd.get('value') as string;
+
+    addMutation.mutateAsync({ value })
+      .then(() => { setAddingTo(null); toast.success(`"${value}" agregado`); })
+      .catch((err) => {
+        if (isApiError(err)) toast.error(err.problem.detail ?? err.message);
+        else toast.error('Error inesperado');
+      });
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Catálogos"
+        description="Datos maestros del sistema (cursos, niveles, medios de pago, etc.)"
+      />
+
+      {isLoading && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-40 w-full" />
+          ))}
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {catalogs?.map((catalog) => (
+          <CatalogCard
+            key={catalog.id}
+            catalog={catalog}
+            client={client}
+            onAddItem={() => setAddingTo(catalog.code)}
+          />
+        ))}
+      </div>
+
+      <FormDialog
+        open={!!addingTo}
+        onOpenChange={(open) => !open && setAddingTo(null)}
+        title={`Agregar item — ${addingTo}`}
+        isLoading={addMutation.isPending}
+        onSubmit={handleAddSubmit}
+      >
+        <div>
+          <Label htmlFor="value">Valor</Label>
+          <Input id="value" name="value" required placeholder="Nombre del item" />
+        </div>
+      </FormDialog>
+    </div>
+  );
+}
+
+function CatalogCard({
+  catalog,
+  client,
+  onAddItem,
+}: {
+  catalog: Catalog;
+  client: ReturnType<typeof useApiClient>;
+  onAddItem: () => void;
+}) {
+  const disableMutation = useDisableCatalogItem(client, catalog.code);
+
+  function handleDisable(value: string) {
+    disableMutation.mutateAsync(value)
+      .then(() => toast.success(`"${value}" desactivado`))
+      .catch(() => toast.error('Error al desactivar'));
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-base">{catalog.code}</CardTitle>
+        <Button variant="outline" size="sm" onClick={onAddItem}>Agregar</Button>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap gap-2">
+          {catalog.items
+            .sort((a, b) => a.order - b.order)
+            .map((item) => (
+              <Badge
+                key={item.value}
+                variant={item.active ? 'default' : 'secondary'}
+                className="cursor-pointer"
+                onClick={() => item.active && handleDisable(item.value)}
+                title={item.active ? 'Clic para desactivar' : 'Desactivado'}
+              >
+                {item.value}
+                {!item.active && ' ✕'}
+              </Badge>
+            ))}
+          {catalog.items.length === 0 && (
+            <p className="text-sm text-muted-foreground">Sin items</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

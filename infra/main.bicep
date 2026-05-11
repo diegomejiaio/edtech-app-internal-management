@@ -1,289 +1,238 @@
-// ── Procurement Agent PoC — Infrastructure ─────────────────────────
-// Creates PoC-specific resources and references shared services.
+// =============================================================================
+// main.bicep
+// Entry point for Espacio Pro v1 infrastructure.
 //
-// First-time deploy (creates all resources including frontend CA):
+// Creates rg-espaciopro-prod and deploys all v1 resources into it, plus a
+// new SQL database + 2 containers + role assignment on the pre-existing
+// shared Cosmos account in rg-shared-services.
 //
-//   ACR_PASS=$(az acr credential show \
-//     --name azacrshared \
-//     --resource-group rg-shared-services \
-//     --query "passwords[0].value" -o tsv)
-//
-//   AI_KEY=$(az cognitiveservices account keys list \
-//     --name aifoundrysharedservices00001 \
-//     --resource-group rg-shared-services \
-//     --query key1 -o tsv)
-//
-//   SEARCH_KEY=$(az search admin-key show \
-//     --service-name search-procurement-poc01 \
-//     --resource-group rg-procurement-agent-poc \
-//     --query primaryKey -o tsv)
-//
-//   COSMOS_KEY=$(az cosmosdb keys list \
-//     --name shared-cosmos-nosql \
-//     --resource-group rg-shared-services \
-//     --type keys \
-//     --query primaryMasterKey -o tsv)
-//
-//   az deployment group create \
-//     --resource-group rg-procurement-agent-poc \
+// SCOPE: subscription. Run with:
+//   az deployment sub create \
+//     --location eastus2 \
 //     --template-file infra/main.bicep \
-//     --parameters infra/main.bicepparam \
-//       acrAdminPassword="$ACR_PASS" \
-//       aiServicesKey="$AI_KEY" \
-//       searchKey="$SEARCH_KEY" \
-//       cosmosKey="$COSMOS_KEY" \
-//       appInsightsConnectionString="$APP_INSIGHTS_CONN" \
-//       frontendImage="azacrshared.azurecr.io/procurement-frontend:latest"
+//     --parameters infra/main.bicepparam
 //
-// For iterative frontend-only updates (after first deploy):
-//   ./infra/deploy-frontend.sh
-// ────────────────────────────────────────────────────────────────────
+// MODULES (deployment order, parallel where safe):
+//   monitoring (LA + AppI)
+//   storage (account + deployment container)            ┐ parallel
+//   swa                                                 │
+//   cosmosDatabase (cross-RG: rg-shared-services)       ┘
+//   functionApp (depends on monitoring + storage + cosmos endpoint)
+//   roleAssignmentCosmos (cross-RG: rg-shared-services; depends on functionApp.principalId)
+// =============================================================================
 
-targetScope = 'resourceGroup'
+targetScope = 'subscription'
 
-// ── Parameters ─────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Naming params
+// -----------------------------------------------------------------------------
 
-@description('Location for PoC resources')
-param location string = resourceGroup().location
+@description('Workload short name. Used in all resource names.')
+@minLength(3)
+@maxLength(20)
+param workload string
 
-@description('Unique suffix for resource names (keep short)')
-param suffix string = 'poc01'
+@description('Environment short name.')
+@allowed(['prod', 'dev', 'stg'])
+param env string
 
-@description('Shared services resource group name')
-param sharedRgName string = 'rg-shared-services'
+@description('Azure region (full name) for resource creation.')
+param location string
 
-@description('Shared AI Foundry (Cognitive Services) account name')
-param sharedAiServicesName string = 'aifoundrysharedservices00001'
+@description('Azure region short code for resource names (e.g. eus2 for East US 2).')
+@minLength(3)
+@maxLength(6)
+param regionCode string
 
-@description('Shared Key Vault name')
-param sharedKeyVaultName string = 'kv-shared-services-00001'
+// -----------------------------------------------------------------------------
+// RG params
+// -----------------------------------------------------------------------------
 
-@description('Shared Storage Account name')
-param sharedStorageAccountName string = 'sasharedservices00001'
+@description('Resource group name to create for app resources (Function App, SWA, storage, monitoring).')
+param appResourceGroupName string
 
-@description('Shared Cosmos DB account name')
-param sharedCosmosAccountName string = 'shared-cosmos-nosql'
+@description('Resource group name where the pre-existing shared Cosmos account lives.')
+param sharedServicesResourceGroupName string
 
-@description('Name of the existing chat model deployment in AI Foundry')
-param chatDeploymentName string = 'gpt-4.1'
+// -----------------------------------------------------------------------------
+// Cosmos params
+// -----------------------------------------------------------------------------
 
-@description('ACR name in shared resource group')
-param acrName string = 'azacrshared'
+@description('Name of the pre-existing shared Cosmos NoSQL account (in sharedServicesResourceGroupName).')
+param cosmosAccountName string
 
-@secure()
-@description('ACR admin password for image pull — pass at deploy time, never commit')
-param acrAdminPassword string = ''
+@description('Name of the SQL database to create on the Cosmos account.')
+param cosmosDatabaseName string
 
-@secure()
-@description('Entra App Registration client ID for the Teams bot (pre-created manually — see DEPLOYMENT.md)')
-param botAppId string = ''
+// -----------------------------------------------------------------------------
+// Clerk params
+// -----------------------------------------------------------------------------
 
-@secure()
-@description('Entra App Registration client secret for the Teams bot')
-param botAppPassword string = ''
+@description('Clerk JWKS endpoint URL (public, no secret). Example: https://clerk.<domain>/.well-known/jwks.json')
+param clerkJwksUrl string
 
-@secure()
-@description('Entra App Registration tenant ID for the Teams bot')
-param botAppTenantId string = ''
+@description('Clerk issuer URL. Example: https://clerk.<domain>')
+param clerkIssuer string
 
-@secure()
-@description('Azure AI Services API key — pass at deploy time')
-param aiServicesKey string = ''
+// -----------------------------------------------------------------------------
+// CORS params
+// -----------------------------------------------------------------------------
 
-@secure()
-@description('Azure AI Search admin key — pass at deploy time')
-param searchKey string = ''
+@description('Comma-separated CORS allowlist for the API (read by Program.cs middleware, NOT Functions runtime). Include the SWA hostname after first deploy.')
+param corsOrigins string
 
-@secure()
-@description('Cosmos DB primary key — pass at deploy time')
-param cosmosKey string = ''
+// -----------------------------------------------------------------------------
+// Tags
+// -----------------------------------------------------------------------------
 
-@secure()
-@description('Application Insights connection string for telemetry — pass at deploy time')
-param appInsightsConnectionString string = ''
+@description('Tags applied to RG and propagated to all resources.')
+param tags object
 
-@secure()
-@description('API key for MCP server X-API-Key auth — pass at deploy time, leave empty to disable auth')
-param mcpApiKey string = ''
+// -----------------------------------------------------------------------------
+// Resource Group (app resources)
+// -----------------------------------------------------------------------------
 
-@secure()
-@description('Optional MAF auth token forwarded from the frontend proxy to the AI Service — leave empty to disable')
-param mafAuthToken string = ''
-
-@description('Frontend container image — defaults to placeholder; pass the real image tag at deploy time')
-param frontendImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-
-@description('Entra App Registration client ID for frontend Easy Auth — leave empty to deploy without auth')
-param frontendEntraClientId string = ''
-
-@secure()
-@description('Entra App Registration client secret for frontend Easy Auth — leave empty to deploy without auth')
-param frontendEntraClientSecret string = ''
-
-@description('Entra tenant ID — required when frontendEntraClientId is provided')
-param frontendEntraTenantId string = ''
-
-// ── References to shared services (existing) ──────────────────────
-
-resource sharedAiServices 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = {
-  name: sharedAiServicesName
-  scope: resourceGroup(sharedRgName)
-}
-
-resource sharedKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
-  name: sharedKeyVaultName
-  scope: resourceGroup(sharedRgName)
-}
-
-// Reference to the existing shared Container Registry
-resource acr 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' existing = {
-  name: acrName
-  scope: resourceGroup(sharedRgName)
-}
-
-// Reference to the existing shared Cosmos DB account
-resource sharedCosmos 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' existing = {
-  name: sharedCosmosAccountName
-  scope: resourceGroup(sharedRgName)
-}
-
-// ── AI Search (Free tier — PoC only) ──────────────────────────────
-
-resource aiSearch 'Microsoft.Search/searchServices@2024-06-01-preview' = {
-  name: 'search-procurement-${suffix}'
+resource appRg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
+  name: appResourceGroupName
   location: location
-  sku: {
-    name: 'free'
-  }
-  properties: {
-    replicaCount: 1
-    partitionCount: 1
-    hostingMode: 'default'
-  }
-  tags: {
-    project: 'procurement-agent-poc'
-    environment: 'poc'
-  }
+  tags: tags
 }
 
-// ── Storage container for contract PDFs (in shared storage) ───────
+// -----------------------------------------------------------------------------
+// Monitoring (LA + AppI) — must precede storage/function-app for diagnostics
+// -----------------------------------------------------------------------------
 
-module blobContainer 'modules/blob-container.bicep' = {
-  name: 'deploy-blob-container'
-  scope: resourceGroup(sharedRgName)
+module monitoring 'modules/monitoring.bicep' = {
+  scope: appRg
+  name: 'monitoring'
   params: {
-    storageAccountName: sharedStorageAccountName
-    containerName: 'procurement-contracts'
-  }
-}
-
-// ── Key Vault secrets (AI services key + Search key + Cosmos key) ─
-
-module secrets 'modules/keyvault-secrets.bicep' = {
-  name: 'deploy-kv-secrets'
-  scope: resourceGroup(sharedRgName)
-  params: {
-    keyVaultName: sharedKeyVaultName
-    aiServicesName: sharedAiServicesName
-    searchServiceName: aiSearch.name
-    searchServiceRgName: resourceGroup().name
-    cosmosAccountName: sharedCosmosAccountName
-    cosmosAccountRgName: sharedRgName
-  }
-}
-
-// ── Container Apps (MCP Server + AI Service) ─────────────────────
-
-module containerApps 'modules/container-apps.bicep' = {
-  name: 'deploy-container-apps'
-  params: {
+    workload: workload
+    env: env
+    regionCode: regionCode
     location: location
-    suffix: suffix
-    acrLoginServer: acr.properties.loginServer
-    acrName: acrName
-    acrResourceGroupName: sharedRgName
-    acrAdminPassword: acrAdminPassword
-    aiServicesEndpoint: sharedAiServices.properties.endpoint
-    chatDeploymentName: chatDeploymentName
-    searchEndpoint: 'https://${aiSearch.name}.search.windows.net'
-    cosmosEndpoint: sharedCosmos.properties.documentEndpoint
-    aiServicesKey: aiServicesKey
-    searchKey: searchKey
-    cosmosKey: cosmosKey
-    botAppId: botAppId
-    botAppPassword: botAppPassword
-    botAppTenantId: botAppTenantId
-    appInsightsConnectionString: appInsightsConnectionString
-    mcpApiKey: mcpApiKey
-    tags: {
-      project: 'procurement-agent-poc'
-      environment: 'poc'
-    }
+    tags: tags
   }
 }
 
-// ── Azure Bot Service + Teams/M365 Channels ───────────────────────
-//
-// Only deployed when botAppId is provided (Teams/M365 integration is optional).
-// Pre-requisite: create the Entra App Registration manually — see DEPLOYMENT.md.
+// -----------------------------------------------------------------------------
+// Storage (Functions runtime + Flex Consumption deployment package container)
+// -----------------------------------------------------------------------------
 
-module botService 'modules/bot-service.bicep' = if (!empty(botAppId)) {
-  name: 'deploy-bot-service'
+module storage 'modules/storage.bicep' = {
+  scope: appRg
+  name: 'storage'
   params: {
+    workload: workload
+    env: env
+    regionCode: regionCode
     location: location
-    suffix: suffix
-    aiServiceEndpoint: 'https://${containerApps.outputs.aiServiceFqdn}'
-    msaAppId: botAppId
-    msaAppTenantId: botAppTenantId
-    tags: {
-      project: 'procurement-agent-poc'
-      environment: 'poc'
-    }
+    tags: tags
+    workspaceResourceId: monitoring.outputs.workspaceResourceId
   }
 }
 
-// ── Frontend Container App (Next.js) ─────────────────────────────
-//
-// Deploys the Next.js frontend as a Container App in the same environment.
-// API Routes in the frontend proxy SSE requests to the AI Service internally.
+// -----------------------------------------------------------------------------
+// Static Web App
+// -----------------------------------------------------------------------------
 
-module frontend 'modules/frontend-app.bicep' = {
-  name: 'deploy-frontend'
+module swa 'modules/swa.bicep' = {
+  scope: appRg
+  name: 'swa'
   params: {
+    workload: workload
+    env: env
+    regionCode: regionCode
     location: location
-    suffix: suffix
-    containerAppsEnvironmentId: containerApps.outputs.containerAppsEnvironmentId
-    acrLoginServer: acr.properties.loginServer
-    acrName: acrName
-    acrAdminPassword: acrAdminPassword
-    aiServiceInternalUrl: containerApps.outputs.aiServiceInternalUrl
-    mcpServerInternalUrl: containerApps.outputs.mcpServerInternalUrl
-    mafAuthToken: mafAuthToken
-    mcpApiKey: mcpApiKey
-    frontendImage: frontendImage
-    entraClientId: frontendEntraClientId
-    entraClientSecret: frontendEntraClientSecret
-    entraTenantId: frontendEntraTenantId
-    tags: {
-      project: 'procurement-agent-poc'
-      environment: 'poc'
-    }
+    tags: tags
   }
 }
 
-// ── Outputs ────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Cosmos DB + 2 containers (cross-RG, deploys to rg-shared-services)
+// -----------------------------------------------------------------------------
 
-output aiServicesEndpoint string = sharedAiServices.properties.endpoint
-output aiServicesName string = sharedAiServices.name
-output chatDeploymentName string = chatDeploymentName
-output searchServiceName string = aiSearch.name
-output searchServiceEndpoint string = 'https://${aiSearch.name}.search.windows.net'
-output keyVaultName string = sharedKeyVault.name
-output storageAccountName string = sharedStorageAccountName
-output blobContainerName string = 'procurement-contracts'
-output cosmosDbEndpoint string = sharedCosmos.properties.documentEndpoint
-output cosmosDbAccountName string = sharedCosmos.name
-output cosmosDbDatabaseName string = 'procurement'
-output aiServiceUrl string = containerApps.outputs.aiServiceFqdn
-output botMessagesEndpoint string = !empty(botAppId) ? botService.outputs.botEndpoint : ''
-output frontendUrl string = frontend.outputs.frontendUrl
+module cosmosDatabase 'modules/cosmos-database.bicep' = {
+  scope: resourceGroup(sharedServicesResourceGroupName)
+  name: 'cosmos-database'
+  params: {
+    cosmosAccountName: cosmosAccountName
+    databaseName: cosmosDatabaseName
+    tags: tags
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Function App (depends on monitoring + storage + cosmos endpoint)
+// -----------------------------------------------------------------------------
+
+module functionApp 'modules/function-app.bicep' = {
+  scope: appRg
+  name: 'function-app'
+  params: {
+    workload: workload
+    env: env
+    regionCode: regionCode
+    location: location
+    tags: tags
+    workspaceResourceId: monitoring.outputs.workspaceResourceId
+    appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
+    storageAccountResourceId: storage.outputs.storageAccountResourceId
+    storageAccountName: storage.outputs.storageAccountName
+    storageBlobEndpoint: storage.outputs.blobEndpoint
+    deploymentContainerName: storage.outputs.deploymentContainerName
+    cosmosAccountEndpoint: cosmosDatabase.outputs.cosmosAccountEndpoint
+    cosmosDatabaseName: cosmosDatabase.outputs.databaseName
+    clerkJwksUrl: clerkJwksUrl
+    clerkIssuer: clerkIssuer
+    corsOrigins: corsOrigins
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Cross-RG: Cosmos data-plane role assignment for Function App MI
+// (deploys to rg-shared-services; deployer needs User Access Administrator there)
+// -----------------------------------------------------------------------------
+
+module roleAssignmentCosmos 'modules/role-assignment-cosmos.bicep' = {
+  scope: resourceGroup(sharedServicesResourceGroupName)
+  name: 'role-assignment-cosmos'
+  params: {
+    cosmosAccountName: cosmosAccountName
+    principalId: functionApp.outputs.functionAppPrincipalId
+    principalIdLabel: functionApp.name
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Outputs (for CI/CD wiring + documentation)
+// -----------------------------------------------------------------------------
+
+@description('Name of the app resource group.')
+output appResourceGroupName string = appRg.name
+
+@description('Function App default hostname.')
+output functionAppHostname string = functionApp.outputs.functionAppHostname
+
+@description('Function App resource ID.')
+output functionAppResourceId string = functionApp.outputs.functionAppResourceId
+
+@description('Function App MI principal ID (object ID).')
+output functionAppPrincipalId string = functionApp.outputs.functionAppPrincipalId
+
+@description('Static Web App default hostname.')
+output swaHostname string = swa.outputs.swaDefaultHostname
+
+@description('Static Web App resource ID.')
+output swaResourceId string = swa.outputs.swaResourceId
+
+@description('Cosmos account document endpoint (wired into Function App).')
+output cosmosAccountEndpoint string = cosmosDatabase.outputs.cosmosAccountEndpoint
+
+@description('Cosmos database name.')
+output cosmosDatabaseName string = cosmosDatabase.outputs.databaseName
+
+@description('Application Insights connection string (sensitive — for CI/CD reference only).')
+output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString
+
+@description('Storage account name (used by Functions runtime).')
+output storageAccountName string = storage.outputs.storageAccountName

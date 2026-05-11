@@ -1,0 +1,1569 @@
+openapi: 3.1.0
+info:
+  title: Espacio Pro v1 — Internal Management API
+  version: 1.0.0
+  description: |
+    Internal management backend (enrollments, schedules, payments) for an art/craft school.
+    Migration target from a Google Apps Script + Sheets system.
+
+    Hand-authored spec (single source of truth). Served at:
+      - GET /api/v1/openapi.yaml  — this file, raw
+      - GET /api/v1/openapi.json  — parsed and re-serialized as JSON
+
+    See `docs/06-openapi-pipeline.md` for the FE codegen pipeline.
+
+  contact:
+    name: Espacio Pro
+  license:
+    name: Internal
+servers:
+  - url: http://localhost:7071/api
+    description: Local Functions runtime
+  - url: https://{hostname}/api
+    description: Azure Static Web Apps custom backend mapping
+    variables:
+      hostname:
+        default: app.example.com
+
+tags:
+  - name: Health
+    description: Liveness probe.
+  - name: Catalogs
+    description: Master configuration lists (payment methods, courses, levels, weekdays, etc.).
+  - name: Teachers
+    description: Teacher master records.
+  - name: Students
+    description: Student master records.
+  - name: Schedules
+    description: Class offerings (course + level + weekdays + price + capacity).
+  - name: Enrollments
+    description: Student-to-Schedule assignments. Operations container.
+  - name: StudentPayments
+    description: Payments by students against an enrollment. Operations container. Snapshots frozen.
+  - name: TeacherPayments
+    description: Payments to teachers (no schedule FK by design). Operations container. Snapshots frozen.
+  - name: Expenses
+    description: Operating expenses. Optional schedule imputation. Operations container.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/health:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      operationId: getHealth
+      security: []
+      responses:
+        "200":
+          description: Backend is running.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /v1/catalogs:
+    get:
+      tags: [Catalogs]
+      summary: List all catalog codes
+      operationId: listCatalogs
+      responses:
+        "200":
+          description: Array of catalog summaries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CatalogSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/catalogs/{code}:
+    parameters:
+      - $ref: "#/components/parameters/CatalogCode"
+    get:
+      tags: [Catalogs]
+      summary: Get a catalog by code
+      operationId: getCatalog
+      responses:
+        "200":
+          description: The catalog document.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Catalog" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Catalogs]
+      summary: Replace a catalog (full upsert)
+      operationId: putCatalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CatalogUpsert" }
+      responses:
+        "200":
+          description: Catalog upserted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Catalog" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/catalogs/{code}/items:
+    parameters:
+      - $ref: "#/components/parameters/CatalogCode"
+    post:
+      tags: [Catalogs]
+      summary: Append an item to a catalog
+      operationId: addCatalogItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CatalogItem" }
+      responses:
+        "201":
+          description: Item created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Catalog" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/catalogs/{code}/items/{value}:
+    parameters:
+      - $ref: "#/components/parameters/CatalogCode"
+      - name: value
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      tags: [Catalogs]
+      summary: Remove (deactivate) a catalog item
+      operationId: removeCatalogItem
+      responses:
+        "204": { description: Item removed. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/teachers:
+    get:
+      tags: [Teachers]
+      summary: List teachers
+      operationId: listTeachers
+      parameters:
+        - $ref: "#/components/parameters/Query"
+        - name: docType
+          in: query
+          schema: { $ref: "#/components/schemas/DocType" }
+        - $ref: "#/components/parameters/IncludeInactive"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Page of teachers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedTeachers"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Teachers]
+      summary: Create a teacher
+      operationId: createTeacher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TeacherCreate" }
+      responses:
+        "201":
+          description: Teacher created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Teacher" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Duplicate" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/teachers/{id}:
+    parameters:
+      - $ref: "#/components/parameters/EntityId"
+    get:
+      tags: [Teachers]
+      summary: Get a teacher by id
+      operationId: getTeacher
+      responses:
+        "200":
+          description: Teacher.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Teacher" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Teachers]
+      summary: Replace a teacher (full update)
+      operationId: updateTeacher
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TeacherUpdate" }
+      responses:
+        "200":
+          description: Teacher updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Teacher" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Duplicate" }
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+    delete:
+      tags: [Teachers]
+      summary: Soft delete a teacher
+      operationId: deleteTeacher
+      responses:
+        "204": { description: Teacher soft-deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Teacher is assigned to one or more active or in-progress schedules.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetails" }
+
+  /v1/students:
+    get:
+      tags: [Students]
+      summary: List students
+      operationId: listStudents
+      parameters:
+        - $ref: "#/components/parameters/Query"
+        - name: docType
+          in: query
+          schema: { $ref: "#/components/schemas/DocType" }
+        - $ref: "#/components/parameters/IncludeInactive"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Page of students.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedStudents"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Students]
+      summary: Create a student
+      operationId: createStudent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentCreate" }
+      responses:
+        "201":
+          description: Student created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Student" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Duplicate" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/students/{id}:
+    parameters:
+      - $ref: "#/components/parameters/EntityId"
+    get:
+      tags: [Students]
+      summary: Get a student by id
+      operationId: getStudent
+      responses:
+        "200":
+          description: Student.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Student" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Students]
+      summary: Replace a student (full update)
+      operationId: updateStudent
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentUpdate" }
+      responses:
+        "200":
+          description: Student updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Student" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Duplicate" }
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+    delete:
+      tags: [Students]
+      summary: Soft delete a student
+      operationId: deleteStudent
+      responses:
+        "204": { description: Student soft-deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Student has one or more active enrollments.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetails" }
+
+  /v1/students/{studentId}/enrollments:
+    parameters:
+      - name: studentId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Enrollments]
+      summary: List enrollments for a student
+      operationId: listStudentEnrollments
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Page of enrollments for the student.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PagedEnrollments" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/schedules:
+    get:
+      tags: [Schedules]
+      summary: List schedules
+      operationId: listSchedules
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/ScheduleStatus" }
+        - name: teacherId
+          in: query
+          schema: { type: string }
+        - name: course
+          in: query
+          schema: { type: string }
+        - $ref: "#/components/parameters/IncludeInactive"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Page of schedules with computed enrollment metrics.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PagedSchedules" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Schedules]
+      summary: Create a schedule
+      operationId: createSchedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScheduleCreate" }
+      responses:
+        "201":
+          description: Schedule created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScheduleResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Referenced teacher does not exist.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetails" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/schedules/{id}:
+    parameters:
+      - $ref: "#/components/parameters/EntityId"
+    get:
+      tags: [Schedules]
+      summary: Get a schedule by id
+      operationId: getSchedule
+      responses:
+        "200":
+          description: Schedule.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScheduleResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Schedules]
+      summary: Replace a schedule (full update; refreshes teacherName snapshot)
+      operationId: updateSchedule
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScheduleUpdate" }
+      responses:
+        "200":
+          description: Schedule updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScheduleResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+    delete:
+      tags: [Schedules]
+      summary: Soft delete a schedule
+      operationId: deleteSchedule
+      responses:
+        "204": { description: Schedule soft-deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Schedule has one or more active enrollments.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetails" }
+
+  /v1/schedules/{id}/dashboard:
+    parameters:
+      - $ref: "#/components/parameters/EntityId"
+    get:
+      tags: [Schedules]
+      summary: Schedule dashboard view (M9)
+      description: |
+        Composite view of a schedule for a given month: schedule info, active enrollments,
+        and a per-enrollment paid/debtor flag plus aggregate summary. See
+        `docs/04-api-design.md` §6.1.
+      operationId: getScheduleDashboard
+      parameters:
+        - name: month
+          in: query
+          required: false
+          description: Year-month in `YYYY-MM` format. Defaults to the current UTC month when omitted.
+          schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+      responses:
+        "200":
+          description: Schedule dashboard for the requested month.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScheduleDashboardResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/schedules/{scheduleId}/enrollments:
+    parameters:
+      - name: scheduleId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Enrollments]
+      summary: List enrollments for a schedule
+      operationId: listScheduleEnrollments
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Page of enrollments for the schedule.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PagedEnrollments" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/enrollments:
+    get:
+      tags: [Enrollments]
+      summary: List enrollments
+      operationId: listEnrollments
+      parameters:
+        - name: studentId
+          in: query
+          schema: { type: string }
+        - name: scheduleId
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/EnrollmentStatus" }
+        - $ref: "#/components/parameters/IncludeInactive"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Page of enrollments.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PagedEnrollments" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Enrollments]
+      summary: Create an enrollment (snapshots student + schedule)
+      operationId: createEnrollment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnrollmentCreate" }
+      responses:
+        "201":
+          description: Enrollment created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Enrollment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Referenced student or schedule does not exist.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetails" }
+        "409":
+          description: Active enrollment already exists for this (student, schedule) pair.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/ProblemDetails" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/enrollments/{id}:
+    parameters:
+      - $ref: "#/components/parameters/EntityId"
+    get:
+      tags: [Enrollments]
+      summary: Get an enrollment by id
+      operationId: getEnrollment
+      responses:
+        "200":
+          description: Enrollment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Enrollment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Enrollments]
+      summary: Replace an enrollment (refreshes student + schedule snapshots)
+      operationId: updateEnrollment
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnrollmentUpdate" }
+      responses:
+        "200":
+          description: Enrollment updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Enrollment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+    delete:
+      tags: [Enrollments]
+      summary: Soft delete an enrollment
+      operationId: deleteEnrollment
+      responses:
+        "204": { description: Enrollment soft-deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/student-payments:
+    get:
+      tags: [StudentPayments]
+      summary: List student payments
+      operationId: listStudentPayments
+      parameters:
+        - name: enrollmentId
+          in: query
+          schema: { type: string }
+        - name: studentId
+          in: query
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - $ref: "#/components/parameters/IncludeInactive"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Page of student payments.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PagedStudentPayments" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [StudentPayments]
+      summary: Create a student payment (snapshots student + schedule from enrollment, frozen)
+      operationId: createStudentPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentPaymentCreate" }
+      responses:
+        "201":
+          description: Payment created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentPayment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/student-payments/debtors:
+    get:
+      tags: [StudentPayments]
+      summary: List debtors for a schedule and month (operational endpoint)
+      description: |
+        Active enrollments in `scheduleId` that have no active payment in the given
+        month. Used by the M9 dashboard and the M6 debtors view. See
+        `docs/04-api-design.md` §6.2.
+      operationId: listStudentPaymentDebtors
+      parameters:
+        - name: scheduleId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: month
+          in: query
+          required: true
+          description: Year-month in `YYYY-MM` format.
+          schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+      responses:
+        "200":
+          description: Debtor report for the schedule and month.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DebtorReport" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/student-payments/{id}:
+    parameters:
+      - $ref: "#/components/parameters/EntityId"
+    get:
+      tags: [StudentPayments]
+      summary: Get a student payment by id
+      operationId: getStudentPayment
+      responses:
+        "200":
+          description: Student payment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentPayment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [StudentPayments]
+      summary: Replace a student payment (snapshots are preserved)
+      operationId: updateStudentPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentPaymentUpdate" }
+      responses:
+        "200":
+          description: Payment updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentPayment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+    delete:
+      tags: [StudentPayments]
+      summary: Soft delete a student payment
+      operationId: deleteStudentPayment
+      responses:
+        "204": { description: Payment soft-deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/teacher-payments:
+    get:
+      tags: [TeacherPayments]
+      summary: List teacher payments
+      operationId: listTeacherPayments
+      parameters:
+        - name: teacherId
+          in: query
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - $ref: "#/components/parameters/IncludeInactive"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Page of teacher payments.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PagedTeacherPayments" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [TeacherPayments]
+      summary: Create a teacher payment (snapshots teacher name + doc, frozen)
+      operationId: createTeacherPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TeacherPaymentCreate" }
+      responses:
+        "201":
+          description: Payment created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TeacherPayment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/teacher-payments/{id}:
+    parameters:
+      - $ref: "#/components/parameters/EntityId"
+    get:
+      tags: [TeacherPayments]
+      summary: Get a teacher payment by id
+      operationId: getTeacherPayment
+      responses:
+        "200":
+          description: Teacher payment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TeacherPayment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [TeacherPayments]
+      summary: Replace a teacher payment (snapshots are preserved)
+      operationId: updateTeacherPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TeacherPaymentUpdate" }
+      responses:
+        "200":
+          description: Payment updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TeacherPayment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+    delete:
+      tags: [TeacherPayments]
+      summary: Soft delete a teacher payment
+      operationId: deleteTeacherPayment
+      responses:
+        "204": { description: Payment soft-deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/expenses:
+    get:
+      tags: [Expenses]
+      summary: List expenses
+      operationId: listExpenses
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: scheduleId
+          in: query
+          schema: { type: string }
+        - $ref: "#/components/parameters/IncludeInactive"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Page of expenses.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PagedExpenses" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Expenses]
+      summary: Create an expense (snapshots schedule name when imputed, frozen)
+      operationId: createExpense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExpenseCreate" }
+      responses:
+        "201":
+          description: Expense created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Expense" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/expenses/{id}:
+    parameters:
+      - $ref: "#/components/parameters/EntityId"
+    get:
+      tags: [Expenses]
+      summary: Get an expense by id
+      operationId: getExpense
+      responses:
+        "200":
+          description: Expense.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Expense" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Expenses]
+      summary: Replace an expense (scheduleId/scheduleName snapshot pair is preserved)
+      operationId: updateExpense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExpenseUpdate" }
+      responses:
+        "200":
+          description: Expense updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Expense" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+    delete:
+      tags: [Expenses]
+      summary: Soft delete an expense
+      operationId: deleteExpense
+      responses:
+        "204": { description: Expense soft-deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Clerk-issued JWT (RS256). Validated against CLERK_JWKS_URL.
+        Send as `Authorization: Bearer <token>`.
+
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+    Offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    IncludeInactive:
+      name: includeInactive
+      in: query
+      description: When true, includes soft-deleted records (active=false).
+      schema: { type: boolean, default: false }
+    Query:
+      name: q
+      in: query
+      description: Free-text search (server-side substring match across name and document number).
+      schema: { type: string }
+    EntityId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CatalogCode:
+      name: code
+      in: path
+      required: true
+      schema: { type: string, examples: ["paymentMethods", "courses", "levels", "weekdays"] }
+    IfMatch:
+      name: If-Match
+      in: header
+      description: Cosmos `_etag` value. When provided, the update fails with 412 if the document changed.
+      schema: { type: string }
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid bearer token.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+    Forbidden:
+      description: Authenticated principal lacks required role.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+    NotFound:
+      description: Resource not found.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+    Conflict:
+      description: Generic business conflict.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+    Duplicate:
+      description: Unique constraint violation (e.g. existing docType+docNumber).
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+    PreconditionFailed:
+      description: If-Match etag did not match current document version.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+    ValidationFailed:
+      description: Body failed validation. The `errors` map contains per-field messages.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, version, timestamp]
+      properties:
+        status: { type: string, examples: ["ok"] }
+        version: { type: string }
+        timestamp: { type: string, format: date-time }
+
+    ProblemDetails:
+      type: object
+      description: |
+        RFC 7807 Problem Details with Espacio Pro extensions:
+        `correlationId` (echoes `x-correlation-id`) and `errors` (422 only).
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          examples:
+            - urn:espaciopro:problem:not-found
+            - urn:espaciopro:problem:duplicate
+            - urn:espaciopro:problem:dependent-records
+            - urn:espaciopro:problem:precondition-failed
+            - urn:espaciopro:problem:validation
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        correlationId: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+    AuditUser:
+      type: object
+      required: [clerkUserId, email, displayName]
+      properties:
+        clerkUserId: { type: string }
+        email: { type: string, format: email }
+        displayName: { type: string }
+
+    AuditFields:
+      type: object
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        type: { type: string, readOnly: true }
+        active: { type: boolean, readOnly: true }
+        createdAt: { type: string, format: date-time, readOnly: true }
+        createdBy:
+          allOf: [{ $ref: "#/components/schemas/AuditUser" }]
+          readOnly: true
+        updatedAt: { type: string, format: date-time, readOnly: true }
+        updatedBy:
+          allOf: [{ $ref: "#/components/schemas/AuditUser" }]
+          readOnly: true
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+        deletedBy:
+          allOf: [{ $ref: "#/components/schemas/AuditUser" }]
+          nullable: true
+          readOnly: true
+        _etag:
+          type: string
+          description: Cosmos optimistic concurrency token.
+          readOnly: true
+
+    DocType:
+      type: string
+      enum: [dni, ce, passport]
+    EnrollmentStatus:
+      type: string
+      enum: [active, completed, cancelled, pending]
+    ScheduleStatus:
+      type: string
+      enum: [active, inProgress, finished, cancelled]
+
+    PageMeta:
+      type: object
+      required: [total, limit, offset]
+      properties:
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+
+    CatalogSummary:
+      type: object
+      required: [code, count]
+      properties:
+        code: { type: string }
+        count: { type: integer }
+
+    CatalogItem:
+      type: object
+      required: [value, order, active]
+      properties:
+        value: { type: string }
+        order: { type: integer }
+        active: { type: boolean, default: true }
+
+    Catalog:
+      allOf:
+        - $ref: "#/components/schemas/AuditFields"
+        - type: object
+          required: [code, items]
+          properties:
+            code: { type: string }
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/CatalogItem" }
+
+    CatalogUpsert:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItem" }
+
+    Teacher:
+      allOf:
+        - $ref: "#/components/schemas/AuditFields"
+        - type: object
+          required: [firstName, lastName, docType, docNumber]
+          properties:
+            firstName: { type: string }
+            lastName: { type: string }
+            docType: { $ref: "#/components/schemas/DocType" }
+            docNumber: { type: string }
+            phone: { type: string, nullable: true }
+            email: { type: string, format: email, nullable: true }
+            specialty: { type: string, nullable: true }
+            clerkUserId:
+              type: string
+              nullable: true
+              description: Populated post-MVP for teacher login. Null in v1.
+
+    TeacherCreate:
+      type: object
+      required: [firstName, lastName, docType, docNumber]
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        docType: { $ref: "#/components/schemas/DocType" }
+        docNumber: { type: string }
+        phone: { type: string, nullable: true }
+        email: { type: string, format: email, nullable: true }
+        specialty: { type: string, nullable: true }
+
+    TeacherUpdate:
+      $ref: "#/components/schemas/TeacherCreate"
+
+    PagedTeachers:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Teacher" }
+
+    Student:
+      allOf:
+        - $ref: "#/components/schemas/AuditFields"
+        - type: object
+          required: [firstName, lastName, docType, docNumber]
+          properties:
+            firstName: { type: string }
+            lastName: { type: string }
+            docType: { $ref: "#/components/schemas/DocType" }
+            docNumber: { type: string }
+            phone: { type: string, nullable: true }
+            email: { type: string, format: email, nullable: true }
+            source:
+              type: string
+              nullable: true
+              description: Free-form catalog reference to studentSources.
+            notes: { type: string, nullable: true }
+
+    StudentCreate:
+      type: object
+      required: [firstName, lastName, docType, docNumber]
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        docType: { $ref: "#/components/schemas/DocType" }
+        docNumber: { type: string }
+        phone: { type: string, nullable: true }
+        email: { type: string, format: email, nullable: true }
+        source: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+
+    StudentUpdate:
+      $ref: "#/components/schemas/StudentCreate"
+
+    PagedStudents:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Student" }
+
+    Schedule:
+      allOf:
+        - $ref: "#/components/schemas/AuditFields"
+        - type: object
+          required:
+            - course
+            - level
+            - teacherId
+            - teacherName
+            - weekdays
+            - startTime
+            - endTime
+            - price
+            - capacity
+            - status
+            - startDate
+          properties:
+            course: { type: string }
+            level: { type: string }
+            teacherId: { type: string }
+            teacherName:
+              type: string
+              description: Snapshot of teacher full name. Refreshed on PUT.
+            weekdays: { type: string, examples: ["L-V", "S"] }
+            startTime: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$", examples: ["18:00"] }
+            endTime: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$", examples: ["20:00"] }
+            price: { type: number }
+            capacity: { type: integer, minimum: 0 }
+            status: { $ref: "#/components/schemas/ScheduleStatus" }
+            startDate: { type: string, format: date }
+
+    ScheduleResponse:
+      allOf:
+        - $ref: "#/components/schemas/Schedule"
+        - type: object
+          properties:
+            enrolledActiveCount:
+              type: integer
+              description: Computed at read time. Counts active enrollments only.
+              readOnly: true
+            occupancyPct:
+              type: number
+              description: enrolledActiveCount / capacity, rounded to 4 decimals. Zero if capacity = 0.
+              readOnly: true
+
+    ScheduleCreate:
+      type: object
+      required:
+        - course
+        - level
+        - teacherId
+        - weekdays
+        - startTime
+        - endTime
+        - price
+        - capacity
+        - status
+        - startDate
+      properties:
+        course: { type: string }
+        level: { type: string }
+        teacherId: { type: string }
+        weekdays: { type: string }
+        startTime: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
+        endTime: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
+        price: { type: number }
+        capacity: { type: integer, minimum: 0 }
+        status: { $ref: "#/components/schemas/ScheduleStatus" }
+        startDate: { type: string, format: date }
+
+    ScheduleUpdate:
+      $ref: "#/components/schemas/ScheduleCreate"
+
+    PagedSchedules:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/ScheduleResponse" }
+
+    Enrollment:
+      allOf:
+        - $ref: "#/components/schemas/AuditFields"
+        - type: object
+          required:
+            - studentId
+            - studentName
+            - studentDoc
+            - scheduleId
+            - scheduleName
+            - schedulePrice
+            - enrollmentDate
+            - status
+          properties:
+            studentId: { type: string }
+            studentName: { type: string, description: Snapshot. Refreshed on PUT. }
+            studentDoc: { type: string, description: 'Snapshot, e.g. "DNI 12345678". Refreshed on PUT.' }
+            scheduleId: { type: string }
+            scheduleName: { type: string, description: 'Snapshot, e.g. "Melamina · Intermedio · L-V 18:00". Refreshed on PUT.' }
+            schedulePrice: { type: number, description: Snapshot. Refreshed on PUT. }
+            enrollmentDate: { type: string, format: date }
+            status: { $ref: "#/components/schemas/EnrollmentStatus" }
+
+    EnrollmentCreate:
+      type: object
+      required: [studentId, scheduleId, enrollmentDate, status]
+      properties:
+        studentId: { type: string }
+        scheduleId: { type: string }
+        enrollmentDate: { type: string, format: date }
+        status: { $ref: "#/components/schemas/EnrollmentStatus" }
+
+    EnrollmentUpdate:
+      $ref: "#/components/schemas/EnrollmentCreate"
+
+    PagedEnrollments:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Enrollment" }
+
+    StudentPayment:
+      allOf:
+        - $ref: "#/components/schemas/AuditFields"
+        - type: object
+          required: [id, type, enrollmentId, studentId, studentName, scheduleId, scheduleName, date, amount, installmentNumber, paymentMethod, hasReceipt]
+          properties:
+            id: { type: string }
+            type: { type: string, enum: [studentPayment] }
+            enrollmentId: { type: string }
+            studentId: { type: string, description: "Frozen snapshot at create time." }
+            studentName: { type: string, description: "Frozen snapshot at create time." }
+            scheduleId: { type: string, description: "Frozen snapshot at create time." }
+            scheduleName: { type: string, description: "Frozen snapshot at create time." }
+            date: { type: string, format: date }
+            amount: { type: number, description: "Decimal monetary amount, > 0." }
+            installmentNumber: { type: integer, minimum: 1 }
+            paymentMethod: { type: string, description: "Catalog code for payment method." }
+            hasReceipt: { type: boolean }
+            receiptNumber: { type: string, nullable: true }
+            notes: { type: string, nullable: true }
+
+    StudentPaymentCreate:
+      type: object
+      required: [enrollmentId, date, amount, installmentNumber, paymentMethod, hasReceipt]
+      properties:
+        enrollmentId: { type: string, description: "Snapshots are derived from this enrollment." }
+        date: { type: string, format: date }
+        amount: { type: number }
+        installmentNumber: { type: integer, minimum: 1 }
+        paymentMethod: { type: string }
+        hasReceipt: { type: boolean }
+        receiptNumber: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+
+    StudentPaymentUpdate:
+      description: |
+        Snapshot fields (studentId, studentName, scheduleId, scheduleName, enrollmentId)
+        are NOT accepted; they are frozen at create time.
+      type: object
+      required: [date, amount, installmentNumber, paymentMethod, hasReceipt]
+      properties:
+        date: { type: string, format: date }
+        amount: { type: number }
+        installmentNumber: { type: integer, minimum: 1 }
+        paymentMethod: { type: string }
+        hasReceipt: { type: boolean }
+        receiptNumber: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+
+    PagedStudentPayments:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/StudentPayment" }
+
+    DebtorReport:
+      type: object
+      required: [scheduleId, scheduleName, month, debtors]
+      properties:
+        scheduleId: { type: string }
+        scheduleName: { type: string }
+        month: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+        debtors:
+          type: array
+          items: { $ref: "#/components/schemas/DebtorRow" }
+
+    DebtorRow:
+      type: object
+      required: [enrollmentId, studentId, studentName, studentDoc]
+      properties:
+        enrollmentId: { type: string }
+        studentId: { type: string }
+        studentName: { type: string }
+        studentDoc: { type: string, description: "Concatenated docType + docNumber for display." }
+        lastPaymentDate:
+          type: string
+          format: date
+          nullable: true
+          description: |
+            Always null in this report (debtors are exactly those with no payment in the month).
+            Reserved for forward compatibility.
+
+    ScheduleDashboardResponse:
+      type: object
+      required: [schedule, month, enrollments, summary]
+      description: Composite read view powering the M9 schedule dashboard. See `docs/04-api-design.md` §6.1.
+      properties:
+        schedule: { $ref: "#/components/schemas/ScheduleResponse" }
+        month: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+        enrollments:
+          type: array
+          items: { $ref: "#/components/schemas/ScheduleDashboardEnrollment" }
+        summary: { $ref: "#/components/schemas/ScheduleDashboardSummary" }
+
+    ScheduleDashboardEnrollment:
+      type: object
+      required: [enrollmentId, studentId, studentName, studentDoc, paidThisMonth]
+      properties:
+        enrollmentId: { type: string }
+        studentId: { type: string }
+        studentName: { type: string }
+        studentDoc: { type: string, description: "Concatenated docType + docNumber for display." }
+        paidThisMonth: { type: boolean }
+        lastPaymentDate:
+          type: string
+          format: date
+          nullable: true
+          description: Most recent active payment date within the month, or null if none.
+
+    ScheduleDashboardSummary:
+      type: object
+      required: [enrolled, paid, debtors, occupancyPct]
+      properties:
+        enrolled: { type: integer, minimum: 0 }
+        paid: { type: integer, minimum: 0 }
+        debtors: { type: integer, minimum: 0 }
+        occupancyPct:
+          type: number
+          format: double
+          minimum: 0
+          description: Ratio enrolled/capacity rounded to 4 decimals. 0 when capacity is 0.
+
+    TeacherPayment:
+      allOf:
+        - $ref: "#/components/schemas/AuditFields"
+        - type: object
+          required: [id, type, teacherId, teacherName, teacherDoc, date, amount, concept, paymentMethod]
+          properties:
+            id: { type: string }
+            type: { type: string, enum: [teacherPayment] }
+            teacherId: { type: string }
+            teacherName: { type: string, description: "Frozen snapshot at create time." }
+            teacherDoc: { type: string, description: "Frozen snapshot of doc type + number at create time." }
+            date: { type: string, format: date }
+            amount: { type: number }
+            concept: { type: string }
+            paymentMethod: { type: string }
+            notes: { type: string, nullable: true }
+
+    TeacherPaymentCreate:
+      type: object
+      required: [teacherId, date, amount, concept, paymentMethod]
+      properties:
+        teacherId: { type: string }
+        date: { type: string, format: date }
+        amount: { type: number }
+        concept: { type: string }
+        paymentMethod: { type: string }
+        notes: { type: string, nullable: true }
+
+    TeacherPaymentUpdate:
+      description: |
+        Snapshot fields (teacherId, teacherName, teacherDoc) are NOT accepted;
+        they are frozen at create time.
+      type: object
+      required: [date, amount, concept, paymentMethod]
+      properties:
+        date: { type: string, format: date }
+        amount: { type: number }
+        concept: { type: string }
+        paymentMethod: { type: string }
+        notes: { type: string, nullable: true }
+
+    PagedTeacherPayments:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/TeacherPayment" }
+
+    Expense:
+      allOf:
+        - $ref: "#/components/schemas/AuditFields"
+        - type: object
+          required: [id, type, date, category, description, amount, paymentMethod]
+          properties:
+            id: { type: string }
+            type: { type: string, enum: [expense] }
+            date: { type: string, format: date }
+            category: { type: string }
+            description: { type: string }
+            amount: { type: number }
+            paymentMethod: { type: string }
+            scheduleId:
+              type: string
+              nullable: true
+              description: "Optional schedule imputation."
+            scheduleName:
+              type: string
+              nullable: true
+              description: "Frozen snapshot when scheduleId is set."
+
+    ExpenseCreate:
+      type: object
+      required: [date, category, description, amount, paymentMethod]
+      properties:
+        date: { type: string, format: date }
+        category: { type: string }
+        description: { type: string }
+        amount: { type: number }
+        paymentMethod: { type: string }
+        scheduleId:
+          type: string
+          nullable: true
+          description: "When provided, scheduleName is captured as a frozen snapshot."
+
+    ExpenseUpdate:
+      description: |
+        scheduleId and its snapshot scheduleName are preserved as a unit and cannot be
+        modified. To re-point or clear the imputation, soft-delete and recreate.
+      type: object
+      required: [date, category, description, amount, paymentMethod]
+      properties:
+        date: { type: string, format: date }
+        category: { type: string }
+        description: { type: string }
+        amount: { type: number }
+        paymentMethod: { type: string }
+
+    PagedExpenses:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Expense" }

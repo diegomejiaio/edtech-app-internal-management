@@ -1,66 +1,43 @@
-using 'main.bicep'
+// =============================================================================
+// main.bicepparam — prod values for Espacio Pro v1 (East US 2)
+//
+// Subscription: e3d59e44-d8a4-475a-a285-7433ca42b87f
+// Deploy with:
+//   az account set --subscription e3d59e44-d8a4-475a-a285-7433ca42b87f
+//   az deployment sub what-if  --location eastus2 \
+//     --template-file infra/main.bicep --parameters infra/main.bicepparam
+//   az deployment sub create   --location eastus2 \
+//     --template-file infra/main.bicep --parameters infra/main.bicepparam
+// =============================================================================
 
-param location = 'eastus2'
-param suffix = 'poc01'
-param sharedRgName = 'rg-shared-services'
-param sharedAiServicesName = 'aifoundrysharedservices00001'
-param sharedKeyVaultName = 'kv-shared-services-00001'
-param sharedStorageAccountName = 'sasharedservices00001'
-param chatDeploymentName = 'gpt-4.1'
-param acrName = 'azacrshared'
+using './main.bicep'
 
-// ACR admin password — passed at deploy time via --parameters acrAdminPassword=<secret>
-// Never commit a value here.
+// Naming
+param workload   = 'espaciopro'
+param env        = 'prod'
+param location   = 'eastus2'
+param regionCode = 'eus2'
 
-// ── Frontend Easy Auth (Entra ID) ───────────────────────────────────
-// Pre-requisite: create the App Registration once:
-//
-//   # 1. Create the app (note the appId in the output)
-//   az ad app create --display-name "procurement-frontend" \
-//     --sign-in-audience AzureADMyOrg
-//
-//   # 2. Add the redirect URI after first deploy (you need the CA FQDN first):
-//   az ad app update --id <appId> \
-//     --web-redirect-uris "https://<ca-frontend-fqdn>/.auth/login/aad/callback"
-//
-//   # 3. Enable id_token issuance (REQUIRED for Easy Auth hybrid flow):
-//   az rest --method PATCH \
-//     --uri "https://graph.microsoft.com/v1.0/applications(appId='<appId>')" \
-//     --body '{"web":{"implicitGrantSettings":{"enableIdTokenIssuance":true}},"api":{"requestedAccessTokenVersion":2}}'
-//
-//   # 4. Create a client secret (copy the value — shown only once):
-//   az ad app credential reset --id <appId> --years 2
-//
-//   # Then pass at deploy time:
-//   --parameters frontendEntraClientId="<appId>" \
-//               frontendEntraClientSecret="<secret>" \
-//               frontendEntraTenantId="<tenantId>"
-//
-// Leave all three empty to deploy without auth (open access).
+// Resource groups
+param appResourceGroupName             = 'rg-espaciopro-prod'
+param sharedServicesResourceGroupName  = 'rg-shared-services'
 
-// ── Application Insights / Azure Monitor ───────────────────────────
-// Enables traces, metrics, and logs visible in AI Foundry tracing.
-//
-// Get the connection string:
-//   az monitor app-insights component show \
-//     --app ap-in-poc-procurement \
-//     --resource-group rg-procurement-agent-poc \
-//     --query connectionString -o tsv
-//
-// Then pass at deploy time:
-//   --parameters appInsightsConnectionString="InstrumentationKey=...;IngestionEndpoint=..."
-//
-// ── MCP Server API Key ──────────────────────────────────────────────
-// Required for X-API-Key authentication on the MCP server.
-// Retrieve the current key from the container app env vars:
-//
-//   az containerapp show \
-//     --name ca-mcp-server-poc01 \
-//     --resource-group rg-procurement-agent-poc \
-//     --query "properties.template.containers[0].env[?name=='API_KEY'].value" -o tsv
-//
-// Then pass at deploy time:
-//   --parameters mcpApiKey="<your-api-key>"
-//
-// Leave empty to deploy without auth (open access).
+// Cosmos (account is pre-existing in rg-shared-services)
+param cosmosAccountName  = 'shared-cosmos-nosql'
+param cosmosDatabaseName = 'espaciopro'
 
+// Clerk (public — JWKS-only, no secrets)
+// Update these to match the actual Clerk dev/prod instance before first deploy.
+param clerkJwksUrl = 'https://legible-sunfish-48.clerk.accounts.dev/.well-known/jwks.json'
+param clerkIssuer  = 'https://legible-sunfish-48.clerk.accounts.dev'
+
+// CORS — populate the SWA hostname after the first deploy and re-run.
+// Localhost is included for dev tooling against the deployed API.
+param corsOrigins = 'http://localhost:3000'
+
+// Tags (minimal per Q5)
+param tags = {
+  workload:  'espaciopro'
+  env:       'prod'
+  managedBy: 'bicep'
+}

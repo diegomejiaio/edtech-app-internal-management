@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EspacioPro.Api/EspacioPro.Api.csproj" />
+    <Project Path="src/EspacioPro.Application/EspacioPro.Application.csproj" />
+    <Project Path="src/EspacioPro.Domain/EspacioPro.Domain.csproj" />
+    <Project Path="src/EspacioPro.Infrastructure/EspacioPro.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/EspacioPro.Seed/EspacioPro.Seed.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EspacioPro.Tests/EspacioPro.Tests.csproj" />
+  </Folder>
+</Solution>

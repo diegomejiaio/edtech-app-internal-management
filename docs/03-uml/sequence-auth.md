@@ -1,0 +1,138 @@
+# Sequence Diagram — Authentication & Authorization
+
+> Companion to `02-architecture.md` §3 (auth flow) and `07-api-contract-cheatsheet.md` §10 (auth header).
+> Covers: sign-in via Clerk, JWT acquisition, JWKS validation in Function App, role gate.
+
+---
+
+## 1. Happy path — first request after sign-in
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Admin (browser)
+    participant FE as Next.js SPA<br/>(Clerk SDK)
+    participant CK as Clerk<br/>(hosted sign-in + JWKS)
+    participant FX as Function App<br/>(JwtAuthMiddleware)
+    participant JV as ClerkJwtValidator<br/>(in-memory JWKS cache)
+    participant FN as Domain Function<br/>([RequireRole("admin")])
+    participant DB as Cosmos DB
+
+    U->>FE: open /
+    FE->>FE: Clerk SDK detects no session
+    FE->>CK: redirect to hosted sign-in
+    U->>CK: enter credentials
+    CK-->>FE: redirect back + session cookie
+    FE->>CK: getToken() (Clerk SDK)
+    CK-->>FE: JWT (RS256, claims: sub, email, name, role)
+
+    Note over FE: JWT held in-memory by Clerk SDK<br/>(auto-refreshed before exp)
+
+    U->>FE: navigate to /students
+    FE->>FX: GET /api/v1/students<br/>Authorization: Bearer <jwt><br/>x-correlation-id: <uuid>
+
+    FX->>JV: ValidateAsync(jwt)
+
+    alt JWKS not cached or expired (TTL 1h)
+        JV->>CK: GET <CLERK_JWKS_URL>
+        CK-->>JV: JWKS public keys
+        JV->>JV: cache (IMemoryCache, TTL 1h)
+    end
+
+    JV->>JV: verify RS256 signature, iss, exp<br/>(audience OFF in v1)
+    JV-->>FX: ClaimsPrincipal { sub, email, name, role }
+
+    FX->>FX: reflect [RequireRole("admin")] on Function entry point
+    alt role claim != "admin"
+        FX-->>FE: 403 + ProblemDetails<br/>type: urn:espaciopro:problem:forbidden
+        FE-->>U: show "Sin permisos"
+    end
+
+    FX->>FN: invoke Function with HttpContext.User set
+    FN->>FN: ICurrentUser → AuditUser snapshot
+    FN->>DB: query (AAD token via Managed Identity)
+    DB-->>FN: items
+    FN-->>FX: HttpResponseData (200 + items)
+    FX-->>FE: 200 + JSON<br/>x-correlation-id: <same-uuid>
+    FE-->>U: render list
+```
+
+---
+
+## 2. Failure paths
+
+### 2.1 Missing or malformed JWT
+
+```mermaid
+sequenceDiagram
+    participant FE as Next.js SPA
+    participant FX as Function App<br/>(JwtAuthMiddleware)
+
+    FE->>FX: GET /api/v1/students (no Authorization header)
+    FX->>FX: middleware: header missing
+    FX-->>FE: 401 + ProblemDetails<br/>type: urn:espaciopro:problem:unauthorized
+    Note over FE: Clerk SDK should re-trigger sign-in<br/>(stale session → forces refresh)
+```
+
+### 2.2 Invalid signature / expired JWT
+
+```mermaid
+sequenceDiagram
+    participant FE as Next.js SPA
+    participant FX as Function App
+    participant JV as ClerkJwtValidator
+
+    FE->>FX: GET /api/v1/students + Bearer <expired-jwt>
+    FX->>JV: ValidateAsync(jwt)
+    JV->>JV: signature OK, but exp < now
+    JV-->>FX: throws SecurityTokenExpiredException
+    FX-->>FE: 401 + ProblemDetails<br/>detail: "Token expired"
+    Note over FE: Clerk SDK refresh logic kicks in,<br/>front retries with fresh token
+```
+
+### 2.3 JWKS endpoint unreachable
+
+```mermaid
+sequenceDiagram
+    participant FX as Function App
+    participant JV as ClerkJwtValidator
+    participant CK as Clerk JWKS
+
+    FX->>JV: ValidateAsync(jwt)
+    Note over JV: cache empty (cold start) or expired
+    JV->>CK: GET <CLERK_JWKS_URL>
+    CK--xJV: timeout / 5xx
+    JV-->>FX: throws JwksFetchException
+    FX-->>FX: middleware maps to 503 + ProblemDetails<br/>type: urn:espaciopro:problem:internal<br/>detail: "Auth provider unreachable"
+
+    Note over JV: Last cached JWKS is NOT used as fallback in v1<br/>(stale-while-revalidate = future work).
+```
+
+---
+
+## 3. Anonymous endpoint (`/api/v1/health`)
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant FX as Function App
+    participant FN as HealthFunction
+
+    Caller->>FX: GET /api/v1/health
+    FX->>FX: Function lacks [RequireRole] → middleware bypasses JWT
+    FX->>FN: invoke
+    FN-->>FX: 200 { status: "ok", ... }
+    FX-->>Caller: 200 (no auth required)
+```
+
+> Health is the only anonymous endpoint in v1. OpenAPI spec endpoint (`/api/openapi/v3.json`) is also anonymous — same bypass mechanism (no `[RequireRole]` on its host Function).
+
+---
+
+## 4. Notes
+
+- **No Clerk Backend API calls in v1.** All validation is asymmetric (public JWKS). Backend never holds a Clerk Secret Key → no Key Vault.
+- **JWKS cache TTL = 1 hour**, `IMemoryCache` (in-process, per Function instance). Acceptable cold-start cost: 1 extra HTTPS roundtrip every ~hour per instance.
+- **Audience validation is OFF** in v1. Clerk JWTs do not include `aud` by default. To turn it on, configure Clerk JWT template + `ClerkJwtValidator.ValidateAudience = true`.
+- **Role claim source**: Clerk Dashboard → Sessions → Custom claims: `{ "role": "{{user.public_metadata.role}}" }`. `public_metadata.role` set manually per user.
+- **Correlation propagation**: `x-correlation-id` is generated by frontend if absent (`client.ts`), echoed by backend on response. See `07-api-contract-cheatsheet.md` §9.

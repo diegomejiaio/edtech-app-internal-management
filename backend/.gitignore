@@ -1,0 +1,16 @@
+# Build output
+bin/
+obj/
+
+# IDE
+.vs/
+*.user
+
+# Azure Functions local settings (contains env vars)
+local.settings.json
+
+# OpenAPI snapshot for FE codegen — regeneratable from openapi.yaml
+artifacts/
+
+# Azurite (local Azure Storage emulator) data + logs — created by run.sh
+.azurite/

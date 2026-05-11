@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\EspacioPro.Domain\EspacioPro.Domain.csproj" />
+    <ProjectReference Include="..\EspacioPro.Application\EspacioPro.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="*-*" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="*-*" />
+    <!--
+      Microsoft.Azure.Cosmos 3.60-preview still has an internal hard dependency
+      on Newtonsoft.Json at runtime (DocumentClient ctor). The compile-time
+      check is disabled by AzureCosmosDisableNewtonsoftJsonCheck in
+      Directory.Build.props, but the assembly itself must still resolve at
+      runtime, otherwise CosmosClient throws FileNotFoundException on first use.
+    -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="*" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="*" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

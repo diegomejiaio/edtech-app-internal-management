@@ -1,16 +1,18 @@
-export * from "./use-api";
-export * from "./use-auth";
-export * from "./use-notifications";
-export * from "./use-companies";
-export * from "./use-tenants";
-export * from "./use-jobs";
-export * from "./use-jobs-admin";
-export * from "./use-batches-admin";
-export * from "./use-users";
-export * from "./use-sync";
-export * from "./use-periods";
-export * from "./use-uit-config";
-export * from "./use-voucher-validation";
-export * from "./use-voucher-bulk-validation";
-export * from "./use-voucher-audit-log";
-export * from "./use-declaration";
+// Client
+export { useApiClient } from './use-api-client';
+
+// Health
+export { useApiHealth } from './use-api-health';
+
+// Domain hooks (queries + mutations)
+export { useCatalogs, useCatalog, useReplaceCatalogItems, useAddCatalogItem, useDisableCatalogItem } from './use-catalogs';
+export { useStudents, useStudent, useStudentEnrollments, useCreateStudent, useUpdateStudent, useDeleteStudent } from './use-students';
+export { useTeachers, useTeacher, useCreateTeacher, useUpdateTeacher, useDeleteTeacher } from './use-teachers';
+export { useSchedules, useSchedule, useScheduleDashboard, useCreateSchedule, useUpdateSchedule, useDeleteSchedule } from './use-schedules';
+export { useEnrollments, useEnrollment, useCreateEnrollment, useUpdateEnrollment, useDeleteEnrollment } from './use-enrollments';
+export { useStudentPayments, useDebtors, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from './use-student-payments';
+export { useTeacherPayments, useCreateTeacherPayment, useUpdateTeacherPayment, useDeleteTeacherPayment } from './use-teacher-payments';
+export { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from './use-expenses';
+
+// Utilities
+export { useIsMobile } from './use-mobile';

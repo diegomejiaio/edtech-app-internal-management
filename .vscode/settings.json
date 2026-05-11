@@ -1,0 +1,59 @@
+{
+    "// HVE Core via submodule": "Copilot Chat discovers HVE agents/prompts/instructions/skills from lib/hve-core/.github. Paths follow HVE's official submodule guidance and intentionally omit experimental collections.",
+    "chat.agentFilesLocations": {
+        ".github/agents": true,
+        "lib/hve-core/.github/agents/ado": true,
+        "lib/hve-core/.github/agents/coding-standards": true,
+        "lib/hve-core/.github/agents/data-science": true,
+        "lib/hve-core/.github/agents/design-thinking": true,
+        "lib/hve-core/.github/agents/github": true,
+        "lib/hve-core/.github/agents/hve-core": true,
+        "lib/hve-core/.github/agents/hve-core/subagents": true,
+        "lib/hve-core/.github/agents/jira": true,
+        "lib/hve-core/.github/agents/project-planning": true,
+        "lib/hve-core/.github/agents/rai-planning": true,
+        "lib/hve-core/.github/agents/security": true
+    },
+    "chat.promptFilesLocations": {
+        ".github/prompts": true,
+        "lib/hve-core/.github/prompts/ado": true,
+        "lib/hve-core/.github/prompts/coding-standards": true,
+        "lib/hve-core/.github/prompts/data-science": true,
+        "lib/hve-core/.github/prompts/design-thinking": true,
+        "lib/hve-core/.github/prompts/github": true,
+        "lib/hve-core/.github/prompts/hve-core": true,
+        "lib/hve-core/.github/prompts/jira": true,
+        "lib/hve-core/.github/prompts/rai-planning": true,
+        "lib/hve-core/.github/prompts/security": true
+    },
+    "chat.instructionsFilesLocations": {
+        "lib/hve-core/.github/instructions/ado": true,
+        "lib/hve-core/.github/instructions/coding-standards": true,
+        "lib/hve-core/.github/instructions/design-thinking": true,
+        "lib/hve-core/.github/instructions/github": true,
+        "lib/hve-core/.github/instructions/hve-core": true,
+        "lib/hve-core/.github/instructions/jira": true,
+        "lib/hve-core/.github/instructions/rai-planning": true,
+        "lib/hve-core/.github/instructions/security": true,
+        "lib/hve-core/.github/instructions/shared": true
+    },
+    "chat.agentSkillsLocations": {
+        "lib/hve-core/.github/skills/coding-standards": true,
+        "lib/hve-core/.github/skills/github": true,
+        "lib/hve-core/.github/skills/gitlab": true,
+        "lib/hve-core/.github/skills/jira": true,
+        "lib/hve-core/.github/skills/security": true,
+        "lib/hve-core/.github/skills/shared": true
+    },
+    "chat.promptFilesRecommendations": {
+        "speckit.constitution": true,
+        "speckit.specify": true,
+        "speckit.plan": true,
+        "speckit.tasks": true,
+        "speckit.implement": true
+    },
+    "chat.tools.terminal.autoApprove": {
+        ".specify/scripts/bash/": true,
+        ".specify/scripts/powershell/": true
+    }
+}

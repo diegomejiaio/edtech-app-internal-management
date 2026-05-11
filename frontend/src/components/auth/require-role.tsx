@@ -1,99 +1,54 @@
-'use client'
+'use client';
 
 /**
- * Role Gate Component
- * 
- * Conditionally renders children based on user role.
- * In DEV_MODE, always renders children (master role assumed).
- * 
- * Role hierarchy: master > admin > member
- * - master: Can access everything
- * - admin: Can access admin and member content
- * - member: Can only access member content
- * 
- * @example
- * <RequireRole role="admin">
- *   <ConfigurationPanel />
- * </RequireRole>
+ * Role gate component for Espacio Pro v1.
+ *
+ * Uses Clerk Organizations for role management. The role comes from
+ * `useAuth().orgRole` as `org:<role>` (e.g. `org:admin`).
+ * v1 scope: only `admin` is enforced.
+ * Model is prepared for `seller`/`teacher` post-MVP.
  */
 
-import type { ReactNode } from 'react'
-import { DEV_MODE, DEV_DEFAULTS } from '@/lib/env'
-import { useAuthContext } from '@/providers/auth-provider'
+import type { ReactNode } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 
-type Role = 'master' | 'admin' | 'member'
+/** Supported roles — only `admin` is enforced in v1. */
+export type AppRole = 'admin' | 'seller' | 'teacher';
 
 interface RequireRoleProps {
-    /** Minimum required role */
-    role: Role
-    /** Content to render if role requirement is met */
-    children: ReactNode
-    /** Optional fallback when role requirement not met */
-    fallback?: ReactNode
+  role: AppRole;
+  children: ReactNode;
+  fallback?: ReactNode;
 }
 
-/** Role hierarchy - higher index = higher privilege */
-const ROLE_HIERARCHY: Record<Role, number> = {
-    member: 1,
-    admin: 2,
-    master: 3,
+/** Extracts the role name from Clerk's `org:<role>` format. */
+function parseOrgRole(orgRole: string | null | undefined): string | null {
+  if (!orgRole) return null;
+  return orgRole.startsWith('org:') ? orgRole.slice(4) : orgRole;
 }
 
-/**
- * Check if user has at least the required role
- */
-function useHasRole(requiredRole: Role): boolean {
-    const { role, isSignedIn, isLoaded } = useAuthContext()
+function useHasRole(requiredRole: AppRole): boolean {
+  const { isLoaded, isSignedIn, orgRole } = useAuth();
 
-    if (DEV_MODE) {
-        // In dev mode, check against dev default role
-        const devRole = DEV_DEFAULTS.userRole as Role
-        return ROLE_HIERARCHY[devRole] >= ROLE_HIERARCHY[requiredRole]
-    }
+  if (!isLoaded || !isSignedIn) return false;
 
-    if (!isLoaded || !isSignedIn || !role) {
-        return false
-    }
+  const role = parseOrgRole(orgRole);
+  if (!role) return false;
 
-    return ROLE_HIERARCHY[role] >= ROLE_HIERARCHY[requiredRole]
+  return role === requiredRole;
 }
 
-export function RequireRole({
-    role,
-    children,
-    fallback = null,
-}: RequireRoleProps) {
-    const hasRole = useHasRole(role)
-
-    if (!hasRole) {
-        return <>{fallback}</>
-    }
-
-    return <>{children}</>
+export function RequireRole({ role, children, fallback = null }: RequireRoleProps) {
+  const hasRole = useHasRole(role);
+  if (!hasRole) return <>{fallback}</>;
+  return <>{children}</>;
 }
 
-/**
- * Hook version for programmatic role checks
- * 
- * @example
- * const isAdmin = useRole('admin')
- * if (isAdmin) { ... }
- */
-export function useRole(role: Role): boolean {
-    return useHasRole(role)
-}
-
-/**
- * Convenience hooks for common role checks
- */
-export function useIsMaster(): boolean {
-    return useHasRole('master')
+/** Hook version for programmatic role checks. */
+export function useRole(role: AppRole): boolean {
+  return useHasRole(role);
 }
 
 export function useIsAdmin(): boolean {
-    return useHasRole('admin')
-}
-
-export function useIsMember(): boolean {
-    return useHasRole('member')
+  return useHasRole('admin');
 }

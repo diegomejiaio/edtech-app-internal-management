@@ -1,19 +1,24 @@
-'use client'
-
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+'use client';
 
 /**
- * Redirect /app/dashboard → /app/dashboard/{previousYear}
- * Loads previous year by default (accountants typically work on the prior fiscal year).
+ * Dashboard page — M9.
+ * Schedule dashboard with enrolled students and paid/debtor flags.
  */
-export default function DashboardRedirect() {
-  const router = useRouter()
-  const defaultYear = new Date().getFullYear() - 1
 
-  useEffect(() => {
-    router.replace(`/dashboard/${defaultYear}`)
-  }, [router, defaultYear])
+import { useApiClient } from '@/hooks/use-api-client';
+import { ScheduleDashboard } from '@/components/dashboard';
+import { PageHeader } from '@/components/data';
 
-  return null
+export default function DashboardPage() {
+  const client = useApiClient();
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Dashboard"
+        description="Vista por horario — inscritos y estado de pagos"
+      />
+      <ScheduleDashboard client={client} />
+    </div>
+  );
 }
