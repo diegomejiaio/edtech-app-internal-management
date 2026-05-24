@@ -52,6 +52,22 @@ public sealed class JwtAuthMiddleware : IFunctionsWorkerMiddleware
             return;
         }
 
+        // Dev-only auth bypass. Requires BOTH:
+        //   AZURE_FUNCTIONS_ENVIRONMENT=Development  (Functions host's env name)
+        //   DEV_AUTH_BYPASS=true                     (explicit opt-in)
+        // Injects a synthetic admin principal so endpoints can be hit from
+        // curl/Postman without a Clerk token. Never trust either flag in prod.
+        if (IsDevBypassEnabled())
+        {
+            _logger.LogWarning(
+                "⚠️ DEV_AUTH_BYPASS active: synthetic admin principal injected for {Function}. " +
+                "This must NEVER be enabled in production.",
+                context.FunctionDefinition.Name);
+            httpContext.User = BuildDevPrincipal(roleAttr.Role);
+            await next(context);
+            return;
+        }
+
         // Extract Bearer token.
         var authHeader = httpContext.Request.Headers.Authorization.ToString();
         if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase))
@@ -176,5 +192,40 @@ public sealed class JwtAuthMiddleware : IFunctionsWorkerMiddleware
         httpContext.Response.StatusCode = statusCode;
         httpContext.Response.ContentType = "application/problem+json";
         await httpContext.Response.WriteAsJsonAsync(problem);
+    }
+
+    /// <summary>
+    /// True only when running locally with both env flags explicitly set.
+    /// Both checks are required: env name guards against accidental flag
+    /// leakage to a deployed environment, opt-in flag guards against the
+    /// default dev workflow.
+    /// </summary>
+    private static bool IsDevBypassEnabled()
+    {
+        var envName = Environment.GetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT");
+        var bypass = Environment.GetEnvironmentVariable("DEV_AUTH_BYPASS");
+        return string.Equals(envName, "Development", StringComparison.OrdinalIgnoreCase)
+               && string.Equals(bypass, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Builds a synthetic <see cref="ClaimsPrincipal"/> for dev bypass.
+    /// Mirrors the shape <see cref="ResolveRole"/> expects (nested <c>o.rol</c>)
+    /// plus the <c>sub</c>/<c>email</c>/<c>name</c> claims that
+    /// <c>CurrentUserAccessor</c> reads for audit fields.
+    /// </summary>
+    private static ClaimsPrincipal BuildDevPrincipal(string role)
+    {
+        var orgClaim = JsonSerializer.Serialize(new { id = "org_dev", rol = role });
+        var identity = new ClaimsIdentity(
+            new[]
+            {
+                new Claim("sub", "user_dev"),
+                new Claim("email", "dev@espaciopro.local"),
+                new Claim("name", "Dev User"),
+                new Claim("o", orgClaim),
+            },
+            authenticationType: "DevBypass");
+        return new ClaimsPrincipal(identity);
     }
 }
