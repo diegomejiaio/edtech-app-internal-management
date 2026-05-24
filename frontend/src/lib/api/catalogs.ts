@@ -21,6 +21,7 @@ export interface CatalogItem {
   value: string;
   order: number;
   active: boolean;
+  metadata?: Record<string, unknown> | null;
 }
 
 /** Catalog document shape as stored in Cosmos (container `master`). */

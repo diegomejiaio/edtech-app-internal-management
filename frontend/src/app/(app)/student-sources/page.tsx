@@ -1,15 +1,11 @@
 'use client';
 
 /**
- * Courses page — backed by the `courses` catalog (master/catalogs).
- *
- * Courses are catalog items (strings like "Melamina", "Drywall") rather
- * than standalone entities. This page exposes the same add/disable flow
- * as the global Catalogs page but scoped to a single catalog code.
+ * Student sources page — backed by the `studentSources` catalog (master/catalogs).
  */
 
 import { useState, type FormEvent } from 'react';
-import { BookOpen, Plus } from 'lucide-react';
+import { Megaphone, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { useCatalog, useAddCatalogItem, useDisableCatalogItem } from '@/hooks';
@@ -23,9 +19,9 @@ import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/ui/empty-state';
 import { isApiError } from '@/lib/api';
 
-const CATALOG_CODE = 'courses';
+const CATALOG_CODE = 'studentSources';
 
-export default function CoursesPage() {
+export default function StudentSourcesPage() {
   const client = useApiClient();
   const { data: catalog, isLoading } = useCatalog(client, CATALOG_CODE);
   const addMutation = useAddCatalogItem(client, CATALOG_CODE);
@@ -43,7 +39,7 @@ export default function CoursesPage() {
       .mutateAsync({ value })
       .then(() => {
         setOpen(false);
-        toast.success(`"${value}" agregado`);
+        toast.success(`"${value}" agregada`);
       })
       .catch((err) => {
         if (isApiError(err)) toast.error(err.problem.detail ?? err.message);
@@ -54,7 +50,7 @@ export default function CoursesPage() {
   function handleDisable(value: string) {
     disableMutation
       .mutateAsync(value)
-      .then(() => toast.success(`"${value}" desactivado`))
+      .then(() => toast.success(`"${value}" desactivada`))
       .catch(() => toast.error('Error al desactivar'));
   }
 
@@ -62,9 +58,9 @@ export default function CoursesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Cursos" subtitle="Catálogo de cursos disponibles">
+      <PageHeader title="Fuentes de alumnos" subtitle="Cómo nos conocieron los alumnos">
         <PageHeaderButton icon={Plus} onClick={() => setOpen(true)} shortcutKey="n">
-          Nuevo curso
+          Nueva fuente
         </PageHeaderButton>
       </PageHeader>
 
@@ -72,9 +68,9 @@ export default function CoursesPage() {
 
       {!isLoading && items.length === 0 && (
         <EmptyState
-          icon={BookOpen}
-          title="No hay cursos creados aún"
-          description="Cuando crees tu primer curso aparecerá aquí."
+          icon={Megaphone}
+          title="No hay fuentes creadas aún"
+          description="Cuando crees tu primera fuente aparecerá aquí."
         />
       )}
 
@@ -102,13 +98,13 @@ export default function CoursesPage() {
       <FormSheetDialog
         open={open}
         onOpenChange={setOpen}
-        title="Nuevo curso"
+        title="Nueva fuente"
         isLoading={addMutation.isPending}
         onSubmit={handleAddSubmit}
       >
         <div className="space-y-2">
-          <Label htmlFor="value">Nombre del curso</Label>
-          <Input id="value" name="value" required placeholder="Ej. Melamina" />
+          <Label htmlFor="value">Nombre de la fuente</Label>
+          <Input id="value" name="value" required placeholder="Ej. Instagram" />
         </div>
       </FormSheetDialog>
     </div>

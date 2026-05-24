@@ -20,9 +20,12 @@ import {
   Receipt,
   Settings,
   BookOpen,
-  Package,
   MapPin,
   HandCoins,
+  Layers,
+  CalendarDays,
+  Megaphone,
+  Banknote,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -55,7 +58,9 @@ const MAIN_NAV: NavItem[] = [
 
 const CATALOG_NAV: NavItem[] = [
   { label: 'Cursos', href: '/courses', icon: BookOpen },
-  { label: 'Packs', href: '/packs', icon: Package },
+  { label: 'Niveles', href: '/levels', icon: Layers },
+  { label: 'Días', href: '/weekdays', icon: CalendarDays },
+  { label: 'Fuentes', href: '/student-sources', icon: Megaphone },
   { label: 'Espacios', href: '/spaces', icon: MapPin },
   { label: 'Profesores', href: '/teachers', icon: GraduationCap },
 ];
@@ -64,6 +69,7 @@ const FINANCE_NAV: NavItem[] = [
   { label: 'Pagos profesores', href: '/teacher-payments', icon: Wallet },
   { label: 'Cobranzas', href: '/collections', icon: HandCoins },
   { label: 'Gastos', href: '/expenses', icon: Receipt },
+  { label: 'Medios de pago', href: '/payment-methods', icon: Banknote },
 ];
 
 const SETTINGS_ITEM: NavItem = {

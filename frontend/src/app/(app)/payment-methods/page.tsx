@@ -1,15 +1,11 @@
 'use client';
 
 /**
- * Courses page — backed by the `courses` catalog (master/catalogs).
- *
- * Courses are catalog items (strings like "Melamina", "Drywall") rather
- * than standalone entities. This page exposes the same add/disable flow
- * as the global Catalogs page but scoped to a single catalog code.
+ * Payment methods page — backed by the `paymentMethods` catalog (master/catalogs).
  */
 
 import { useState, type FormEvent } from 'react';
-import { BookOpen, Plus } from 'lucide-react';
+import { Banknote, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { useCatalog, useAddCatalogItem, useDisableCatalogItem } from '@/hooks';
@@ -23,9 +19,9 @@ import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/ui/empty-state';
 import { isApiError } from '@/lib/api';
 
-const CATALOG_CODE = 'courses';
+const CATALOG_CODE = 'paymentMethods';
 
-export default function CoursesPage() {
+export default function PaymentMethodsPage() {
   const client = useApiClient();
   const { data: catalog, isLoading } = useCatalog(client, CATALOG_CODE);
   const addMutation = useAddCatalogItem(client, CATALOG_CODE);
@@ -62,9 +58,9 @@ export default function CoursesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Cursos" subtitle="Catálogo de cursos disponibles">
+      <PageHeader title="Medios de pago" subtitle="Catálogo de medios de pago disponibles">
         <PageHeaderButton icon={Plus} onClick={() => setOpen(true)} shortcutKey="n">
-          Nuevo curso
+          Nuevo medio
         </PageHeaderButton>
       </PageHeader>
 
@@ -72,9 +68,9 @@ export default function CoursesPage() {
 
       {!isLoading && items.length === 0 && (
         <EmptyState
-          icon={BookOpen}
-          title="No hay cursos creados aún"
-          description="Cuando crees tu primer curso aparecerá aquí."
+          icon={Banknote}
+          title="No hay medios de pago creados aún"
+          description="Cuando crees tu primer medio aparecerá aquí."
         />
       )}
 
@@ -102,13 +98,13 @@ export default function CoursesPage() {
       <FormSheetDialog
         open={open}
         onOpenChange={setOpen}
-        title="Nuevo curso"
+        title="Nuevo medio de pago"
         isLoading={addMutation.isPending}
         onSubmit={handleAddSubmit}
       >
         <div className="space-y-2">
-          <Label htmlFor="value">Nombre del curso</Label>
-          <Input id="value" name="value" required placeholder="Ej. Melamina" />
+          <Label htmlFor="value">Nombre del medio</Label>
+          <Input id="value" name="value" required placeholder="Ej. Yape" />
         </div>
       </FormSheetDialog>
     </div>
