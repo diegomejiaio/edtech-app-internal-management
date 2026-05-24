@@ -10,15 +10,19 @@ Guide for configuring AI-assisted development on this repo with **GitHub Copilot
 # 1. Install tools
 brew install gentleman-programming/tap/engram    # Persistent memory
 curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh  # Semantic code graph (binary, no npm)
+npm install -g @playwright/cli@latest            # Browser automation CLI
 
 # 2. Initialize CodeGraph index
 cd edtech-app-internal-management
 codegraph init -i
 
-# 3. Import team memory
+# 3. Install Playwright CLI skills
+playwright-cli install --skills
+
+# 4. Import team memory
 engram sync --import
 
-# 4. Start coding — agents will use CodeGraph + Engram automatically
+# 5. Start coding — agents will use CodeGraph + Engram automatically
 ```
 
 ---
@@ -30,6 +34,7 @@ engram sync --import
 | **GitHub Copilot CLI** | Primary AI coding agent | `brew install --cask github-copilot-cli` |
 | **Engram** | Persistent memory across sessions | `brew install gentleman-programming/tap/engram` |
 | **CodeGraph** | Local semantic graph (search, call flow, impact) | `curl -fsSL .../install.sh \| sh` ([repo](https://github.com/colbymchenry/codegraph)) |
+| **Playwright CLI** | Browser automation & UI test generation | `npm install -g @playwright/cli@latest` |
 
 ---
 
@@ -104,6 +109,7 @@ CodeGraph indexes everything git-tracked. `lib/hve-core/` (submodule) and `front
 | `.vscode/mcp.json` | MCP server config (CodeGraph, Engram, etc.) | ✅ yes |
 | `.codegraph/` | Generated local index (SQLite) | ❌ gitignored |
 | `.engram/` | Shared memory chunks | ✅ yes (chunks/) |
+| `.engram/config.json` | Project name lock (avoids ambiguous detection) | ✅ yes |
 
 ---
 
@@ -150,7 +156,8 @@ edtech-app-internal-management/
 │   │   └── speckit.*.prompt.md   ← Speckit workflow prompts
 │   └── skills/                   ← Domain skills (shared: Chat + CLI)
 │       ├── nextjs-frontend/SKILL.md
-│       └── dotnet-azure-functions/SKILL.md
+│       ├── dotnet-azure-functions/SKILL.md
+│       └── playwright-cli/SKILL.md   ← Browser automation + test generation
 ├── .engram/                      ← Engram memories (git-synced chunks)
 ├── .codegraph/                   ← CodeGraph index (gitignored)
 ├── AGENTS.md                     ← Agent onboarding (auto-loaded by CLI)
@@ -164,6 +171,26 @@ edtech-app-internal-management/
 
 ## Troubleshooting
 
+### .NET 10 slow builds on macOS
+
+The Roslyn shared compilation server deadlocks with VS Code Language Server on macOS 26 + .NET 10. Fix:
+
+```bash
+# Add to ~/.zshrc (already configured)
+export DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER=1
+```
+
+Also set in `backend/Directory.Build.props`:
+```xml
+<PropertyGroup>
+  <UseSharedCompilation>false</UseSharedCompilation>
+</PropertyGroup>
+```
+
+Expected build time: ~10s for full solution (was 5+ minutes without this fix).
+
+### General
+
 ```bash
 # CodeGraph not working
 codegraph status          # Should show indexed files
@@ -171,8 +198,13 @@ codegraph serve --mcp     # Should start MCP stdio server
 
 # Engram not connecting
 which engram              # Should be in PATH
-engram status             # Should show memory count
+engram stats              # Should show memory count
+mem_current_project       # Should return "edtech-app-internal-management"
 
 # MCP server not connecting in Copilot CLI
 # Restart CLI after editing ~/.copilot/mcp-config.json
+
+# Playwright CLI
+playwright-cli --version  # Should show version
+playwright-cli open https://example.com --headed  # Should open browser
 ```
