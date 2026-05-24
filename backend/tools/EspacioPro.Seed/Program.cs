@@ -4,6 +4,7 @@ using EspacioPro.Infrastructure.Cosmos;
 using EspacioPro.Infrastructure.Cosmos.Repositories;
 using EspacioPro.Seed;
 using EspacioPro.Seed.Excel;
+using EspacioPro.Seed.Migrations;
 using EspacioPro.Seed.Seeders;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,10 +13,13 @@ using Microsoft.Extensions.Options;
 
 // -------- Argument parsing --------
 // Supports: --excel <path>  --reset  --yes
+//           --migrate-enums  --apply
 //           --COSMOS_ACCOUNT_ENDPOINT=<url>  --COSMOS_DATABASE_NAME=<db>
 var argList = args.ToList();
 var reset = argList.Remove("--reset");
 var yes = argList.Remove("--yes") | argList.Remove("-y");
+var migrateEnums = argList.Remove("--migrate-enums");
+var apply = argList.Remove("--apply");
 
 string? excelPath = null;
 for (var i = 0; i < argList.Count; i++)
@@ -66,7 +70,7 @@ if (string.IsNullOrWhiteSpace(database))
 }
 
 excelPath = Path.GetFullPath(excelPath);
-if (!File.Exists(excelPath))
+if (!migrateEnums && !File.Exists(excelPath))
 {
     Console.Error.WriteLine($"ERROR: Excel file not found: {excelPath}");
     Console.Error.WriteLine("Pass --excel <path> or set EXCEL_PATH.");
@@ -99,6 +103,7 @@ services.AddSingleton<ICurrentUser, SystemCurrentUser>();
 services.AddSingleton(_ => new ExcelReader(excelPath));
 services.AddSingleton<SeedContext>();
 services.AddSingleton<SeedResetter>();
+services.AddSingleton<EnumWireFormatMigrator>();
 
 // Repositories (one per entity).
 services.AddScoped<CatalogRepository>();
@@ -126,11 +131,26 @@ logger.LogInformation("  config   : {Source}", localSettingsPath ?? "(env/CLI on
 logger.LogInformation("  auth     : {Mode}", hasConnectionString ? "connection string" : "DefaultAzureCredential (az login)");
 logger.LogInformation("  endpoint : {Endpoint}", hasEndpoint ? endpoint : "(via connection string)");
 logger.LogInformation("  database : {Db}", database);
-logger.LogInformation("  excel    : {Path}", excelPath);
+if (!migrateEnums)
+    logger.LogInformation("  excel    : {Path}", excelPath);
 logger.LogInformation("  reset    : {Reset}", reset);
+logger.LogInformation("  mode     : {Mode}", migrateEnums ? "enum migration" : "seed");
 
 try
 {
+    if (migrateEnums)
+    {
+        var migrator = provider.GetRequiredService<EnumWireFormatMigrator>();
+        var result = await migrator.RunAsync(apply);
+        logger.LogInformation("Enum migration complete. Mode={Mode} Scanned={Scanned} Updated={Updated}",
+            apply ? "apply" : "dry-run",
+            result.Scanned,
+            result.Updated);
+        if (!apply && result.Updated > 0)
+            logger.LogWarning("Dry-run only. Re-run with --migrate-enums --apply to persist these changes.");
+        return 0;
+    }
+
     var resetter = provider.GetRequiredService<SeedResetter>();
     var existing = await resetter.CountAsync();
 
@@ -240,4 +260,3 @@ static IEnumerable<string> CandidatePaths()
 }
 
 public partial class Program { }
-
