@@ -3,7 +3,7 @@
 /**
  * Searchable schedule picker (combobox).
  *
- * Displays course · level · weekdays · time for each option.
+ * Displays course · level · weekdays · time · start date for each option.
  */
 
 import { useState } from 'react';
@@ -33,7 +33,14 @@ interface SchedulePickerProps {
 }
 
 function formatScheduleLabel(s: ScheduleWithCounts): string {
-  return `${s.course} · ${s.level} · ${s.weekdays} ${s.startTime}`;
+  return `${s.course} · ${s.level} · ${s.weekdays} ${s.startTime} · ${formatDateOnly(s.startDate)}`;
+}
+
+function formatDateOnly(date: string | undefined): string {
+  if (!date) return '—';
+  const [year, month, day] = date.split('-');
+  if (!year || !month || !day) return date;
+  return `${day}/${month}/${year}`;
 }
 
 export function SchedulePicker({
@@ -53,9 +60,14 @@ export function SchedulePicker({
   });
 
   // Client-side filter since schedules API doesn't have a search param for course
-  const filtered = data?.items.filter((s) =>
-    !search || formatScheduleLabel(s).toLowerCase().includes(search.toLowerCase()),
-  ) ?? [];
+  const filtered = data?.items.filter((s) => {
+    const term = search.toLowerCase();
+    return !term || [
+      formatScheduleLabel(s),
+      s.teacherName,
+      s.startDate,
+    ].join(' ').toLowerCase().includes(term);
+  }) ?? [];
 
   const selected = data?.items.find((s) => s.id === value);
   const displayLabel = selected ? formatScheduleLabel(selected) : undefined;
@@ -78,7 +90,7 @@ export function SchedulePicker({
         <PopoverContent className="w-[450px] p-0" align="start">
           <Command shouldFilter={false}>
             <CommandInput
-              placeholder="Buscar por curso o nivel..."
+              placeholder="Buscar por curso, nivel, profesor o fecha..."
               value={search}
               onValueChange={setSearch}
             />
@@ -95,7 +107,7 @@ export function SchedulePicker({
                     <div className="min-w-0">
                       <p className="truncate font-medium">{s.course} · {s.level}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {s.weekdays} {s.startTime}–{s.endTime} · Prof. {s.teacherName} · {s.enrolledActiveCount}/{s.capacity}
+                        Inicio {formatDateOnly(s.startDate)} · {s.weekdays} {s.startTime}–{s.endTime} · Prof. {s.teacherName} · {s.enrolledActiveCount}/{s.capacity}
                       </p>
                     </div>
                   </CommandItem>

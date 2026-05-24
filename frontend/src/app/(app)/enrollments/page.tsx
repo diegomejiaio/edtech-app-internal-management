@@ -4,11 +4,11 @@
  * Enrollments list page — M5.
  */
 
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
-import { useEnrollments, useCreateEnrollment, useUpdateEnrollment, useDeleteEnrollment } from '@/hooks';
-import { PageHeader, DataTable, FormDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { flattenInfiniteItems, getInfiniteTotal, useInfiniteEnrollments, useCreateEnrollment, useUpdateEnrollment, useDeleteEnrollment } from '@/hooks';
+import { PageHeader, DataTable, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { StudentPicker, SchedulePicker } from '@/components/pickers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,10 +42,11 @@ const columns: Column<Enrollment>[] = [
 
 export default function EnrollmentsPage() {
   const client = useApiClient();
-  const [offset, setOffset] = useState(0);
   const limit = 25;
 
-  const { data, isLoading } = useEnrollments(client, { limit, offset });
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteEnrollments(client, { limit });
+  const enrollments = useMemo(() => flattenInfiniteItems(data), [data]);
+  const total = getInfiniteTotal(data);
   const createMutation = useCreateEnrollment(client);
   const updateMutation = useUpdateEnrollment(client);
   const deleteMutation = useDeleteEnrollment(client);
@@ -92,13 +93,13 @@ export default function EnrollmentsPage() {
 
       <DataTable
         columns={columns}
-        data={data?.items ?? []}
-        total={data?.total ?? 0}
-        limit={limit}
-        offset={offset}
-        onPageChange={setOffset}
+        data={enrollments}
+        total={total}
+        hasNextPage={hasNextPage}
+        onLoadMore={() => fetchNextPage()}
         rowKey={(e) => e.id}
         isLoading={isLoading}
+        isFetchingNextPage={isFetchingNextPage}
         actions={(e) => (
           <div className="flex gap-1">
             <Button variant="ghost" size="sm" onClick={() => openEdit(e)}>Editar</Button>
@@ -107,27 +108,28 @@ export default function EnrollmentsPage() {
         )}
       />
 
-      <FormDialog
+      {/* Create / Edit sheet */}
+      <FormSheetDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         title={editing ? 'Editar inscripción' : 'Nueva inscripción'}
         isLoading={createMutation.isPending || updateMutation.isPending}
         onSubmit={handleSubmit}
       >
-        <div>
+        <div className="space-y-2">
           <Label>Alumno</Label>
           <StudentPicker client={client} value={pickedStudentId} onChange={(id) => setPickedStudentId(id)} name="studentId" />
         </div>
-        <div>
+        <div className="space-y-2">
           <Label>Horario</Label>
           <SchedulePicker client={client} value={pickedScheduleId} onChange={(id) => setPickedScheduleId(id)} name="scheduleId" />
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="enrollmentDate">Fecha inscripción</Label>
             <Input id="enrollmentDate" name="enrollmentDate" type="date" defaultValue={editing?.enrollmentDate} required />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="status">Estado</Label>
             <Select name="status" defaultValue={editing?.status ?? 'active'}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -135,7 +137,7 @@ export default function EnrollmentsPage() {
             </Select>
           </div>
         </div>
-      </FormDialog>
+      </FormSheetDialog>
 
       <ConfirmDeleteDialog
         open={!!deleteTarget}

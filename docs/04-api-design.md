@@ -28,6 +28,7 @@
 | 15 | **JSON casing on wire**: camelCase always (cheatsheet §2). Status enums in English (`active`, `inProgress`, etc.). Catalog items in Spanish (user-editable). | Standard JSON convention + clear separation of code-level vs user-data. |
 | 16 | **Date encoding** (cheatsheet §4): calendar dates `YYYY-MM-DD`, times `HH:mm`, timestamps ISO 8601 UTC. Frontend treats all as strings. | Round-trip safe, no timezone bugs. |
 | 17 | **Concurrency control**: Cosmos `_etag` + `If-Match` enforced ONLY on `Schedule` and `Enrollment` PUT (cheatsheet §7). Other PUTs ignore `If-Match`. | Scoped to entities with realistic edit-conflict risk. |
+| 18 | **Frontend list UX**: list pages use accumulated "Cargar más" pagination via React Query infinite queries over the v1 `limit/offset` contract. Cursor pagination remains future work if datasets grow. | Matches the MerkiCont UX pattern without changing the v1 backend contract. |
 
 ---
 
@@ -138,7 +139,7 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
 
 | Method | URI | Filters | Notes |
 |---|---|---|---|
-| GET | `/schedules` | `?status=active&teacherId=X&course=Melamina` | Each item includes `enrolledActiveCount`, `occupancyPct`, `teacherName` |
+| GET | `/schedules` | `?status=active&teacherId=X&course=Melamina&startDateFrom=YYYY-MM-DD&startDateTo=YYYY-MM-DD` | Each item includes `enrolledActiveCount`, `occupancyPct`, `teacherName` |
 | GET | `/schedules/{id}` | — | Same composition |
 | POST | `/schedules` | — | Validates `teacherId` exists+active |
 | PUT | `/schedules/{id}` | — | |
@@ -306,7 +307,7 @@ Front renders enrollments collapsed; expand on click → fires Q2. Avoids fan-ou
 | Vista frontend | Endpoint(s) llamado(s) | Cosmos queries | RU estimado |
 |---|---|---|---|
 | Login (Clerk hosted) | — | — | 0 |
-| Dashboard horario | `GET /schedules?status=active` (selector) + `GET /schedules/{id}/dashboard?month=...` | 3 queries | ~15 RU |
+| Dashboard horario | `GET /schedules?status=active&startDateFrom=YYYY-MM-DD&startDateTo=YYYY-MM-DD` (selector) + `GET /schedules/{id}/dashboard?month=...` | 3 queries | ~15 RU |
 | Listar alumnos | `GET /students?search=...&limit=25` | 1 query | ~5 RU |
 | Detalle alumno | `GET /students/{id}` + `GET /students/{id}/enrollments` | 2 queries | ~8 RU |
 | Crear inscripción | `POST /enrollments` (incluye dedup check server-side) | 1 query (existence) + 1 insert | ~10 RU |

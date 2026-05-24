@@ -6,11 +6,11 @@
  * CRUD list with search, pagination, create/edit dialog, soft-delete.
  */
 
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
-import { useTeachers, useCreateTeacher, useUpdateTeacher, useDeleteTeacher } from '@/hooks';
-import { PageHeader, DataTable, SearchBar, FormDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { flattenInfiniteItems, getInfiniteTotal, useInfiniteTeachers, useCreateTeacher, useUpdateTeacher, useDeleteTeacher } from '@/hooks';
+import { PageHeader, DataTable, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,10 +40,14 @@ const columns: Column<Teacher>[] = [
 export default function TeachersPage() {
   const client = useApiClient();
   const [search, setSearch] = useState('');
-  const [offset, setOffset] = useState(0);
   const limit = 25;
 
-  const { data, isLoading } = useTeachers(client, { search: search || undefined, limit, offset });
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteTeachers(client, {
+    search: search || undefined,
+    limit,
+  });
+  const teachers = useMemo(() => flattenInfiniteItems(data), [data]);
+  const total = getInfiniteTotal(data);
   const createMutation = useCreateTeacher(client);
   const updateMutation = useUpdateTeacher(client);
   const deleteMutation = useDeleteTeacher(client);
@@ -95,18 +99,18 @@ export default function TeachersPage() {
       <SearchBar
         placeholder="Buscar por nombre o documento..."
         value={search}
-        onChange={(v) => { setSearch(v); setOffset(0); }}
+        onChange={setSearch}
       />
 
       <DataTable
         columns={columns}
-        data={data?.items ?? []}
-        total={data?.total ?? 0}
-        limit={limit}
-        offset={offset}
-        onPageChange={setOffset}
+        data={teachers}
+        total={total}
+        hasNextPage={hasNextPage}
+        onLoadMore={() => fetchNextPage()}
         rowKey={(t) => t.id}
         isLoading={isLoading}
+        isFetchingNextPage={isFetchingNextPage}
         actions={(t) => (
           <div className="flex gap-1">
             <Button variant="ghost" size="sm" onClick={() => openEdit(t)}>Editar</Button>
@@ -115,7 +119,8 @@ export default function TeachersPage() {
         )}
       />
 
-      <FormDialog
+      {/* Create / Edit sheet */}
+      <FormSheetDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         title={editing ? 'Editar profesor' : 'Nuevo profesor'}
@@ -123,25 +128,25 @@ export default function TeachersPage() {
         onSubmit={handleSubmit}
       >
         <div className="grid grid-cols-2 gap-4">
-          <div><Label htmlFor="firstName">Nombre</Label><Input id="firstName" name="firstName" defaultValue={editing?.firstName} required /></div>
-          <div><Label htmlFor="lastName">Apellido</Label><Input id="lastName" name="lastName" defaultValue={editing?.lastName} required /></div>
+          <div className="space-y-2"><Label htmlFor="firstName">Nombre</Label><Input id="firstName" name="firstName" defaultValue={editing?.firstName} required /></div>
+          <div className="space-y-2"><Label htmlFor="lastName">Apellido</Label><Input id="lastName" name="lastName" defaultValue={editing?.lastName} required /></div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="docType">Tipo documento</Label>
             <Select name="docType" defaultValue={editing?.docType ?? 'dni'}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{DOC_TYPES.map((dt) => <SelectItem key={dt} value={dt}>{DOC_TYPE_LABELS[dt]}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div><Label htmlFor="docNumber">N° Documento</Label><Input id="docNumber" name="docNumber" defaultValue={editing?.docNumber} required /></div>
+          <div className="space-y-2"><Label htmlFor="docNumber">N° Documento</Label><Input id="docNumber" name="docNumber" defaultValue={editing?.docNumber} required /></div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div><Label htmlFor="phone">Teléfono</Label><Input id="phone" name="phone" defaultValue={editing?.phone ?? ''} /></div>
-          <div><Label htmlFor="email">Email</Label><Input id="email" name="email" type="email" defaultValue={editing?.email ?? ''} /></div>
+          <div className="space-y-2"><Label htmlFor="phone">Teléfono</Label><Input id="phone" name="phone" defaultValue={editing?.phone ?? ''} /></div>
+          <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" name="email" type="email" defaultValue={editing?.email ?? ''} /></div>
         </div>
-        <div><Label htmlFor="specialty">Especialidad</Label><Input id="specialty" name="specialty" defaultValue={editing?.specialty ?? ''} /></div>
-      </FormDialog>
+        <div className="space-y-2"><Label htmlFor="specialty">Especialidad</Label><Input id="specialty" name="specialty" defaultValue={editing?.specialty ?? ''} /></div>
+      </FormSheetDialog>
 
       <ConfirmDeleteDialog
         open={!!deleteTarget}

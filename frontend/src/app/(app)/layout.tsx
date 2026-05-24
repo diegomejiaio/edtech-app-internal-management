@@ -1,7 +1,6 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/clerk-react';
 import { PanelLeftIcon } from 'lucide-react';
 import { AuthGate } from '@/components/auth';
@@ -16,21 +15,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
-const PATH_LABELS: Record<string, string> = {
-  dashboard: 'Dashboard',
-  students: 'Alumnos',
-  teachers: 'Profesores',
-  schedules: 'Horarios',
-  enrollments: 'Inscripciones',
-  'student-payments': 'Pagos alumnos',
-  'teacher-payments': 'Pagos profesores',
-  expenses: 'Gastos',
-  catalogs: 'Catálogos',
-};
-
 /**
  * App segment layout — Espacio Pro morphology:
  * AuthGate → SidebarProvider → AppSidebar + SidebarInset(header + main).
+ *
+ * The header is a slim toolbar (sidebar trigger, theme toggle, user button).
+ * Each page owns its own PageHeader for title/breadcrumbs/actions.
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -45,9 +35,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
 function AppContent({ children }: { children: ReactNode }) {
   const { toggleSidebar } = useSidebar();
-  const pathname = usePathname();
-  const segment = pathname.split('/').filter(Boolean)[0] ?? '';
-  const pageLabel = PATH_LABELS[segment] ?? segment;
 
   return (
     <SidebarInset className="min-w-0 overflow-hidden">
@@ -64,7 +51,6 @@ function AppContent({ children }: { children: ReactNode }) {
             <span className="sr-only">Abrir navegación</span>
           </Button>
           <Separator orientation="vertical" className="mr-2 h-4" />
-          <span className="text-sm font-medium">{pageLabel}</span>
         </div>
 
         <div className="flex items-center gap-2">

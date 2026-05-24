@@ -19,6 +19,10 @@ import {
   Wallet,
   Receipt,
   Settings,
+  BookOpen,
+  Package,
+  MapPin,
+  HandCoins,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -45,13 +49,20 @@ const MAIN_NAV: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Horarios', href: '/schedules', icon: Calendar },
   { label: 'Alumnos', href: '/students', icon: Users },
-  { label: 'Profesores', href: '/teachers', icon: GraduationCap },
   { label: 'Inscripciones', href: '/enrollments', icon: ClipboardList },
+  { label: 'Pagos alumnos', href: '/student-payments', icon: CreditCard },
+];
+
+const CATALOG_NAV: NavItem[] = [
+  { label: 'Cursos', href: '/courses', icon: BookOpen },
+  { label: 'Packs', href: '/packs', icon: Package },
+  { label: 'Espacios', href: '/spaces', icon: MapPin },
+  { label: 'Profesores', href: '/teachers', icon: GraduationCap },
 ];
 
 const FINANCE_NAV: NavItem[] = [
-  { label: 'Pagos alumnos', href: '/student-payments', icon: CreditCard },
   { label: 'Pagos profesores', href: '/teacher-payments', icon: Wallet },
+  { label: 'Cobranzas', href: '/collections', icon: HandCoins },
   { label: 'Gastos', href: '/expenses', icon: Receipt },
 ];
 
@@ -74,10 +85,10 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
+                <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
                   EP
                 </div>
-                <div className="flex flex-col gap-0.5 leading-none">
+                <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
                   <span className="font-semibold">Espacio Pro</span>
                   <span className="text-xs text-muted-foreground">
                     Gestión de academia
@@ -95,6 +106,28 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {MAIN_NAV.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.href)}
+                    tooltip={item.label}
+                  >
+                    <Link href={item.href}>
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Catálogo</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {CATALOG_NAV.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild

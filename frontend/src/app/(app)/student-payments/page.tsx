@@ -4,11 +4,11 @@
  * Student Payments list page — M6.
  */
 
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
-import { useStudentPayments, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from '@/hooks';
-import { PageHeader, DataTable, FormDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { flattenInfiniteItems, getInfiniteTotal, useInfiniteStudentPayments, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from '@/hooks';
+import { PageHeader, DataTable, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { EnrollmentPicker, CatalogSelect } from '@/components/pickers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,10 +36,11 @@ const columns: Column<StudentPayment>[] = [
 
 export default function StudentPaymentsPage() {
   const client = useApiClient();
-  const [offset, setOffset] = useState(0);
   const limit = 25;
 
-  const { data, isLoading } = useStudentPayments(client, { limit, offset });
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteStudentPayments(client, { limit });
+  const studentPayments = useMemo(() => flattenInfiniteItems(data), [data]);
+  const total = getInfiniteTotal(data);
   const createMutation = useCreateStudentPayment(client);
   const updateMutation = useUpdateStudentPayment(client);
   const deleteMutation = useDeleteStudentPayment(client);
@@ -89,13 +90,13 @@ export default function StudentPaymentsPage() {
 
       <DataTable
         columns={columns}
-        data={data?.items ?? []}
-        total={data?.total ?? 0}
-        limit={limit}
-        offset={offset}
-        onPageChange={setOffset}
+        data={studentPayments}
+        total={total}
+        hasNextPage={hasNextPage}
+        onLoadMore={() => fetchNextPage()}
         rowKey={(p) => p.id}
         isLoading={isLoading}
+        isFetchingNextPage={isFetchingNextPage}
         actions={(p) => (
           <div className="flex gap-1">
             <Button variant="ghost" size="sm" onClick={() => openEdit(p)}>Editar</Button>
@@ -104,37 +105,38 @@ export default function StudentPaymentsPage() {
         )}
       />
 
-      <FormDialog
+      {/* Create / Edit sheet */}
+      <FormSheetDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         title={editing ? 'Editar pago' : 'Nuevo pago'}
         isLoading={createMutation.isPending || updateMutation.isPending}
         onSubmit={handleSubmit}
       >
-        <div>
+        <div className="space-y-2">
           <Label>Inscripción</Label>
           <EnrollmentPicker client={client} value={pickedEnrollmentId} onChange={(id) => setPickedEnrollmentId(id)} name="enrollmentId" />
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div><Label htmlFor="date">Fecha</Label><Input id="date" name="date" type="date" defaultValue={editing?.date} required /></div>
-          <div><Label htmlFor="amount">Monto (S/)</Label><Input id="amount" name="amount" type="number" step="0.01" defaultValue={editing?.amount} required /></div>
+          <div className="space-y-2"><Label htmlFor="date">Fecha</Label><Input id="date" name="date" type="date" defaultValue={editing?.date} required /></div>
+          <div className="space-y-2"><Label htmlFor="amount">Monto (S/)</Label><Input id="amount" name="amount" type="number" step="0.01" defaultValue={editing?.amount} required /></div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div><Label htmlFor="installmentNumber">N° Cuota</Label><Input id="installmentNumber" name="installmentNumber" type="number" defaultValue={editing?.installmentNumber} required /></div>
-          <div><Label>Medio de pago</Label><CatalogSelect client={client} catalogCode="paymentMethods" value={pickedPaymentMethod} onChange={setPickedPaymentMethod} placeholder="Seleccionar medio..." /></div>
+          <div className="space-y-2"><Label htmlFor="installmentNumber">N° Cuota</Label><Input id="installmentNumber" name="installmentNumber" type="number" defaultValue={editing?.installmentNumber} required /></div>
+          <div className="space-y-2"><Label>Medio de pago</Label><CatalogSelect client={client} catalogCode="paymentMethods" value={pickedPaymentMethod} onChange={setPickedPaymentMethod} placeholder="Seleccionar medio..." /></div>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Switch id="hasReceipt" name="hasReceipt" defaultChecked={editing?.hasReceipt} />
             <Label htmlFor="hasReceipt">¿Tiene boleta?</Label>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 space-y-2">
             <Label htmlFor="receiptNumber">N° Boleta</Label>
             <Input id="receiptNumber" name="receiptNumber" defaultValue={editing?.receiptNumber ?? ''} />
           </div>
         </div>
-        <div><Label htmlFor="notes">Notas</Label><Input id="notes" name="notes" defaultValue={editing?.notes ?? ''} /></div>
-      </FormDialog>
+        <div className="space-y-2"><Label htmlFor="notes">Notas</Label><Input id="notes" name="notes" defaultValue={editing?.notes ?? ''} /></div>
+      </FormSheetDialog>
 
       <ConfirmDeleteDialog
         open={!!deleteTarget}

@@ -6,11 +6,11 @@
  * Two tabs: "Horarios" (CRUD list) and "Dashboard" (M9 BFF view).
  */
 
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
-import { useSchedules, useCreateSchedule, useUpdateSchedule, useDeleteSchedule } from '@/hooks';
-import { PageHeader, DataTable, FormDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { flattenInfiniteItems, getInfiniteTotal, useInfiniteSchedules, useCreateSchedule, useUpdateSchedule, useDeleteSchedule } from '@/hooks';
+import { PageHeader, DataTable, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { TeacherPicker, CatalogSelect } from '@/components/pickers';
 import { ScheduleDashboard } from '@/components/dashboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -33,23 +33,25 @@ const statusColors: Record<ScheduleStatus, 'default' | 'secondary' | 'destructiv
 
 const columns: Column<ScheduleWithCounts>[] = [
   { key: 'course', header: 'Curso', cell: (s) => `${s.course} · ${s.level}` },
-  { key: 'teacher', header: 'Profesor', cell: (s) => s.teacherName },
+  { key: 'startDate', header: 'Fecha Inicio', cell: (s) => s.startDate ?? '—' },
+  { key: 'teacher', header: 'Profesor', cell: (s) => s.teacherName || '—' },
   { key: 'schedule', header: 'Horario', cell: (s) => `${s.weekdays} ${s.startTime}–${s.endTime}` },
   { key: 'capacity', header: 'Ocupación', cell: (s) => `${s.enrolledActiveCount}/${s.capacity} (${Math.round(s.occupancyPct * 100)}%)` },
   { key: 'price', header: 'Precio', cell: (s) => `S/ ${s.price.toFixed(2)}` },
   {
     key: 'status',
     header: 'Estado',
-    cell: (s) => <Badge variant={statusColors[s.status]}>{SCHEDULE_STATUS_LABELS[s.status]}</Badge>,
+    cell: (s) => <Badge variant={statusColors[s.status] ?? 'outline'}>{SCHEDULE_STATUS_LABELS[s.status] ?? s.status ?? '—'}</Badge>,
   },
 ];
 
 export default function SchedulesPage() {
   const client = useApiClient();
-  const [offset, setOffset] = useState(0);
   const limit = 25;
 
-  const { data, isLoading } = useSchedules(client, { limit, offset });
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteSchedules(client, { limit });
+  const schedules = useMemo(() => flattenInfiniteItems(data), [data]);
+  const total = getInfiniteTotal(data);
   const createMutation = useCreateSchedule(client);
   const updateMutation = useUpdateSchedule(client);
   const deleteMutation = useDeleteSchedule(client);
@@ -130,13 +132,13 @@ export default function SchedulesPage() {
         <TabsContent value="list" className="mt-4">
           <DataTable
             columns={columns}
-            data={data?.items ?? []}
-            total={data?.total ?? 0}
-            limit={limit}
-            offset={offset}
-            onPageChange={setOffset}
+            data={schedules}
+            total={total}
+            hasNextPage={hasNextPage}
+            onLoadMore={() => fetchNextPage()}
             rowKey={(s) => s.id}
             isLoading={isLoading}
+            isFetchingNextPage={isFetchingNextPage}
             actions={(s) => (
               <div className="flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => openEdit(s)}>Editar</Button>
@@ -151,8 +153,8 @@ export default function SchedulesPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Create / Edit dialog */}
-      <FormDialog
+      {/* Create / Edit sheet */}
+      <FormSheetDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         title={editing ? 'Editar horario' : 'Nuevo horario'}
@@ -160,49 +162,49 @@ export default function SchedulesPage() {
         onSubmit={handleSubmit}
       >
         <div className="grid grid-cols-2 gap-4">
-          <div>
+          <div className="space-y-2">
             <Label>Curso</Label>
             <CatalogSelect client={client} catalogCode="courses" value={pickedCourse} onChange={setPickedCourse} placeholder="Seleccionar curso..." />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>Nivel</Label>
             <CatalogSelect client={client} catalogCode="levels" value={pickedLevel} onChange={setPickedLevel} placeholder="Seleccionar nivel..." />
           </div>
         </div>
-        <div>
+        <div className="space-y-2">
           <Label>Profesor</Label>
           <TeacherPicker client={client} value={pickedTeacherId} onChange={(id) => setPickedTeacherId(id)} />
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div>
+          <div className="space-y-2">
             <Label>Días</Label>
             <CatalogSelect client={client} catalogCode="weekdays" value={pickedWeekdays} onChange={setPickedWeekdays} placeholder="Seleccionar días..." />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="startDate">Fecha inicio</Label>
             <Input id="startDate" name="startDate" type="date" defaultValue={editing?.startDate} required />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="startTime">Hora inicio</Label>
             <Input id="startTime" name="startTime" type="time" defaultValue={editing?.startTime} required />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="endTime">Hora fin</Label>
             <Input id="endTime" name="endTime" type="time" defaultValue={editing?.endTime} required />
           </div>
         </div>
         <div className="grid grid-cols-3 gap-4">
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="price">Precio (S/)</Label>
             <Input id="price" name="price" type="number" step="0.01" defaultValue={editing?.price} required />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="capacity">Capacidad</Label>
             <Input id="capacity" name="capacity" type="number" defaultValue={editing?.capacity} required />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>Estado</Label>
             <Select value={pickedStatus} onValueChange={(v) => setPickedStatus(v as ScheduleStatus)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -210,7 +212,7 @@ export default function SchedulesPage() {
             </Select>
           </div>
         </div>
-      </FormDialog>
+      </FormSheetDialog>
 
       {/* Delete confirmation */}
       <ConfirmDeleteDialog

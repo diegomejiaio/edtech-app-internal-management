@@ -1,6 +1,8 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousWhenLoadingMore } from './query-placeholder';
+import { getNextOffset, keepFirstInfinitePage } from './infinite-list';
 import {
   getStudentPayments,
   getDebtors,
@@ -16,10 +18,24 @@ import {
   type PaginatedResponse,
 } from '@/lib/api';
 
+type InfiniteStudentPaymentListParams = Omit<StudentPaymentListParams, 'offset'>;
+
 export function useStudentPayments(client: ApiClient, params?: StudentPaymentListParams) {
   return useQuery<PaginatedResponse<StudentPayment>>({
     queryKey: ['student-payments', params],
     queryFn: () => getStudentPayments(client, params),
+    placeholderData: keepPreviousWhenLoadingMore<PaginatedResponse<StudentPayment>>(params),
+  });
+}
+
+export function useInfiniteStudentPayments(client: ApiClient, params?: InfiniteStudentPaymentListParams) {
+  const limit = params?.limit ?? 25;
+
+  return useInfiniteQuery({
+    queryKey: ['student-payments', 'infinite', params],
+    queryFn: ({ pageParam }) => getStudentPayments(client, { ...params, limit, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: getNextOffset,
   });
 }
 
@@ -36,6 +52,8 @@ export function useCreateStudentPayment(client: ApiClient) {
   return useMutation({
     mutationFn: (body: StudentPaymentBody) => createStudentPayment(client, body),
     onSuccess: () => {
+      keepFirstInfinitePage(qc, ['student-payments', 'infinite']);
+      keepFirstInfinitePage(qc, ['schedules', 'infinite']);
       qc.invalidateQueries({ queryKey: ['student-payments'] });
       qc.invalidateQueries({ queryKey: ['schedules'] });
     },
@@ -48,6 +66,7 @@ export function useUpdateStudentPayment(client: ApiClient) {
     mutationFn: (vars: { id: string; body: StudentPaymentBody; ifMatch?: string }) =>
       updateStudentPayment(client, vars.id, vars.body, vars.ifMatch),
     onSuccess: () => {
+      keepFirstInfinitePage(qc, ['student-payments', 'infinite']);
       qc.invalidateQueries({ queryKey: ['student-payments'] });
     },
   });
@@ -58,6 +77,8 @@ export function useDeleteStudentPayment(client: ApiClient) {
   return useMutation({
     mutationFn: (id: string) => deleteStudentPayment(client, id),
     onSuccess: () => {
+      keepFirstInfinitePage(qc, ['student-payments', 'infinite']);
+      keepFirstInfinitePage(qc, ['schedules', 'infinite']);
       qc.invalidateQueries({ queryKey: ['student-payments'] });
       qc.invalidateQueries({ queryKey: ['schedules'] });
     },

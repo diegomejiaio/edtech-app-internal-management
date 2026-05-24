@@ -10,7 +10,7 @@ import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { useCatalogs, useAddCatalogItem, useDisableCatalogItem } from '@/hooks';
-import { PageHeader, FormDialog } from '@/components/data';
+import { PageHeader, FormSheetDialog } from '@/components/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -67,18 +67,19 @@ export default function CatalogsPage() {
         ))}
       </div>
 
-      <FormDialog
+      {/* Add item sheet */}
+      <FormSheetDialog
         open={!!addingTo}
         onOpenChange={(open) => !open && setAddingTo(null)}
         title={`Agregar item — ${addingTo}`}
         isLoading={addMutation.isPending}
         onSubmit={handleAddSubmit}
       >
-        <div>
+        <div className="space-y-2">
           <Label htmlFor="value">Valor</Label>
           <Input id="value" name="value" required placeholder="Nombre del item" />
         </div>
-      </FormDialog>
+      </FormSheetDialog>
     </div>
   );
 }

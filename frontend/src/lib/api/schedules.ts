@@ -46,6 +46,8 @@ export interface ScheduleListParams extends ListParams {
   status?: ScheduleStatus;
   teacherId?: string;
   course?: string;
+  startDateFrom?: string;
+  startDateTo?: string;
 }
 
 /** Filters for `GET /schedules/{id}/enrollments`. */

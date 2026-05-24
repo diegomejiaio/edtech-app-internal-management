@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "./input";
+import { Button } from "./button";
 import {
   Select,
   SelectContent,
@@ -112,6 +113,10 @@ interface FilterSelectProps<T extends string> {
   placeholder?: string;
   width?: string;
   className?: string;
+  /** Show loading indicator when true. */
+  loading?: boolean;
+  /** Message shown when options is empty and not loading. */
+  emptyText?: string;
 }
 
 /**
@@ -137,7 +142,13 @@ export function FilterSelect<T extends string>({
   placeholder = "Seleccionar",
   width = "w-[160px]",
   className,
+  loading = false,
+  emptyText = "Sin opciones",
 }: FilterSelectProps<T>) {
+  // Radix Select requires at least one item to open; show loading/empty state
+  const showLoading = loading && options.length === 0;
+  const showEmpty = !loading && options.length === 0 && !allOption;
+
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       {label && (
@@ -148,6 +159,16 @@ export function FilterSelect<T extends string>({
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
+          {showLoading && (
+            <SelectItem value="__loading__" disabled>
+              Cargando...
+            </SelectItem>
+          )}
+          {showEmpty && (
+            <SelectItem value="__empty__" disabled>
+              {emptyText}
+            </SelectItem>
+          )}
           {allOption && (
             <SelectItem value={allOption.value}>{allOption.label}</SelectItem>
           )}
@@ -159,5 +180,72 @@ export function FilterSelect<T extends string>({
         </SelectContent>
       </Select>
     </div>
+  );
+}
+
+// =============================================================================
+// FilterBarActions - Slot for action buttons (Export, Sync, etc.)
+// =============================================================================
+
+interface FilterBarActionsProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+/**
+ * Container for action buttons in FilterBar
+ * Pushes content to the right on desktop
+ * @example
+ * <FilterBar>
+ *   <SearchInput ... />
+ *   <FilterBarActions>
+ *     <Button>Exportar</Button>
+ *   </FilterBarActions>
+ * </FilterBar>
+ */
+export function FilterBarActions({ children, className }: FilterBarActionsProps) {
+  return (
+    <div className={cn("flex items-end gap-2 sm:ml-auto", className)}>
+      {children}
+    </div>
+  );
+}
+
+// =============================================================================
+// ClearFiltersButton - Button to clear all filters
+// =============================================================================
+
+interface ClearFiltersButtonProps {
+  onClear: () => void;
+  hasActiveFilters: boolean;
+  className?: string;
+}
+
+/**
+ * Button to clear all active filters
+ * Only visible when hasActiveFilters is true
+ * @example
+ * <ClearFiltersButton
+ *   onClear={() => { setSearch(''); setStatus('all'); }}
+ *   hasActiveFilters={search !== '' || status !== 'all'}
+ * />
+ */
+export function ClearFiltersButton({
+  onClear,
+  hasActiveFilters,
+  className,
+}: ClearFiltersButtonProps) {
+  if (!hasActiveFilters) return null;
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onClear}
+      className={cn("h-9 px-2 text-muted-foreground hover:text-foreground", className)}
+    >
+      <X className="mr-1 h-4 w-4" />
+      Limpiar
+    </Button>
   );
 }

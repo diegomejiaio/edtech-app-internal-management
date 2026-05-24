@@ -4,11 +4,11 @@
  * Expenses list page — M8.
  */
 
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
-import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '@/hooks';
-import { PageHeader, DataTable, FormDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { flattenInfiniteItems, getInfiniteTotal, useInfiniteExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '@/hooks';
+import { PageHeader, DataTable, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { SchedulePicker, CatalogSelect } from '@/components/pickers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,10 +27,11 @@ const columns: Column<Expense>[] = [
 
 export default function ExpensesPage() {
   const client = useApiClient();
-  const [offset, setOffset] = useState(0);
   const limit = 25;
 
-  const { data, isLoading } = useExpenses(client, { limit, offset });
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteExpenses(client, { limit });
+  const expenses = useMemo(() => flattenInfiniteItems(data), [data]);
+  const total = getInfiniteTotal(data);
   const createMutation = useCreateExpense(client);
   const updateMutation = useUpdateExpense(client);
   const deleteMutation = useDeleteExpense(client);
@@ -80,13 +81,13 @@ export default function ExpensesPage() {
 
       <DataTable
         columns={columns}
-        data={data?.items ?? []}
-        total={data?.total ?? 0}
-        limit={limit}
-        offset={offset}
-        onPageChange={setOffset}
+        data={expenses}
+        total={total}
+        hasNextPage={hasNextPage}
+        onLoadMore={() => fetchNextPage()}
         rowKey={(e) => e.id}
         isLoading={isLoading}
+        isFetchingNextPage={isFetchingNextPage}
         actions={(e) => (
           <div className="flex gap-1">
             <Button variant="ghost" size="sm" onClick={() => openEdit(e)}>Editar</Button>
@@ -95,7 +96,8 @@ export default function ExpensesPage() {
         )}
       />
 
-      <FormDialog
+      {/* Create / Edit sheet */}
+      <FormSheetDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         title={editing ? 'Editar gasto' : 'Nuevo gasto'}
@@ -116,7 +118,7 @@ export default function ExpensesPage() {
           <SchedulePicker client={client} value={pickedScheduleId} onChange={(id) => setPickedScheduleId(id)} name="scheduleId" activeOnly={false} />
         </div>
         <div><Label htmlFor="notes">Notas</Label><Input id="notes" name="notes" defaultValue={editing?.notes ?? ''} /></div>
-      </FormDialog>
+      </FormSheetDialog>
 
       <ConfirmDeleteDialog
         open={!!deleteTarget}

@@ -4,11 +4,11 @@
  * Teacher Payments list page — M7.
  */
 
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
-import { useTeacherPayments, useCreateTeacherPayment, useUpdateTeacherPayment, useDeleteTeacherPayment } from '@/hooks';
-import { PageHeader, DataTable, FormDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { flattenInfiniteItems, getInfiniteTotal, useInfiniteTeacherPayments, useCreateTeacherPayment, useUpdateTeacherPayment, useDeleteTeacherPayment } from '@/hooks';
+import { PageHeader, DataTable, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { TeacherPicker, CatalogSelect } from '@/components/pickers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,10 +27,11 @@ const columns: Column<TeacherPayment>[] = [
 
 export default function TeacherPaymentsPage() {
   const client = useApiClient();
-  const [offset, setOffset] = useState(0);
   const limit = 25;
 
-  const { data, isLoading } = useTeacherPayments(client, { limit, offset });
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteTeacherPayments(client, { limit });
+  const teacherPayments = useMemo(() => flattenInfiniteItems(data), [data]);
+  const total = getInfiniteTotal(data);
   const createMutation = useCreateTeacherPayment(client);
   const updateMutation = useUpdateTeacherPayment(client);
   const deleteMutation = useDeleteTeacherPayment(client);
@@ -78,13 +79,13 @@ export default function TeacherPaymentsPage() {
 
       <DataTable
         columns={columns}
-        data={data?.items ?? []}
-        total={data?.total ?? 0}
-        limit={limit}
-        offset={offset}
-        onPageChange={setOffset}
+        data={teacherPayments}
+        total={total}
+        hasNextPage={hasNextPage}
+        onLoadMore={() => fetchNextPage()}
         rowKey={(p) => p.id}
         isLoading={isLoading}
+        isFetchingNextPage={isFetchingNextPage}
         actions={(p) => (
           <div className="flex gap-1">
             <Button variant="ghost" size="sm" onClick={() => openEdit(p)}>Editar</Button>
@@ -93,7 +94,8 @@ export default function TeacherPaymentsPage() {
         )}
       />
 
-      <FormDialog
+      {/* Create / Edit sheet */}
+      <FormSheetDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         title={editing ? 'Editar pago' : 'Nuevo pago profesor'}
@@ -113,7 +115,7 @@ export default function TeacherPaymentsPage() {
           <div><Label>Medio de pago</Label><CatalogSelect client={client} catalogCode="paymentMethods" value={pickedPaymentMethod} onChange={setPickedPaymentMethod} placeholder="Seleccionar medio..." /></div>
         </div>
         <div><Label htmlFor="notes">Notas</Label><Input id="notes" name="notes" defaultValue={editing?.notes ?? ''} /></div>
-      </FormDialog>
+      </FormSheetDialog>
 
       <ConfirmDeleteDialog
         open={!!deleteTarget}

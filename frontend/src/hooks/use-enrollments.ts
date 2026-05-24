@@ -1,6 +1,8 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousWhenLoadingMore } from './query-placeholder';
+import { getNextOffset, keepFirstInfinitePage } from './infinite-list';
 import {
   getEnrollments,
   getEnrollment,
@@ -14,10 +16,24 @@ import {
   type PaginatedResponse,
 } from '@/lib/api';
 
+type InfiniteEnrollmentListParams = Omit<EnrollmentListParams, 'offset'>;
+
 export function useEnrollments(client: ApiClient, params?: EnrollmentListParams) {
   return useQuery<PaginatedResponse<Enrollment>>({
     queryKey: ['enrollments', params],
     queryFn: () => getEnrollments(client, params),
+    placeholderData: keepPreviousWhenLoadingMore<PaginatedResponse<Enrollment>>(params),
+  });
+}
+
+export function useInfiniteEnrollments(client: ApiClient, params?: InfiniteEnrollmentListParams) {
+  const limit = params?.limit ?? 25;
+
+  return useInfiniteQuery({
+    queryKey: ['enrollments', 'infinite', params],
+    queryFn: ({ pageParam }) => getEnrollments(client, { ...params, limit, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: getNextOffset,
   });
 }
 
@@ -34,6 +50,8 @@ export function useCreateEnrollment(client: ApiClient) {
   return useMutation({
     mutationFn: (body: EnrollmentBody) => createEnrollment(client, body),
     onSuccess: () => {
+      keepFirstInfinitePage(qc, ['enrollments', 'infinite']);
+      keepFirstInfinitePage(qc, ['schedules', 'infinite']);
       qc.invalidateQueries({ queryKey: ['enrollments'] });
       qc.invalidateQueries({ queryKey: ['schedules'] });
     },
@@ -46,6 +64,8 @@ export function useUpdateEnrollment(client: ApiClient) {
     mutationFn: (vars: { id: string; body: EnrollmentBody; ifMatch?: string }) =>
       updateEnrollment(client, vars.id, vars.body, vars.ifMatch),
     onSuccess: (_data, vars) => {
+      keepFirstInfinitePage(qc, ['enrollments', 'infinite']);
+      keepFirstInfinitePage(qc, ['schedules', 'infinite']);
       qc.invalidateQueries({ queryKey: ['enrollments'] });
       qc.invalidateQueries({ queryKey: ['enrollments', vars.id] });
       qc.invalidateQueries({ queryKey: ['schedules'] });
@@ -58,6 +78,8 @@ export function useDeleteEnrollment(client: ApiClient) {
   return useMutation({
     mutationFn: (id: string) => deleteEnrollment(client, id),
     onSuccess: () => {
+      keepFirstInfinitePage(qc, ['enrollments', 'infinite']);
+      keepFirstInfinitePage(qc, ['schedules', 'infinite']);
       qc.invalidateQueries({ queryKey: ['enrollments'] });
       qc.invalidateQueries({ queryKey: ['schedules'] });
     },

@@ -112,5 +112,5 @@ export const getDebtors = (
   params: DebtorParams,
 ): Promise<Debtor[]> =>
   client.get<Debtor[]>('/student-payments/debtors', {
-    params: params as Record<string, string>,
+    params: params as unknown as Record<string, string>,
   });

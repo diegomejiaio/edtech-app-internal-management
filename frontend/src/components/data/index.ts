@@ -4,4 +4,5 @@ export { PageHeader } from './page-header';
 export { SearchBar } from './search-bar';
 export { ConfirmDeleteDialog } from './confirm-delete-dialog';
 export { FormDialog } from './form-dialog';
+export { FormSheetDialog } from './form-sheet-dialog';
 export { ErrorBoundary } from './error-boundary';
