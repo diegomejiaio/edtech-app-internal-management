@@ -39,4 +39,11 @@ public sealed class CatalogItem
 
     [JsonPropertyName("active")]
     public bool Active { get; set; } = true;
+
+    /// <summary>
+    /// Optional machine-readable metadata for catalog-specific behavior.
+    /// Example: course duration by level for generated schedule sessions.
+    /// </summary>
+    [JsonPropertyName("metadata")]
+    public Dictionary<string, object?>? Metadata { get; set; }
 }

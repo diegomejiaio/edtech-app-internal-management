@@ -38,6 +38,7 @@ internal sealed class CatalogSeeder
                     Value = value,
                     Order = idx + 1,
                     Active = true,
+                    Metadata = c.Code == "courses" ? CourseMetadata() : null,
                 })],
             };
             await _repo.CreateAsync(catalog, ct);
@@ -47,4 +48,14 @@ internal sealed class CatalogSeeder
 
         return created;
     }
+
+    private static Dictionary<string, object?> CourseMetadata() => new()
+    {
+        ["durationHoursByLevel"] = new Dictionary<string, object?>
+        {
+            ["Principiante"] = 16,
+            ["Intermedio"] = 24,
+            ["Profesional"] = 32,
+        },
+    };
 }

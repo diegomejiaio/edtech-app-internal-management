@@ -51,6 +51,12 @@ public sealed record ScheduleResponse
     [JsonPropertyName("startDate")]
     public DateOnly StartDate { get; init; }
 
+    [JsonPropertyName("courseDurationHours")]
+    public decimal? CourseDurationHours { get; init; }
+
+    [JsonPropertyName("projectedEndDate")]
+    public DateOnly? ProjectedEndDate { get; init; }
+
     [JsonPropertyName("active")]
     public bool Active { get; init; }
 
@@ -59,6 +65,9 @@ public sealed record ScheduleResponse
 
     [JsonPropertyName("occupancyPct")]
     public decimal OccupancyPct { get; init; }
+
+    [JsonPropertyName("sessionCount")]
+    public int SessionCount { get; init; }
 
     [JsonPropertyName("createdAt")]
     public string CreatedAt { get; init; } = default!;
@@ -97,11 +106,14 @@ public sealed record ScheduleResponse
         Capacity = s.Capacity,
         Status = s.Status,
         StartDate = s.StartDate,
+        CourseDurationHours = s.CourseDurationHours,
+        ProjectedEndDate = s.ProjectedEndDate,
         Active = s.Active,
         EnrolledActiveCount = enrolledActiveCount,
         OccupancyPct = s.Capacity > 0
             ? Math.Round((decimal)enrolledActiveCount / s.Capacity, 4)
             : 0m,
+        SessionCount = s.Sessions.Count(session => session.Active),
         CreatedAt = s.CreatedAt,
         CreatedBy = s.CreatedBy,
         UpdatedAt = s.UpdatedAt,

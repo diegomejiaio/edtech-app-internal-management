@@ -42,4 +42,12 @@ public sealed class Expense : BaseEntity
 
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
+
+    /// <summary>
+    /// Server-computed accent-folded + lowercased projection of
+    /// <c>description + category + scheduleName</c>. Used for
+    /// <c>CONTAINS</c> search; never set by clients.
+    /// </summary>
+    [JsonPropertyName("searchText")]
+    public string? SearchText { get; set; }
 }

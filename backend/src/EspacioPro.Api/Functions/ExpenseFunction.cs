@@ -46,6 +46,7 @@ public sealed class ExpenseFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "v1/expenses")] HttpRequest req,
         CancellationToken ct)
     {
+        var search = req.Query["search"].FirstOrDefault();
         var category = req.Query["category"].FirstOrDefault();
         var scheduleId = req.Query["scheduleId"].FirstOrDefault();
         var includeInactive = ParseBool(req.Query["includeInactive"].FirstOrDefault());
@@ -57,7 +58,7 @@ public sealed class ExpenseFunction
         if (!TryParseDate(req.Query["to"].FirstOrDefault(), out var to))
             return req.ValidationError("to", "to must be ISO date YYYY-MM-DD.");
 
-        var (items, total) = await _repo.SearchAsync(from, to, category, scheduleId, includeInactive, limit, offset, ct);
+        var (items, total) = await _repo.SearchAsync(search, from, to, category, scheduleId, includeInactive, limit, offset, ct);
         return new OkObjectResult(new Paginated<Expense>(items, total, limit, offset));
     }
 

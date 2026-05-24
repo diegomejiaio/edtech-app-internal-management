@@ -50,7 +50,7 @@ public sealed class StudentPaymentRepository : CosmosRepository<StudentPayment>
         var countDef = new QueryDefinition($"SELECT VALUE COUNT(1) FROM c WHERE {where}")
             .WithParameter("@type", TypeDiscriminator);
         var pageDef = new QueryDefinition(
-            $"SELECT * FROM c WHERE {where} ORDER BY c.updatedAt DESC, c.createdAt DESC OFFSET @offset LIMIT @limit")
+            $"SELECT * FROM c WHERE {where} ORDER BY c.date DESC OFFSET @offset LIMIT @limit")
             .WithParameter("@type", TypeDiscriminator)
             .WithParameter("@offset", offset)
             .WithParameter("@limit", limit);

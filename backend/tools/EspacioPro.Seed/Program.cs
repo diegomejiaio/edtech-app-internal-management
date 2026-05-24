@@ -13,12 +13,13 @@ using Microsoft.Extensions.Options;
 
 // -------- Argument parsing --------
 // Supports: --excel <path>  --reset  --yes
-//           --migrate-enums  --apply
+//           --migrate-enums  --backfill-sessions  --apply
 //           --COSMOS_ACCOUNT_ENDPOINT=<url>  --COSMOS_DATABASE_NAME=<db>
 var argList = args.ToList();
 var reset = argList.Remove("--reset");
 var yes = argList.Remove("--yes") | argList.Remove("-y");
 var migrateEnums = argList.Remove("--migrate-enums");
+var backfillSessions = argList.Remove("--backfill-sessions");
 var apply = argList.Remove("--apply");
 
 string? excelPath = null;
@@ -48,6 +49,7 @@ var config = new ConfigurationBuilder()
 var endpoint = config["COSMOS_ACCOUNT_ENDPOINT"];
 var database = config["COSMOS_DATABASE_NAME"];
 var connectionString = config["COSMOS_CONNECTION_STRING"];
+var connectionMode = config["COSMOS_CONNECTION_MODE"];
 
 excelPath ??= config["EXCEL_PATH"]
     ?? Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "tmp", "ESPACIO_PRO_SYSTEM.xlsx");
@@ -70,7 +72,7 @@ if (string.IsNullOrWhiteSpace(database))
 }
 
 excelPath = Path.GetFullPath(excelPath);
-if (!migrateEnums && !File.Exists(excelPath))
+if (!migrateEnums && !backfillSessions && !File.Exists(excelPath))
 {
     Console.Error.WriteLine($"ERROR: Excel file not found: {excelPath}");
     Console.Error.WriteLine("Pass --excel <path> or set EXCEL_PATH.");
@@ -91,6 +93,7 @@ services.Configure<CosmosOptions>(opts =>
     opts.Endpoint = endpoint ?? string.Empty;
     opts.Database = database!;
     opts.ConnectionString = connectionString;
+    opts.ConnectionMode = connectionMode;
 });
 
 services.AddSingleton(sp =>
@@ -104,6 +107,7 @@ services.AddSingleton(_ => new ExcelReader(excelPath));
 services.AddSingleton<SeedContext>();
 services.AddSingleton<SeedResetter>();
 services.AddSingleton<EnumWireFormatMigrator>();
+services.AddSingleton<ScheduleSessionBackfiller>();
 
 // Repositories (one per entity).
 services.AddScoped<CatalogRepository>();
@@ -131,10 +135,11 @@ logger.LogInformation("  config   : {Source}", localSettingsPath ?? "(env/CLI on
 logger.LogInformation("  auth     : {Mode}", hasConnectionString ? "connection string" : "DefaultAzureCredential (az login)");
 logger.LogInformation("  endpoint : {Endpoint}", hasEndpoint ? endpoint : "(via connection string)");
 logger.LogInformation("  database : {Db}", database);
-if (!migrateEnums)
+logger.LogInformation("  connection: {Mode}", string.IsNullOrWhiteSpace(connectionMode) ? "Direct" : connectionMode);
+if (!migrateEnums && !backfillSessions)
     logger.LogInformation("  excel    : {Path}", excelPath);
 logger.LogInformation("  reset    : {Reset}", reset);
-logger.LogInformation("  mode     : {Mode}", migrateEnums ? "enum migration" : "seed");
+logger.LogInformation("  mode     : {Mode}", migrateEnums ? "enum migration" : backfillSessions ? "session backfill" : "seed");
 
 try
 {
@@ -148,6 +153,16 @@ try
             result.Updated);
         if (!apply && result.Updated > 0)
             logger.LogWarning("Dry-run only. Re-run with --migrate-enums --apply to persist these changes.");
+        return 0;
+    }
+
+    if (backfillSessions)
+    {
+        var backfiller = provider.GetRequiredService<ScheduleSessionBackfiller>();
+        var result = await backfiller.RunAsync();
+        logger.LogInformation("Session backfill complete. Scanned={Scanned} Updated={Updated}",
+            result.Scanned,
+            result.Updated);
         return 0;
     }
 

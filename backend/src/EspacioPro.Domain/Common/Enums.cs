@@ -32,3 +32,24 @@ public enum ScheduleStatus
     Finished,
     Cancelled
 }
+
+/// <summary>
+/// Generated schedule session status. Wire format = camelCase string.
+/// </summary>
+public enum ScheduleSessionStatus
+{
+    Scheduled,
+    Completed,
+    Cancelled
+}
+
+/// <summary>
+/// Per-student attendance status inside a generated schedule session.
+/// </summary>
+public enum AttendanceStatus
+{
+    Pending,
+    Present,
+    Absent,
+    Late
+}

@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 
@@ -285,7 +286,14 @@ internal sealed class ExcelReader : IDisposable
     {
         if (cell.IsEmpty()) return null;
         if (cell.DataType == XLDataType.DateTime) return cell.GetDateTime();
-        if (DateTime.TryParse(cell.GetString(), out var dt)) return dt;
+        var value = cell.GetString().Trim();
+        var formats = new[] { "d/M/yyyy", "dd/MM/yyyy", "d/M/yy", "dd/MM/yy", "yyyy-MM-dd" };
+        if (DateTime.TryParseExact(value, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var exact))
+            return exact;
+        if (DateTime.TryParse(value, CultureInfo.GetCultureInfo("es-PE"), DateTimeStyles.None, out var localized))
+            return localized;
+        if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+            return dt;
         return null;
     }
 

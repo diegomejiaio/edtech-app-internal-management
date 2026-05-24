@@ -24,12 +24,22 @@ public sealed class ScheduleRepository : CosmosRepository<Schedule>
         ILogger<ScheduleRepository> logger)
         : base(cosmosClient, options, currentUser, logger) { }
 
+    /// <inheritdoc />
+    protected override void OnBeforeWrite(Schedule entity) =>
+        entity.SearchText = TextNormalizer.Compose(
+            entity.Course,
+            entity.Level,
+            entity.TeacherName,
+            entity.Weekdays);
+
     /// <summary>
-    /// Lists schedules with optional <paramref name="status"/>, <paramref name="teacherId"/>,
-    /// <paramref name="course"/>, and start-date range filters, plus pagination.
-    /// Per <c>docs/04-api-design.md</c> §5.4.
+    /// Lists schedules with optional free-text <paramref name="search"/> (accent-insensitive
+    /// over <c>course + level + teacherName + weekdays</c>), <paramref name="status"/>,
+    /// <paramref name="teacherId"/>, <paramref name="course"/>, and start-date range filters,
+    /// plus pagination. Per <c>docs/04-api-design.md</c> §5.4.
     /// </summary>
     public async Task<(IReadOnlyList<Schedule> Items, int Total)> SearchAsync(
+        string? search,
         ScheduleStatus? status,
         string? teacherId,
         string? course,
@@ -41,6 +51,7 @@ public sealed class ScheduleRepository : CosmosRepository<Schedule>
         CancellationToken ct = default)
     {
         var where = "c.type = @type" + (includeInactive ? "" : " AND c.active = true");
+        if (!string.IsNullOrWhiteSpace(search)) where += " AND CONTAINS(c.searchText, @search)";
         if (status is not null) where += " AND c.status = @status";
         if (!string.IsNullOrWhiteSpace(teacherId)) where += " AND c.teacherId = @teacherId";
         if (!string.IsNullOrWhiteSpace(course)) where += " AND c.course = @course";
@@ -49,13 +60,19 @@ public sealed class ScheduleRepository : CosmosRepository<Schedule>
 
         var countDef = new QueryDefinition($"SELECT VALUE COUNT(1) FROM c WHERE {where}");
         var pageDef = new QueryDefinition(
-            $"SELECT * FROM c WHERE {where} ORDER BY c.updatedAt DESC, c.createdAt DESC OFFSET @offset LIMIT @limit");
+            $"SELECT * FROM c WHERE {where} ORDER BY c.startDate DESC OFFSET @offset LIMIT @limit");
 
         countDef.WithParameter("@type", TypeDiscriminator);
         pageDef.WithParameter("@type", TypeDiscriminator)
                .WithParameter("@offset", offset)
                .WithParameter("@limit", limit);
 
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalized = TextNormalizer.Normalize(search);
+            countDef.WithParameter("@search", normalized);
+            pageDef.WithParameter("@search", normalized);
+        }
         if (status is not null)
         {
             var statusWire = EnumWire.ToCamel(status.Value);

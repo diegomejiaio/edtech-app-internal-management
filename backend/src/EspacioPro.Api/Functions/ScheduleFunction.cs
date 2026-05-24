@@ -1,7 +1,9 @@
 using System.Globalization;
 using EspacioPro.Api.Attributes;
 using EspacioPro.Api.Common;
+using EspacioPro.Application.Abstractions;
 using EspacioPro.Application.Common;
+using EspacioPro.Application.Schedules;
 using EspacioPro.Domain.Common;
 using EspacioPro.Domain.Entities;
 using EspacioPro.Infrastructure.Cosmos.Repositories;
@@ -22,22 +24,28 @@ public sealed class ScheduleFunction
     private const int MaxLimit = 100;
 
     private readonly ScheduleRepository _repo;
+    private readonly CatalogRepository _catalogRepo;
     private readonly TeacherRepository _teacherRepo;
     private readonly EnrollmentRepository _enrollmentRepo;
     private readonly StudentPaymentRepository _paymentRepo;
+    private readonly ICurrentUser _currentUser;
     private readonly ILogger<ScheduleFunction> _logger;
 
     public ScheduleFunction(
         ScheduleRepository repo,
+        CatalogRepository catalogRepo,
         TeacherRepository teacherRepo,
         EnrollmentRepository enrollmentRepo,
         StudentPaymentRepository paymentRepo,
+        ICurrentUser currentUser,
         ILogger<ScheduleFunction> logger)
     {
         _repo = repo;
+        _catalogRepo = catalogRepo;
         _teacherRepo = teacherRepo;
         _enrollmentRepo = enrollmentRepo;
         _paymentRepo = paymentRepo;
+        _currentUser = currentUser;
         _logger = logger;
     }
 
@@ -53,6 +61,7 @@ public sealed class ScheduleFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "v1/schedules")] HttpRequest req,
         CancellationToken ct)
     {
+        var search = req.Query["search"].FirstOrDefault();
         var statusRaw = req.Query["status"].FirstOrDefault();
         var teacherId = req.Query["teacherId"].FirstOrDefault();
         var course = req.Query["course"].FirstOrDefault();
@@ -74,6 +83,7 @@ public sealed class ScheduleFunction
         }
 
         var (items, total) = await _repo.SearchAsync(
+            search,
             status,
             teacherId,
             course,
@@ -105,6 +115,7 @@ public sealed class ScheduleFunction
         var schedule = await _repo.GetByIdAsync(id, ct);
         if (schedule is null)
             return req.NotFound($"Schedule '{id}' not found.");
+        await EnsureAttendanceForActiveEnrollmentsAsync(schedule, ct);
 
         var count = await _enrollmentRepo.CountActiveByScheduleAsync(id, ct);
         return new OkObjectResult(ScheduleResponse.From(schedule, count));
@@ -125,11 +136,17 @@ public sealed class ScheduleFunction
         if (errors.Count > 0)
             return req.ValidationError(errors);
 
-        var teacher = await _teacherRepo.GetByIdAsync(body.TeacherId!, ct);
-        if (teacher is null || !teacher.Active)
-            return req.ValidationError("teacherId", $"Teacher '{body.TeacherId}' does not exist or is inactive.");
+        var context = await LoadWriteContextAsync(body, ct);
+        if (context.Errors.Count > 0)
+            return req.ValidationError(context.Errors);
 
-        var schedule = MapToEntity(body, new Schedule(), teacher);
+        var schedule = MapToEntity(body, new Schedule(), context.Teacher!);
+        schedule.CourseDurationHours = context.CourseDurationHours;
+        schedule.Sessions = [.. ScheduleSessionGenerator.Generate(
+            schedule,
+            context.CourseDurationHours,
+            _currentUser.GetAuditUser())];
+        ScheduleSessionGenerator.ApplyProjection(schedule);
         var created = await _repo.CreateAsync(schedule, ct);
 
         return req.Created(ScheduleResponse.From(created, 0), $"v1/schedules/{created.Id}");
@@ -155,11 +172,28 @@ public sealed class ScheduleFunction
         if (errors.Count > 0)
             return req.ValidationError(errors);
 
-        var teacher = await _teacherRepo.GetByIdAsync(body.TeacherId!, ct);
-        if (teacher is null || !teacher.Active)
-            return req.ValidationError("teacherId", $"Teacher '{body.TeacherId}' does not exist or is inactive.");
+        var context = await LoadWriteContextAsync(body, ct);
+        if (context.Errors.Count > 0)
+            return req.ValidationError(context.Errors);
 
-        MapToEntity(body, existing, teacher);
+        var previous = CloneScheduleForRegenerationCheck(existing);
+        MapToEntity(body, existing, context.Teacher!);
+        existing.CourseDurationHours = context.CourseDurationHours;
+        if (ScheduleSessionGenerator.RequiresRegeneration(previous, existing))
+        {
+            try
+            {
+                existing.Sessions = [.. ScheduleSessionGenerator.RegeneratePreservingFinalized(
+                    existing,
+                    context.CourseDurationHours,
+                    _currentUser.GetAuditUser())];
+            }
+            catch (ScheduleSessionRegenerationException ex)
+            {
+                return req.Conflict(ex.Message);
+            }
+        }
+        ScheduleSessionGenerator.ApplyProjection(existing);
 
         // Honor If-Match for optimistic concurrency (docs §17).
         var ifMatch = req.Headers.IfMatch.FirstOrDefault();
@@ -175,6 +209,134 @@ public sealed class ScheduleFunction
         catch (Microsoft.Azure.Cosmos.CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
         {
             return req.PreconditionFailed($"Schedule '{id}' was modified by another request.");
+        }
+    }
+
+    /// <summary>GET /api/v1/schedules/{id}/sessions — generated sessions with in-memory bounded pagination.</summary>
+    [Function("ScheduleSessionList")]
+    [RequireRole("admin")]
+    public async Task<IActionResult> ListSessions(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "v1/schedules/{id}/sessions")] HttpRequest req,
+        string id,
+        CancellationToken ct)
+    {
+        var schedule = await _repo.GetByIdAsync(id, ct);
+        if (schedule is null)
+            return req.NotFound($"Schedule '{id}' not found.");
+
+        if (!TryParseDate(req.Query["from"].FirstOrDefault(), out var from))
+            return req.ValidationError("from", "from must be ISO date YYYY-MM-DD.");
+        if (!TryParseDate(req.Query["to"].FirstOrDefault(), out var to))
+            return req.ValidationError("to", "to must be ISO date YYYY-MM-DD.");
+
+        ScheduleSessionStatus? status = null;
+        var statusRaw = req.Query["status"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(statusRaw))
+        {
+            if (!Enum.TryParse<ScheduleSessionStatus>(statusRaw, ignoreCase: true, out var parsed))
+                return req.ValidationError("status", "status must be one of: scheduled, completed, cancelled.");
+            status = parsed;
+        }
+
+        var limit = ClampLimit(req.Query["limit"].FirstOrDefault());
+        var offset = Math.Max(0, ParseInt(req.Query["offset"].FirstOrDefault(), 0));
+        var filtered = schedule.Sessions
+            .Where(s => s.Active)
+            .Where(s => from is null || s.Date >= from.Value)
+            .Where(s => to is null || s.Date <= to.Value)
+            .Where(s => status is null || s.Status == status)
+            .OrderBy(s => s.Date)
+            .ThenBy(s => s.StartTime)
+            .ThenBy(s => s.SequenceNumber)
+            .ToArray();
+
+        return new OkObjectResult(new Paginated<ScheduleSession>(
+            filtered.Skip(offset).Take(limit).ToArray(),
+            filtered.Length,
+            limit,
+            offset));
+    }
+
+    /// <summary>GET /api/v1/schedules/{scheduleId}/sessions/{sessionId}.</summary>
+    [Function("ScheduleSessionGetById")]
+    [RequireRole("admin")]
+    public async Task<IActionResult> GetSessionById(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "v1/schedules/{scheduleId}/sessions/{sessionId}")] HttpRequest req,
+        string scheduleId,
+        string sessionId,
+        CancellationToken ct)
+    {
+        var schedule = await _repo.GetByIdAsync(scheduleId, ct);
+        if (schedule is null)
+            return req.NotFound($"Schedule '{scheduleId}' not found.");
+        await EnsureAttendanceForActiveEnrollmentsAsync(schedule, ct);
+
+        var session = schedule.Sessions.FirstOrDefault(s => s.Id == sessionId && s.Active);
+        if (session is null)
+            return req.NotFound($"Session '{sessionId}' not found.");
+
+        return new OkObjectResult(session);
+    }
+
+    /// <summary>PUT /api/v1/schedules/{scheduleId}/sessions/{sessionId} — update status/attendance with If-Match.</summary>
+    [Function("ScheduleSessionUpdate")]
+    [RequireRole("admin")]
+    public async Task<IActionResult> UpdateSession(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "v1/schedules/{scheduleId}/sessions/{sessionId}")] HttpRequest req,
+        string scheduleId,
+        string sessionId,
+        CancellationToken ct)
+    {
+        var schedule = await _repo.GetByIdAsync(scheduleId, ct);
+        if (schedule is null)
+            return req.NotFound($"Schedule '{scheduleId}' not found.");
+
+        var body = await req.ReadFromJsonAsync<ScheduleSessionWriteRequest>(ct);
+        if (body is null)
+            return req.ValidationError("body", "Request body is required.");
+
+        var session = schedule.Sessions.FirstOrDefault(s => s.Id == sessionId && s.Active);
+        if (session is null)
+            return req.NotFound($"Session '{sessionId}' not found.");
+        await EnsureAttendanceForActiveEnrollmentsAsync(schedule, ct);
+
+        var auditUser = _currentUser.GetAuditUser();
+        var now = DateTime.UtcNow.ToString("o");
+        if (body.Status is { } status)
+            session.Status = status;
+        session.UpdatedAt = now;
+        session.UpdatedBy = auditUser;
+        if (body.Attendance is not null)
+        {
+            var byStudentId = body.Attendance.ToDictionary(a => a.StudentId.Trim(), StringComparer.Ordinal);
+            foreach (var entry in session.Attendance)
+            {
+                if (!byStudentId.TryGetValue(entry.StudentId, out var update))
+                    continue;
+                entry.Status = update.Status;
+                entry.Notes = string.IsNullOrWhiteSpace(update.Notes) ? null : update.Notes.Trim();
+                entry.UpdatedAt = now;
+                entry.UpdatedBy = auditUser;
+            }
+        }
+
+        var ifMatch = req.Headers.IfMatch.FirstOrDefault();
+        if (!string.IsNullOrEmpty(ifMatch))
+            schedule.ETag = ifMatch;
+
+        try
+        {
+            var updated = await _repo.UpdateAsync(schedule, ct);
+            var updatedSession = updated.Sessions.First(s => s.Id == sessionId);
+            return new OkObjectResult(new ScheduleSessionUpdateResponse
+            {
+                Session = updatedSession,
+                ScheduleETag = updated.ETag,
+            });
+        }
+        catch (Microsoft.Azure.Cosmos.CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
+        {
+            return req.PreconditionFailed($"Schedule '{scheduleId}' was modified by another request.");
         }
     }
 
@@ -302,6 +464,8 @@ public sealed class ScheduleFunction
             errors["teacherId"] = ["The teacherId field is required."];
         if (string.IsNullOrWhiteSpace(req.Weekdays))
             errors["weekdays"] = ["The weekdays field is required."];
+        else if (!ScheduleWeekdayParser.CanonicalCodes.Contains(req.Weekdays.Trim()))
+            errors["weekdays"] = [$"weekdays must be one of: {ScheduleWeekdayParser.CanonicalListForMessage()}."];
         if (req.Capacity <= 0)
             errors["capacity"] = ["Capacity must be greater than zero."];
         if (req.Price < 0)
@@ -311,6 +475,48 @@ public sealed class ScheduleFunction
 
         return errors;
     }
+
+    private async Task<ScheduleWriteContext> LoadWriteContextAsync(ScheduleWriteRequest body, CancellationToken ct)
+    {
+        var errors = new Dictionary<string, string[]>();
+
+        var teacher = await _teacherRepo.GetByIdAsync(body.TeacherId!, ct);
+        if (teacher is null || !teacher.Active)
+            errors["teacherId"] = [$"Teacher '{body.TeacherId}' does not exist or is inactive."];
+
+        var courses = await _catalogRepo.GetByCodeAsync("courses", ct);
+        var levels = await _catalogRepo.GetByCodeAsync("levels", ct);
+        var weekdays = await _catalogRepo.GetByCodeAsync("weekdays", ct);
+
+        if (courses is null || !courses.Items.Any(i => i.Active && i.Value.Equals(body.Course, StringComparison.OrdinalIgnoreCase)))
+            errors["course"] = [$"Course '{body.Course}' does not exist or is inactive."];
+        if (levels is null || !levels.Items.Any(i => i.Active && i.Value.Equals(body.Level, StringComparison.OrdinalIgnoreCase)))
+            errors["level"] = [$"Level '{body.Level}' does not exist or is inactive."];
+        if (weekdays is null || !weekdays.Items.Any(i => i.Active && i.Value.Equals(body.Weekdays, StringComparison.Ordinal)))
+            errors["weekdays"] = [$"Weekdays '{body.Weekdays}' does not exist or is inactive."];
+
+        var durationHours = 0m;
+        if (courses is not null
+            && !string.IsNullOrWhiteSpace(body.Course)
+            && !string.IsNullOrWhiteSpace(body.Level)
+            && !ScheduleDurationResolver.TryResolve(courses, body.Course, body.Level, out durationHours))
+        {
+            errors["courseDurationHours"] = [$"Duration metadata is missing for course '{body.Course}' and level '{body.Level}'."];
+        }
+
+        return new ScheduleWriteContext(teacher, durationHours, errors);
+    }
+
+    private static Schedule CloneScheduleForRegenerationCheck(Schedule schedule) => new()
+    {
+        Course = schedule.Course,
+        Level = schedule.Level,
+        Weekdays = schedule.Weekdays,
+        StartDate = schedule.StartDate,
+        StartTime = schedule.StartTime,
+        EndTime = schedule.EndTime,
+        Sessions = schedule.Sessions,
+    };
 
     private static Schedule MapToEntity(ScheduleWriteRequest req, Schedule target, Teacher teacher)
     {
@@ -330,6 +536,48 @@ public sealed class ScheduleFunction
         return target;
     }
 
+    private async Task EnsureAttendanceForActiveEnrollmentsAsync(Schedule schedule, CancellationToken ct)
+    {
+        var (enrollments, _) = await _enrollmentRepo.SearchAsync(
+            studentId: null,
+            scheduleId: schedule.Id,
+            status: EnrollmentStatus.Active,
+            includeInactive: false,
+            limit: 500,
+            offset: 0,
+            ct);
+
+        var activeByStudentId = enrollments
+            .GroupBy(e => e.StudentId, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+
+        foreach (var session in schedule.Sessions.Where(s => s.Active))
+        {
+            session.Attendance = [.. session.Attendance
+                .Where(a => activeByStudentId.ContainsKey(a.StudentId))
+                .GroupBy(a => a.StudentId, StringComparer.Ordinal)
+                .Select(g => g.First())];
+
+            var existing = session.Attendance
+                .Select(a => a.StudentId)
+                .ToHashSet(StringComparer.Ordinal);
+
+            foreach (var enrollment in activeByStudentId.Values.OrderBy(e => e.StudentName, StringComparer.OrdinalIgnoreCase))
+            {
+                if (existing.Contains(enrollment.StudentId))
+                    continue;
+
+                session.Attendance.Add(new ScheduleAttendance
+                {
+                    EnrollmentId = enrollment.Id,
+                    StudentId = enrollment.StudentId,
+                    StudentName = enrollment.StudentName,
+                    Status = AttendanceStatus.Pending,
+                });
+            }
+        }
+    }
+
     private sealed record ScheduleWriteRequest(
         string? Course,
         string? Level,
@@ -342,4 +590,18 @@ public sealed class ScheduleFunction
         ScheduleStatus Status,
         DateOnly StartDate,
         bool? Active);
+
+    private sealed record ScheduleWriteContext(
+        Teacher? Teacher,
+        decimal CourseDurationHours,
+        Dictionary<string, string[]> Errors);
+
+    private sealed record ScheduleSessionWriteRequest(
+        ScheduleSessionStatus? Status,
+        List<ScheduleAttendanceWriteRequest>? Attendance);
+
+    private sealed record ScheduleAttendanceWriteRequest(
+        string StudentId,
+        AttendanceStatus Status,
+        string? Notes);
 }

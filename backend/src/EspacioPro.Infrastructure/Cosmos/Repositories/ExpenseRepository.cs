@@ -23,11 +23,21 @@ public sealed class ExpenseRepository : CosmosRepository<Expense>
         ILogger<ExpenseRepository> logger)
         : base(cosmosClient, options, currentUser, logger) { }
 
+    /// <inheritdoc />
+    protected override void OnBeforeWrite(Expense entity) =>
+        entity.SearchText = TextNormalizer.Compose(
+            entity.Description,
+            entity.Category,
+            entity.ScheduleName);
+
     /// <summary>
-    /// Lists expenses with optional date-range, <paramref name="category"/>, and
-    /// <paramref name="scheduleId"/> filters, plus pagination. Per <c>docs/04-api-design.md</c> §5.8.
+    /// Lists expenses with optional free-text <paramref name="search"/> (accent-insensitive
+    /// over <c>description + category + scheduleName</c>), date-range,
+    /// <paramref name="category"/>, and <paramref name="scheduleId"/> filters, plus
+    /// pagination. Per <c>docs/04-api-design.md</c> §5.8.
     /// </summary>
     public async Task<(IReadOnlyList<Expense> Items, int Total)> SearchAsync(
+        string? search,
         DateOnly? from,
         DateOnly? to,
         string? category,
@@ -38,6 +48,7 @@ public sealed class ExpenseRepository : CosmosRepository<Expense>
         CancellationToken ct = default)
     {
         var where = "c.type = @type" + (includeInactive ? "" : " AND c.active = true");
+        if (!string.IsNullOrWhiteSpace(search)) where += " AND CONTAINS(c.searchText, @search)";
         if (from is not null) where += " AND c.date >= @from";
         if (to is not null) where += " AND c.date <= @to";
         if (!string.IsNullOrWhiteSpace(category)) where += " AND c.category = @category";
@@ -46,11 +57,17 @@ public sealed class ExpenseRepository : CosmosRepository<Expense>
         var countDef = new QueryDefinition($"SELECT VALUE COUNT(1) FROM c WHERE {where}")
             .WithParameter("@type", TypeDiscriminator);
         var pageDef = new QueryDefinition(
-            $"SELECT * FROM c WHERE {where} ORDER BY c.updatedAt DESC, c.createdAt DESC OFFSET @offset LIMIT @limit")
+            $"SELECT * FROM c WHERE {where} ORDER BY c.date DESC OFFSET @offset LIMIT @limit")
             .WithParameter("@type", TypeDiscriminator)
             .WithParameter("@offset", offset)
             .WithParameter("@limit", limit);
 
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalized = TextNormalizer.Normalize(search);
+            countDef.WithParameter("@search", normalized);
+            pageDef.WithParameter("@search", normalized);
+        }
         if (from is not null)
         {
             var v = from.Value.ToString("yyyy-MM-dd");

@@ -38,7 +38,7 @@ public static class CosmosClientFactory
         var clientOptions = new CosmosClientOptions
         {
             UseSystemTextJsonSerializerWithOptions = jsonOptions,
-            ConnectionMode = ConnectionMode.Direct,
+            ConnectionMode = ResolveConnectionMode(options.ConnectionMode),
             ApplicationName = "EspacioPro"
         };
 
@@ -50,5 +50,19 @@ public static class CosmosClientFactory
         ArgumentException.ThrowIfNullOrWhiteSpace(options.Endpoint);
         var credential = new DefaultAzureCredential();
         return new CosmosClient(options.Endpoint, credential, clientOptions);
+    }
+
+    private static ConnectionMode ResolveConnectionMode(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return ConnectionMode.Direct;
+
+        if (string.Equals(value, nameof(ConnectionMode.Gateway), StringComparison.OrdinalIgnoreCase))
+            return ConnectionMode.Gateway;
+
+        if (string.Equals(value, nameof(ConnectionMode.Direct), StringComparison.OrdinalIgnoreCase))
+            return ConnectionMode.Direct;
+
+        throw new ArgumentException("COSMOS_CONNECTION_MODE must be 'Direct' or 'Gateway'.", nameof(value));
     }
 }

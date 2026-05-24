@@ -30,6 +30,7 @@ var host = new HostBuilder()
             // Optional. When set, takes precedence over Managed Identity / az login.
             // Local-dev convenience only; production must rely on Managed Identity.
             opts.ConnectionString = config["COSMOS_CONNECTION_STRING"];
+            opts.ConnectionMode = config["COSMOS_CONNECTION_MODE"];
         });
 
         services.Configure<ClerkOptions>(opts =>

@@ -26,4 +26,10 @@ public sealed class CosmosOptions
     /// (see <c>docs/02-architecture.md</c>).
     /// </summary>
     public string? ConnectionString { get; set; }
+
+    /// <summary>
+    /// Optional Cosmos connection mode override. Defaults to <c>Direct</c>.
+    /// Use <c>Gateway</c> for local networks that block or throttle direct TCP ports.
+    /// </summary>
+    public string? ConnectionMode { get; set; }
 }

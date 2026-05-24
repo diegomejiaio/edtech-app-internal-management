@@ -70,6 +70,9 @@ public sealed record ScheduleDashboardResponse
             OccupancyPct = schedule.Capacity > 0
                 ? Math.Round((decimal)enrolledCount / schedule.Capacity, 4)
                 : 0m,
+            Sessions = schedule.Sessions.Count(s => s.Active),
+            CompletedSessions = schedule.Sessions.Count(s => s.Active && s.Status == Domain.Common.ScheduleSessionStatus.Completed),
+            PendingSessions = schedule.Sessions.Count(s => s.Active && s.Status == Domain.Common.ScheduleSessionStatus.Scheduled),
         };
 
         return new ScheduleDashboardResponse
@@ -121,4 +124,13 @@ public sealed record ScheduleDashboardSummary
     /// <summary>Ratio <c>enrolled / capacity</c>, rounded to 4 decimals. <c>0</c> when capacity is 0.</summary>
     [JsonPropertyName("occupancyPct")]
     public decimal OccupancyPct { get; init; }
+
+    [JsonPropertyName("sessions")]
+    public int Sessions { get; init; }
+
+    [JsonPropertyName("completedSessions")]
+    public int CompletedSessions { get; init; }
+
+    [JsonPropertyName("pendingSessions")]
+    public int PendingSessions { get; init; }
 }

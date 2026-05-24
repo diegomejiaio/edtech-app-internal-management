@@ -141,10 +141,13 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
 |---|---|---|---|
 | GET | `/schedules` | `?status=active&teacherId=X&course=Melamina&startDateFrom=YYYY-MM-DD&startDateTo=YYYY-MM-DD` | Each item includes `enrolledActiveCount`, `occupancyPct`, `teacherName` |
 | GET | `/schedules/{id}` | — | Same composition |
-| POST | `/schedules` | — | Validates `teacherId` exists+active |
-| PUT | `/schedules/{id}` | — | |
+| POST | `/schedules` | — | Validates `teacherId`, course/level/weekday catalogs, and generates sessions from course duration metadata |
+| PUT | `/schedules/{id}` | — | Regenerates only when safe; 409 if existing attendance/finalized sessions would be overwritten |
 | DELETE | `/schedules/{id}` | — | 409 if active enrollments |
 | GET | `/schedules/{id}/enrollments` | `?status=active` | |
+| GET | `/schedules/{id}/sessions` | `?limit=25&offset=0&from=YYYY-MM-DD&to=YYYY-MM-DD&status=scheduled` | Embedded generated sessions; load-more pagination |
+| GET | `/schedules/{scheduleId}/sessions/{sessionId}` | — | Single generated session |
+| PUT | `/schedules/{scheduleId}/sessions/{sessionId}` | `If-Match` | ETag-protected status/attendance update; returns updated session plus schedule ETag |
 | GET | `/schedules/{id}/dashboard` | `?month=YYYY-MM` (default current) | **BFF**: composite of schedule + enrollments + paid/debtor flag per enrollment for the month |
 
 ### 5.5 `/api/v1/enrollments`
@@ -274,7 +277,10 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
     "enrolled": 12,
     "paid": 9,
     "debtors": 3,
-    "occupancyPct": 0.80
+    "occupancyPct": 0.80,
+    "sessions": 8,
+    "completedSessions": 2,
+    "pendingSessions": 6
   }
 }
 ```

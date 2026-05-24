@@ -81,7 +81,7 @@ One document per catalog. F1 model: items as inline array.
   "type": "catalog",
   "code": "paymentMethods",
   "items": [
-    { "value": "Yape", "order": 1, "active": true },
+    { "value": "Yape", "order": 1, "active": true, "metadata": null },
     { "value": "Transferencia", "order": 2, "active": true },
     { "value": "Efectivo", "order": 3, "active": true }
   ],
@@ -101,8 +101,12 @@ One document per catalog. F1 model: items as inline array.
 | `expenseCategories` | Materiales, Alquiler, Marketing, Servicios, Equipos, Otros |
 | `enrollmentStatuses` | (NOT a catalog — domain enum `EnrollmentStatus`: `active`, `completed`, `cancelled`, `pending`. Removed from catalogs.) |
 | `scheduleStatuses` | (NOT a catalog — domain enum `ScheduleStatus`: `active`, `inProgress`, `finished`, `cancelled`. Removed from catalogs.) |
-| `weekdays` | L, M, V, S, D, LMV, MJ, L-V, SD |
+| `weekdays` | L, Ma, Mi, J, V, S, D, LMiV, MaJ, L-V, SD |
 | `studentSources` | Instagram, Tiktok, Referido, Facebook |
+
+`courses` items may include `metadata.durationHoursByLevel`, e.g.
+`{ "durationHoursByLevel": { "Principiante": 16, "Intermedio": 24, "Profesional": 32 } }`.
+Schedules use this metadata to generate bounded class sessions from course duration.
 
 > Catalog items can be added/edited/disabled via UI. **Status values are NOT catalogs in v1** — they are code-level enums (`EnrollmentStatus`, `ScheduleStatus`) with English values on the wire (see `07-api-contract-cheatsheet.md` §5). UI translates them to Spanish via i18n map. Reason: status transitions are tied to business rules (debtors query, dashboard filters) — making them editable would break those rules silently.
 
@@ -180,6 +184,28 @@ One document per catalog. F1 model: items as inline array.
   "capacity": number,
   "status": "active" | "inProgress" | "finished" | "cancelled",
   "startDate": "YYYY-MM-DD",
+  "courseDurationHours": 16,
+  "projectedEndDate": "YYYY-MM-DD",
+  "sessions": [
+    {
+      "id": "<guid>",
+      "sequenceNumber": 1,
+      "date": "YYYY-MM-DD",
+      "startTime": "HH:mm",
+      "endTime": "HH:mm",
+      "status": "scheduled" | "completed" | "cancelled",
+      "attendance": [
+        {
+          "enrollmentId": "<guid>",
+          "studentId": "<guid>",
+          "studentName": "string",
+          "status": "pending" | "present" | "absent" | "late",
+          "notes": "string?"
+        }
+      ],
+      "active": true
+    }
+  ],
   "active": true
 }
 ```
@@ -187,6 +213,14 @@ One document per catalog. F1 model: items as inline array.
 **Computed at read time** (not stored):
 - `enrolledActiveCount` = count of `Enrollment` with `scheduleId=this.id AND status='active' AND active=true`
 - `occupancyPct` = `enrolledActiveCount / capacity`
+- `sessionCount` = count of active embedded sessions.
+
+**Session generation**
+- On schedule create, sessions are generated from `courseDurationHours`, `weekdays`, `startDate`, `startTime`, and `endTime`.
+- `sessionsNeeded = ceil(courseDurationHours / (endTime - startTime))`.
+- Date walking starts at `startDate` and includes only days matched by the canonical weekday code.
+- `projectedEndDate` is the last active generated session date.
+- Regeneration on timing/course changes is rejected with 409 when existing sessions are completed/cancelled or have recorded attendance.
 
 ---
 
