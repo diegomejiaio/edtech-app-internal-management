@@ -7,10 +7,12 @@
  */
 
 import { useMemo, useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
+import { formatTableDate } from '@/lib/dates';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteSchedules, useCreateSchedule, useUpdateSchedule, useDeleteSchedule } from '@/hooks';
-import { PageHeader, DataTable, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { PageHeader, DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { TeacherPicker, CatalogSelect } from '@/components/pickers';
 import { ScheduleDashboard } from '@/components/dashboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -33,7 +35,7 @@ const statusColors: Record<ScheduleStatus, 'default' | 'secondary' | 'destructiv
 
 const columns: Column<ScheduleWithCounts>[] = [
   { key: 'course', header: 'Curso', cell: (s) => `${s.course} · ${s.level}` },
-  { key: 'startDate', header: 'Fecha Inicio', cell: (s) => s.startDate ?? '—' },
+  { key: 'startDate', header: 'Fecha Inicio', cell: (s) => formatTableDate(s.startDate) },
   { key: 'teacher', header: 'Profesor', cell: (s) => s.teacherName || '—' },
   { key: 'schedule', header: 'Horario', cell: (s) => `${s.weekdays} ${s.startTime}–${s.endTime}` },
   { key: 'capacity', header: 'Ocupación', cell: (s) => `${s.enrolledActiveCount}/${s.capacity} (${Math.round(s.occupancyPct * 100)}%)` },
@@ -47,10 +49,17 @@ const columns: Column<ScheduleWithCounts>[] = [
 
 export default function SchedulesPage() {
   const client = useApiClient();
+  const router = useRouter();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<ScheduleStatus | 'all'>('all');
   const limit = 25;
 
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteSchedules(client, { limit });
-  const schedules = useMemo(() => flattenInfiniteItems(data), [data]);
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteSchedules(client, {
+    search: search || undefined,
+    status: statusFilter === 'all' ? undefined : statusFilter,
+    limit,
+  });
+  const schedules = useMemo(() => flattenInfiniteItems(data, { sortBy: (s) => s.startDate }), [data]);
   const total = getInfiniteTotal(data);
   const createMutation = useCreateSchedule(client);
   const updateMutation = useUpdateSchedule(client);
@@ -129,7 +138,23 @@ export default function SchedulesPage() {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="list" className="mt-4">
+        <TabsContent value="list" className="mt-4 space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex-1">
+              <SearchBar
+                placeholder="Buscar por curso, nivel, profesor o días..."
+                value={search}
+                onChange={setSearch}
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ScheduleStatus | 'all')}>
+              <SelectTrigger className="sm:w-48"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                {STATUSES.map((s) => <SelectItem key={s} value={s}>{SCHEDULE_STATUS_LABELS[s]}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <DataTable
             columns={columns}
             data={schedules}
@@ -140,10 +165,11 @@ export default function SchedulesPage() {
             isLoading={isLoading}
             isFetchingNextPage={isFetchingNextPage}
             actions={(s) => (
-              <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={() => openEdit(s)}>Editar</Button>
-                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setDeleteTarget(s)}>Eliminar</Button>
-              </div>
+              <RowActions
+                onView={() => router.push(`/schedules/detail?id=${s.id}`)}
+                onEdit={() => openEdit(s)}
+                onDelete={() => setDeleteTarget(s)}
+              />
             )}
           />
         </TabsContent>

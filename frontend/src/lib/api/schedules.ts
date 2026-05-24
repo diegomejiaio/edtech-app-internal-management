@@ -1,4 +1,13 @@
-import type { BaseEntity, EnrollmentStatus, ListParams, PaginatedResponse, ScheduleStatus } from './types';
+import type {
+  AttendanceStatus,
+  AuditUser,
+  BaseEntity,
+  EnrollmentStatus,
+  ListParams,
+  PaginatedResponse,
+  ScheduleSessionStatus,
+  ScheduleStatus,
+} from './types';
 import type { ApiClient } from './client';
 
 // ---------------------------------------------------------------------------
@@ -19,6 +28,9 @@ export interface Schedule extends BaseEntity {
   capacity: number;
   status: ScheduleStatus;
   startDate: string;
+  courseDurationHours?: number | null;
+  projectedEndDate?: string | null;
+  sessionCount: number;
 }
 
 /** Extended schedule returned by list/get with server-computed fields. */
@@ -43,6 +55,7 @@ export interface ScheduleBody {
 
 /** Filters for `GET /schedules`. */
 export interface ScheduleListParams extends ListParams {
+  search?: string;
   status?: ScheduleStatus;
   teacherId?: string;
   course?: string;
@@ -75,6 +88,45 @@ export interface DashboardSummary {
   paid: number;
   debtors: number;
   occupancyPct: number;
+  sessions: number;
+  completedSessions: number;
+  pendingSessions: number;
+}
+
+export interface ScheduleAttendance {
+  studentId: string;
+  studentName: string;
+  status: AttendanceStatus;
+  notes?: string | null;
+  updatedAt: string;
+  updatedBy: AuditUser;
+}
+
+export interface ScheduleSession {
+  id: string;
+  sequenceNumber: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: ScheduleSessionStatus;
+  attendance: ScheduleAttendance[];
+  active: boolean;
+  createdAt: string;
+  createdBy: AuditUser;
+  updatedAt: string;
+  updatedBy: AuditUser;
+  deletedAt?: string | null;
+  deletedBy?: AuditUser | null;
+}
+
+export interface ScheduleEnrollment {
+  id: string;
+  studentId: string;
+  studentName: string;
+  status: EnrollmentStatus;
+  amount?: number;
+  paidAmount?: number;
+  pendingAmount?: number;
 }
 
 /** Composite response from `GET /schedules/{id}/dashboard`. */
@@ -137,8 +189,8 @@ export const getScheduleEnrollments = (
   client: ApiClient,
   scheduleId: string,
   params?: ScheduleEnrollmentParams,
-): Promise<PaginatedResponse<unknown>> =>
-  client.get<PaginatedResponse<unknown>>(
+): Promise<PaginatedResponse<ScheduleEnrollment>> =>
+  client.get<PaginatedResponse<ScheduleEnrollment>>(
     `/schedules/${encodeURIComponent(scheduleId)}/enrollments`,
     { params: params as Record<string, string | number | boolean | undefined> },
   );
@@ -152,4 +204,58 @@ export const getScheduleDashboard = (
   client.get<ScheduleDashboard>(
     `/schedules/${encodeURIComponent(scheduleId)}/dashboard`,
     month ? { params: { month } } : undefined,
+  );
+
+/** Filters for `GET /schedules/{id}/sessions`. */
+export type ScheduleSessionParams = ListParams;
+
+export interface UpdateScheduleAttendanceRequest {
+  studentId: string;
+  status: AttendanceStatus;
+  notes?: string | null;
+}
+
+export interface UpdateScheduleSessionRequest {
+  status?: ScheduleSessionStatus;
+  attendance?: UpdateScheduleAttendanceRequest[];
+}
+
+export interface ScheduleSessionUpdateResponse {
+  session: ScheduleSession;
+  scheduleEtag?: string | null;
+}
+
+/** List generated sessions for a schedule. */
+export const getScheduleSessions = (
+  client: ApiClient,
+  scheduleId: string,
+  params?: ScheduleSessionParams,
+): Promise<PaginatedResponse<ScheduleSession>> =>
+  client.get<PaginatedResponse<ScheduleSession>>(
+    `/schedules/${encodeURIComponent(scheduleId)}/sessions`,
+    { params: params as Record<string, string | number | boolean | undefined> },
+  );
+
+/** Get one generated schedule session. */
+export const getScheduleSession = (
+  client: ApiClient,
+  scheduleId: string,
+  sessionId: string,
+): Promise<ScheduleSession> =>
+  client.get<ScheduleSession>(
+    `/schedules/${encodeURIComponent(scheduleId)}/sessions/${encodeURIComponent(sessionId)}`,
+  );
+
+/** Update a generated session status and attendance with schedule ETag concurrency. */
+export const updateScheduleSession = (
+  client: ApiClient,
+  scheduleId: string,
+  sessionId: string,
+  body: UpdateScheduleSessionRequest,
+  ifMatch?: string,
+): Promise<ScheduleSessionUpdateResponse> =>
+  client.put<ScheduleSessionUpdateResponse>(
+    `/schedules/${encodeURIComponent(scheduleId)}/sessions/${encodeURIComponent(sessionId)}`,
+    body,
+    ifMatch ? { ifMatch } : undefined,
   );

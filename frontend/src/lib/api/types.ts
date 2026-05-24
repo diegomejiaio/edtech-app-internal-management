@@ -64,6 +64,12 @@ export type EnrollmentStatus = 'active' | 'completed' | 'cancelled' | 'pending';
 /** Schedule lifecycle status (wire format, see backend `ScheduleStatus`). */
 export type ScheduleStatus = 'active' | 'inProgress' | 'finished' | 'cancelled';
 
+/** Generated schedule session lifecycle status (wire format). */
+export type ScheduleSessionStatus = 'scheduled' | 'completed' | 'cancelled';
+
+/** Per-student attendance status inside a schedule session (wire format). */
+export type AttendanceStatus = 'pending' | 'present' | 'absent' | 'late';
+
 /** Spanish UI labels for {@link DocType}. */
 export const DOC_TYPE_LABELS: Record<DocType, string> = {
   dni: 'DNI',
@@ -85,6 +91,21 @@ export const SCHEDULE_STATUS_LABELS: Record<ScheduleStatus, string> = {
   inProgress: 'En progreso',
   finished: 'Finalizado',
   cancelled: 'Cancelado',
+};
+
+/** Spanish UI labels for {@link ScheduleSessionStatus}. */
+export const SCHEDULE_SESSION_STATUS_LABELS: Record<ScheduleSessionStatus, string> = {
+  scheduled: 'Programada',
+  completed: 'Completada',
+  cancelled: 'Cancelada',
+};
+
+/** Spanish UI labels for {@link AttendanceStatus}. */
+export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
+  pending: 'Pendiente',
+  present: 'Presente',
+  absent: 'Ausente',
+  late: 'Tarde',
 };
 
 // ---------------------------------------------------------------------------

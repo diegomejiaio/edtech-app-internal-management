@@ -38,8 +38,11 @@ function buildDashboardFixture(): ScheduleDashboard {
       capacity: 12,
       status: 'active', // camelCase wire format — locks in the M9 fix
       startDate: '2026-01-15',
+      courseDurationHours: 16,
+      projectedEndDate: '2026-02-02',
       enrolledActiveCount: 8,
       occupancyPct: 8 / 12,
+      sessionCount: 8,
     },
     month: '2026-05',
     enrollments: [
@@ -60,7 +63,15 @@ function buildDashboardFixture(): ScheduleDashboard {
         lastPaymentDate: null,
       },
     ],
-    summary: { enrolled: 2, paid: 1, debtors: 1, occupancyPct: 8 / 12 },
+    summary: {
+      enrolled: 2,
+      paid: 1,
+      debtors: 1,
+      occupancyPct: 8 / 12,
+      sessions: 8,
+      completedSessions: 2,
+      pendingSessions: 6,
+    },
   };
 }
 

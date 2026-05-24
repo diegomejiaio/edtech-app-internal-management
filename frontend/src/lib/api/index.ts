@@ -1,6 +1,6 @@
 // Domain types
-export type { AuditUser, BaseEntity, ProblemDetails, ListParams, PaginatedResponse, DocType, EnrollmentStatus, ScheduleStatus } from './types';
-export { DOC_TYPE_LABELS, ENROLLMENT_STATUS_LABELS, SCHEDULE_STATUS_LABELS } from './types';
+export type { AuditUser, BaseEntity, ProblemDetails, ListParams, PaginatedResponse, DocType, EnrollmentStatus, ScheduleStatus, ScheduleSessionStatus, AttendanceStatus } from './types';
+export { DOC_TYPE_LABELS, ENROLLMENT_STATUS_LABELS, SCHEDULE_STATUS_LABELS, SCHEDULE_SESSION_STATUS_LABELS, ATTENDANCE_STATUS_LABELS } from './types';
 
 // Error handling
 export { ApiError, isApiError, isNotFound, isConflict, isValidation, isUnauthorized, isForbidden } from './errors';
@@ -26,8 +26,8 @@ export { getTeachers, getTeacher, createTeacher, updateTeacher, deleteTeacher, g
 export type { Teacher, TeacherBody, TeacherListParams, TeacherPaymentListParams, TeacherScheduleListParams } from './teachers';
 
 // Schedules
-export { getSchedules, getSchedule, createSchedule, updateSchedule, deleteSchedule, getScheduleEnrollments, getScheduleDashboard } from './schedules';
-export type { Schedule, ScheduleWithCounts, ScheduleBody, ScheduleListParams, ScheduleEnrollmentParams, DashboardEnrollment, DashboardSummary, ScheduleDashboard } from './schedules';
+export { getSchedules, getSchedule, createSchedule, updateSchedule, deleteSchedule, getScheduleEnrollments, getScheduleDashboard, getScheduleSessions, getScheduleSession, updateScheduleSession } from './schedules';
+export type { Schedule, ScheduleWithCounts, ScheduleBody, ScheduleListParams, ScheduleEnrollmentParams, ScheduleEnrollment, ScheduleSessionParams, ScheduleSession, ScheduleSessionUpdateResponse, ScheduleAttendance, UpdateScheduleAttendanceRequest, UpdateScheduleSessionRequest, DashboardEnrollment, DashboardSummary, ScheduleDashboard } from './schedules';
 
 // Enrollments
 export { getEnrollments, getEnrollment, createEnrollment, updateEnrollment, deleteEnrollment, getEnrollmentPayments } from './enrollments';

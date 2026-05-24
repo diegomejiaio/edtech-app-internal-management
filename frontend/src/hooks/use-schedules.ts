@@ -7,6 +7,9 @@ import {
   getSchedules,
   getSchedule,
   getScheduleDashboard,
+  getScheduleEnrollments,
+  getScheduleSessions,
+  updateScheduleSession,
   createSchedule,
   updateSchedule,
   deleteSchedule,
@@ -15,10 +18,16 @@ import {
   type ScheduleBody,
   type ScheduleListParams,
   type ScheduleDashboard,
+  type ScheduleEnrollmentParams,
+  type ScheduleSessionUpdateResponse,
+  type ScheduleSessionParams,
+  type UpdateScheduleSessionRequest,
   type PaginatedResponse,
 } from '@/lib/api';
 
 type InfiniteScheduleListParams = Omit<ScheduleListParams, 'offset'>;
+type InfiniteScheduleSessionParams = Omit<ScheduleSessionParams, 'offset'>;
+type InfiniteScheduleEnrollmentParams = Omit<ScheduleEnrollmentParams, 'offset'>;
 
 export function useSchedules(client: ApiClient, params?: ScheduleListParams) {
   return useQuery<PaginatedResponse<ScheduleWithCounts>>({
@@ -56,6 +65,57 @@ export function useScheduleDashboard(
     queryKey: ['schedules', scheduleId, 'dashboard', month],
     queryFn: () => getScheduleDashboard(client, scheduleId!, month),
     enabled: !!scheduleId,
+  });
+}
+
+export function useInfiniteScheduleSessions(
+  client: ApiClient,
+  scheduleId: string | undefined,
+  params?: InfiniteScheduleSessionParams,
+) {
+  const limit = params?.limit ?? 20;
+
+  return useInfiniteQuery({
+    queryKey: ['schedules', scheduleId, 'sessions', 'infinite', params],
+    queryFn: ({ pageParam }) =>
+      getScheduleSessions(client, scheduleId!, { ...params, limit, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: getNextOffset,
+    enabled: !!scheduleId,
+  });
+}
+
+export function useInfiniteScheduleEnrollments(
+  client: ApiClient,
+  scheduleId: string | undefined,
+  params?: InfiniteScheduleEnrollmentParams,
+) {
+  const limit = params?.limit ?? 20;
+
+  return useInfiniteQuery({
+    queryKey: ['schedules', scheduleId, 'enrollments', 'infinite', params],
+    queryFn: ({ pageParam }) =>
+      getScheduleEnrollments(client, scheduleId!, { ...params, limit, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: getNextOffset,
+    enabled: !!scheduleId,
+  });
+}
+
+export function useUpdateScheduleSession(client: ApiClient) {
+  const qc = useQueryClient();
+  return useMutation<
+    ScheduleSessionUpdateResponse,
+    Error,
+    { scheduleId: string; sessionId: string; body: UpdateScheduleSessionRequest; ifMatch?: string }
+  >({
+    mutationFn: (vars) =>
+      updateScheduleSession(client, vars.scheduleId, vars.sessionId, vars.body, vars.ifMatch),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['schedules', vars.scheduleId] });
+      qc.invalidateQueries({ queryKey: ['schedules', vars.scheduleId, 'sessions'] });
+      qc.invalidateQueries({ queryKey: ['schedules', vars.scheduleId, 'dashboard'] });
+    },
   });
 }
 

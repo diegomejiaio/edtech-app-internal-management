@@ -45,6 +45,7 @@ import type { ApiClient, ScheduleWithCounts } from '@/lib/api';
 import { useSchedules, useScheduleDashboard } from '@/hooks';
 import { StatCard } from '@/components/ui/stat-card';
 import { cn } from '@/lib/utils';
+import { formatTableDate } from '@/lib/dates';
 
 /** Returns `YYYY-MM` for the current month. */
 function currentMonth(): string {
@@ -53,13 +54,6 @@ function currentMonth(): string {
 }
 function formatScheduleTitle(schedule: ScheduleWithCounts): string {
   return `${schedule.course} · ${schedule.level} · ${schedule.weekdays} ${schedule.startTime}`;
-}
-
-function formatDateOnly(date: string | undefined): string {
-  if (!date) return '—';
-  const [year, month, day] = date.split('-');
-  if (!year || !month || !day) return date;
-  return `${day}/${month}/${year}`;
 }
 
 function isScheduleInMonth(schedule: ScheduleWithCounts, month: string): boolean {
@@ -185,7 +179,7 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
                         <div className="min-w-0">
                           <p className="truncate font-medium">{formatScheduleTitle(schedule)}</p>
                           <p className="truncate text-xs text-muted-foreground">
-                            Inicio {formatDateOnly(schedule.startDate)} · Prof. {schedule.teacherName} ·{' '}
+                            Inicio {formatTableDate(schedule.startDate)} · Prof. {schedule.teacherName} ·{' '}
                             {schedule.enrolledActiveCount}/{schedule.capacity}
                           </p>
                         </div>
@@ -223,7 +217,7 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
               {dashboard.schedule.weekdays} {dashboard.schedule.startTime}–
               {dashboard.schedule.endTime} · Prof.{' '}
               {dashboard.schedule.teacherName} · Inicio{' '}
-              {formatDateOnly(dashboard.schedule.startDate)}
+              {formatTableDate(dashboard.schedule.startDate)}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -306,7 +300,7 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
                           )}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {e.lastPaymentDate ?? '—'}
+                          {formatTableDate(e.lastPaymentDate)}
                         </TableCell>
                       </TableRow>
                     ))}

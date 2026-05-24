@@ -8,9 +8,8 @@
  * weekday it recurs on (decoded from the `weekdays` catalog code), sorted by
  * `startTime`. Clicking a card opens the schedule detail page.
  *
- * The recurrence pattern itself is week-agnostic in v1 — navigation only
- * re-anchors the date labels; the same schedules appear every week until a
- * future iteration brings cancellations/exceptions into scope.
+ * Sessions are bounded by each schedule's generated projection window, so a
+ * class only appears on dates between `startDate` and `projectedEndDate`.
  */
 
 import { useMemo, useState } from 'react';
@@ -105,7 +104,10 @@ export function WeeklySchedulesCalendar({ client }: WeeklySchedulesCalendarProps
 
     for (const s of items) {
       for (const day of parseWeekdays(s.weekdays)) {
-        map.get(day)?.push(s);
+        const dayDate = addDays(weekStart, ORDER_INDEX[day]);
+        if (isScheduleActiveOnDate(s, dayDate)) {
+          map.get(day)?.push(s);
+        }
       }
     }
 
@@ -114,7 +116,7 @@ export function WeeklySchedulesCalendar({ client }: WeeklySchedulesCalendarProps
     }
 
     return map;
-  }, [items]);
+  }, [items, weekStart]);
 
   const courseIndex = useMemo(() => new Map<string, number>(), [data]);
 
@@ -257,7 +259,7 @@ export function WeeklySchedulesCalendar({ client }: WeeklySchedulesCalendarProps
                             <button
                               key={`${day}-${s.id}`}
                               type="button"
-                              onClick={() => router.push(`/schedules/${s.id}`)}
+                              onClick={() => router.push(`/schedules/detail?id=${s.id}`)}
                               className={cn(
                                 'group w-full text-left rounded-md border border-l-[3px] p-2 transition-all',
                                 'hover:shadow-sm hover:-translate-y-0.5',
@@ -304,4 +306,23 @@ export function WeeklySchedulesCalendar({ client }: WeeklySchedulesCalendarProps
       </CardContent>
     </Card>
   );
+}
+
+function isScheduleActiveOnDate(schedule: ScheduleWithCounts, date: Date) {
+  const start = parseDateOnly(schedule.startDate);
+  const end = schedule.projectedEndDate ? parseDateOnly(schedule.projectedEndDate) : undefined;
+  const target = startOfLocalDay(date);
+
+  if (target < start) return false;
+  if (end && target > end) return false;
+  return true;
+}
+
+function parseDateOnly(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function startOfLocalDay(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
