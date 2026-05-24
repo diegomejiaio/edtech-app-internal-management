@@ -61,8 +61,25 @@ When the task matches one of these contexts, load the skill BEFORE writing code:
 | Writing or refining specs            | `sdd-spec` (manual)  |
 | Creating new agent skills            | `skill-creator`      |
 | Go tests / Bubbletea TUI             | `go-testing`         |
+| Frontend pages, components, hooks    | [`nextjs-frontend`](.github/skills/nextjs-frontend/SKILL.md) |
+| Backend Functions, repos, entities   | [`dotnet-azure-functions`](.github/skills/dotnet-azure-functions/SKILL.md) |
 
 For full workflow rules see `.agent/conventions.md`.
+
+## CodeGraph (semantic code exploration)
+
+This repo is initialized for CodeGraph. If `.codegraph/` exists, use CodeGraph before broad filesystem exploration. Prefer semantic tools for discovery and impact analysis, then open exact files only when editing or verifying exact code.
+
+### Exploration priority
+
+1. Use `codegraph_search` to find symbols/routes/files by name.
+2. Use `codegraph_callers` / `codegraph_callees` to trace request and function flow.
+3. Use `codegraph_impact` to check affected symbols/files before editing.
+4. Use `codegraph_node` to inspect one symbol before opening files.
+5. Use `codegraph_context` to build task-specific context when starting non-trivial work.
+6. Fall back to grep/view only when CodeGraph has no result or you need exact file contents for an edit.
+
+The generated `.codegraph/` directory is local-only and must not be committed. Rebuild with `codegraph init -i` when missing or stale.
 
 ## Engram (persistent memory)
 

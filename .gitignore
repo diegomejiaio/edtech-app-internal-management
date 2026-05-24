@@ -105,6 +105,7 @@ yarn-error.log*
 .pnpm-debug.log*
 logs/
 *.local.log
+*.binlog
 
 # ----------------
 # TypeScript
@@ -191,3 +192,6 @@ openspec/specs/
 !openspec/archive/
 .issues/
 .copilot-tracking/
+
+# CodeGraph (generated local index)
+.codegraph/

@@ -1,0 +1,69 @@
+name: Feature Request
+description: Propose a new feature or enhancement for Espacio Pro
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the feature you'd like to see.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: One-line description of the feature.
+      placeholder: "e.g., Add bulk enrollment import from CSV"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Primary Layer
+      options:
+        - Frontend (Next.js)
+        - Backend (Azure Functions / .NET)
+        - Database (Cosmos DB)
+        - Auth (Clerk)
+        - Infrastructure
+        - Full Stack
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why is this needed? What problem does it solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: How should this work? Include API endpoints, UI flows, or data model changes if relevant.
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Other approaches you considered and why they were rejected.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: Target Milestone
+      description: Which milestone does this belong to? (See docs/08-acceptance-criteria.md)
+      options:
+        - M0 — Infrastructure & Auth
+        - M1–M8 — Domain Features
+        - M9 — Debtors
+        - Post-MVP
+        - Unsure
+    validations:
+      required: false
