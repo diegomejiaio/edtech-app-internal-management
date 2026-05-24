@@ -31,6 +31,7 @@ export interface ExpenseBody {
 
 /** Filters for `GET /expenses`. */
 export interface ExpenseListParams extends ListParams {
+  search?: string;
   from?: string;
   to?: string;
   category?: string;

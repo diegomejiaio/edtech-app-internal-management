@@ -7,9 +7,11 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
-import { flattenInfiniteItems, getInfiniteTotal, useInfiniteEnrollments, useCreateEnrollment, useUpdateEnrollment, useDeleteEnrollment } from '@/hooks';
-import { PageHeader, DataTable, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { formatTableDate } from '@/lib/dates';
+import { flattenInfiniteItems, getInfiniteTotal, useInfiniteEnrollments, useUpdateEnrollment, useDeleteEnrollment } from '@/hooks';
+import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { StudentPicker, SchedulePicker } from '@/components/pickers';
+import { EnrollmentWizard } from '@/components/enrollments/enrollment-wizard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,7 +33,7 @@ const columns: Column<Enrollment>[] = [
   { key: 'student', header: 'Alumno', cell: (e) => e.studentName },
   { key: 'doc', header: 'Documento', cell: (e) => e.studentDoc },
   { key: 'schedule', header: 'Horario', cell: (e) => e.scheduleName },
-  { key: 'date', header: 'Fecha inscripción', cell: (e) => e.enrollmentDate },
+  { key: 'date', header: 'Fecha inscripción', cell: (e) => formatTableDate(e.enrollmentDate) },
   { key: 'price', header: 'Precio', cell: (e) => `S/ ${e.schedulePrice.toFixed(2)}` },
   {
     key: 'status',
@@ -43,25 +45,30 @@ const columns: Column<Enrollment>[] = [
 export default function EnrollmentsPage() {
   const client = useApiClient();
   const limit = 25;
+  const [statusFilter, setStatusFilter] = useState<EnrollmentStatus | 'all'>('all');
 
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteEnrollments(client, { limit });
-  const enrollments = useMemo(() => flattenInfiniteItems(data), [data]);
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteEnrollments(client, {
+    limit,
+    status: statusFilter === 'all' ? undefined : statusFilter,
+  });
+  const enrollments = useMemo(() => flattenInfiniteItems(data, { sortBy: (e) => e.enrollmentDate }), [data]);
   const total = getInfiniteTotal(data);
-  const createMutation = useCreateEnrollment(client);
   const updateMutation = useUpdateEnrollment(client);
   const deleteMutation = useDeleteEnrollment(client);
 
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Enrollment | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Enrollment | null>(null);
   const [pickedStudentId, setPickedStudentId] = useState<string | undefined>();
   const [pickedScheduleId, setPickedScheduleId] = useState<string | undefined>();
 
-  function openCreate() { setEditing(null); setPickedStudentId(undefined); setPickedScheduleId(undefined); setFormOpen(true); }
+  function openCreate() { setWizardOpen(true); }
   function openEdit(e: Enrollment) { setEditing(e); setPickedStudentId(e.studentId); setPickedScheduleId(e.scheduleId); setFormOpen(true); }
 
   function handleSubmit(ev: FormEvent<HTMLFormElement>) {
     ev.preventDefault();
+    if (!editing) return;
     const fd = new FormData(ev.currentTarget);
     const body: EnrollmentBody = {
       studentId: pickedStudentId ?? (fd.get('studentId') as string),
@@ -70,12 +77,8 @@ export default function EnrollmentsPage() {
       status: fd.get('status') as EnrollmentStatus,
     };
 
-    const mutation = editing
-      ? updateMutation.mutateAsync({ id: editing.id, body, ifMatch: editing._etag })
-      : createMutation.mutateAsync(body);
-
-    mutation
-      .then(() => { setFormOpen(false); toast.success(editing ? 'Inscripción actualizada' : 'Inscripción creada'); })
+    updateMutation.mutateAsync({ id: editing.id, body, ifMatch: editing._etag })
+      .then(() => { setFormOpen(false); toast.success('Inscripción actualizada'); })
       .catch((err) => {
         if (isConflict(err)) toast.error('Ya existe una inscripción activa para este alumno en este horario');
         else if (isApiError(err)) toast.error(err.problem.detail ?? err.message);
@@ -91,6 +94,16 @@ export default function EnrollmentsPage() {
         action={<Button onClick={openCreate}>Nueva inscripción</Button>}
       />
 
+      <div className="flex justify-end">
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as EnrollmentStatus | 'all')}>
+          <SelectTrigger className="w-48"><SelectValue placeholder="Estado" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los estados</SelectItem>
+            {STATUSES.map((s) => <SelectItem key={s} value={s}>{ENROLLMENT_STATUS_LABELS[s]}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
       <DataTable
         columns={columns}
         data={enrollments}
@@ -101,19 +114,22 @@ export default function EnrollmentsPage() {
         isLoading={isLoading}
         isFetchingNextPage={isFetchingNextPage}
         actions={(e) => (
-          <div className="flex gap-1">
-            <Button variant="ghost" size="sm" onClick={() => openEdit(e)}>Editar</Button>
-            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setDeleteTarget(e)}>Eliminar</Button>
-          </div>
+          <RowActions
+            onEdit={() => openEdit(e)}
+            onDelete={() => setDeleteTarget(e)}
+          />
         )}
       />
 
-      {/* Create / Edit sheet */}
+      {/* Wizard for new enrollment (mirrors legacy GAS 2-step flow) */}
+      <EnrollmentWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+
+      {/* Edit sheet (legacy single-form, only for editing) */}
       <FormSheetDialog
         open={formOpen}
         onOpenChange={setFormOpen}
-        title={editing ? 'Editar inscripción' : 'Nueva inscripción'}
-        isLoading={createMutation.isPending || updateMutation.isPending}
+        title="Editar inscripción"
+        isLoading={updateMutation.isPending}
         onSubmit={handleSubmit}
       >
         <div className="space-y-2">

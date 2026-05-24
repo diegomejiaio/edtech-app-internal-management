@@ -4,7 +4,6 @@ import * as React from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
-  staggerContainerVariants,
   staggerItemVariants,
   fadeUpVariants,
   cardVariants,
@@ -127,16 +126,11 @@ export function AnimatedTableBody({
   children,
   className,
 }: AnimatedTableBodyProps) {
-  return (
-    <motion.tbody
-      initial="hidden"
-      animate="visible"
-      variants={staggerContainerVariants}
-      className={className}
-    >
-      {children}
-    </motion.tbody>
-  );
+  // No stagger orchestrator: each row animates independently on mount so
+  // that rows added after the initial render (e.g. when a search filter is
+  // cleared and the dataset grows) still play their entrance animation
+  // instead of getting stuck at the parent's stale "hidden" state.
+  return <tbody className={className}>{children}</tbody>;
 }
 
 // =============================================================================
@@ -158,6 +152,8 @@ export function AnimatedTableRow({
 }: AnimatedTableRowProps) {
   return (
     <motion.tr
+      initial="hidden"
+      animate="visible"
       variants={tableRowVariants}
       className={cn(
         "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",

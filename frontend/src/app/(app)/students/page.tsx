@@ -7,10 +7,11 @@
  */
 
 import { useMemo, useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteStudents, useCreateStudent, useUpdateStudent, useDeleteStudent } from '@/hooks';
-import { PageHeader, DataTable, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { PageHeader, DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { CatalogSelect } from '@/components/pickers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +41,7 @@ const columns: Column<Student>[] = [
 
 export default function StudentsPage() {
   const client = useApiClient();
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const limit = 25;
 
@@ -47,7 +49,7 @@ export default function StudentsPage() {
     search: search || undefined,
     limit,
   });
-  const students = useMemo(() => flattenInfiniteItems(data), [data]);
+  const students = useMemo(() => flattenInfiniteItems(data, { sortBy: (s) => s.updatedAt ?? s.createdAt }), [data]);
   const total = getInfiniteTotal(data);
   const createMutation = useCreateStudent(client);
   const updateMutation = useUpdateStudent(client);
@@ -124,10 +126,11 @@ export default function StudentsPage() {
         isLoading={isLoading}
         isFetchingNextPage={isFetchingNextPage}
         actions={(s) => (
-          <div className="flex gap-1">
-            <Button variant="ghost" size="sm" onClick={() => openEdit(s)}>Editar</Button>
-            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setDeleteTarget(s)}>Eliminar</Button>
-          </div>
+          <RowActions
+            onView={() => router.push(`/students/detail?id=${s.id}`)}
+            onEdit={() => openEdit(s)}
+            onDelete={() => setDeleteTarget(s)}
+          />
         )}
       />
 

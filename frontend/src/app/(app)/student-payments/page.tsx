@@ -7,8 +7,9 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
+import { formatTableDate } from '@/lib/dates';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteStudentPayments, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from '@/hooks';
-import { PageHeader, DataTable, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { EnrollmentPicker, CatalogSelect } from '@/components/pickers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +22,7 @@ import type { StudentPayment, StudentPaymentBody } from '@/lib/api';
 const columns: Column<StudentPayment>[] = [
   { key: 'student', header: 'Alumno', cell: (p) => p.studentName },
   { key: 'schedule', header: 'Horario', cell: (p) => p.scheduleName },
-  { key: 'date', header: 'Fecha', cell: (p) => p.date },
+  { key: 'date', header: 'Fecha', cell: (p) => formatTableDate(p.date) },
   { key: 'amount', header: 'Monto', cell: (p) => `S/ ${p.amount.toFixed(2)}` },
   { key: 'installment', header: 'Cuota', cell: (p) => `#${p.installmentNumber}` },
   { key: 'method', header: 'Medio', cell: (p) => p.paymentMethod },
@@ -37,9 +38,15 @@ const columns: Column<StudentPayment>[] = [
 export default function StudentPaymentsPage() {
   const client = useApiClient();
   const limit = 25;
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteStudentPayments(client, { limit });
-  const studentPayments = useMemo(() => flattenInfiniteItems(data), [data]);
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteStudentPayments(client, {
+    limit,
+    from: dateFrom || undefined,
+    to: dateTo || undefined,
+  });
+  const studentPayments = useMemo(() => flattenInfiniteItems(data, { sortBy: (p) => p.date }), [data]);
   const total = getInfiniteTotal(data);
   const createMutation = useCreateStudentPayment(client);
   const updateMutation = useUpdateStudentPayment(client);
@@ -88,6 +95,11 @@ export default function StudentPaymentsPage() {
         action={<Button onClick={openCreate}>Nuevo pago</Button>}
       />
 
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="sm:w-40" aria-label="Desde" />
+        <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="sm:w-40" aria-label="Hasta" />
+      </div>
+
       <DataTable
         columns={columns}
         data={studentPayments}
@@ -98,10 +110,10 @@ export default function StudentPaymentsPage() {
         isLoading={isLoading}
         isFetchingNextPage={isFetchingNextPage}
         actions={(p) => (
-          <div className="flex gap-1">
-            <Button variant="ghost" size="sm" onClick={() => openEdit(p)}>Editar</Button>
-            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setDeleteTarget(p)}>Eliminar</Button>
-          </div>
+          <RowActions
+            onEdit={() => openEdit(p)}
+            onDelete={() => setDeleteTarget(p)}
+          />
         )}
       />
 

@@ -7,17 +7,19 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
-import { flattenInfiniteItems, getInfiniteTotal, useInfiniteExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '@/hooks';
-import { PageHeader, DataTable, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { formatTableDate } from '@/lib/dates';
+import { flattenInfiniteItems, getInfiniteTotal, useInfiniteExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense, useCatalog } from '@/hooks';
+import { PageHeader, DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { SchedulePicker, CatalogSelect } from '@/components/pickers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { isApiError } from '@/lib/api';
 import type { Expense, ExpenseBody } from '@/lib/api';
 
 const columns: Column<Expense>[] = [
-  { key: 'date', header: 'Fecha', cell: (e) => e.date },
+  { key: 'date', header: 'Fecha', cell: (e) => formatTableDate(e.date) },
   { key: 'category', header: 'Categoría', cell: (e) => e.category },
   { key: 'description', header: 'Descripción', cell: (e) => e.description },
   { key: 'amount', header: 'Monto', cell: (e) => `S/ ${e.amount.toFixed(2)}` },
@@ -27,10 +29,26 @@ const columns: Column<Expense>[] = [
 
 export default function ExpensesPage() {
   const client = useApiClient();
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const limit = 25;
 
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteExpenses(client, { limit });
-  const expenses = useMemo(() => flattenInfiniteItems(data), [data]);
+  const { data: categoriesCatalog } = useCatalog(client, 'expenseCategories');
+  const categoryOptions = (categoriesCatalog?.items ?? [])
+    .filter((i) => i.active)
+    .slice()
+    .sort((a, b) => a.order - b.order);
+
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteExpenses(client, {
+    search: search || undefined,
+    category: categoryFilter === 'all' ? undefined : categoryFilter,
+    from: dateFrom || undefined,
+    to: dateTo || undefined,
+    limit,
+  });
+  const expenses = useMemo(() => flattenInfiniteItems(data, { sortBy: (e) => e.date }), [data]);
   const total = getInfiniteTotal(data);
   const createMutation = useCreateExpense(client);
   const updateMutation = useUpdateExpense(client);
@@ -79,6 +97,37 @@ export default function ExpensesPage() {
         action={<Button onClick={openCreate}>Nuevo gasto</Button>}
       />
 
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+        <div className="flex-1">
+          <SearchBar
+            placeholder="Buscar por descripción, categoría u horario..."
+            value={search}
+            onChange={setSearch}
+          />
+        </div>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="lg:w-48"><SelectValue placeholder="Categoría" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las categorías</SelectItem>
+            {categoryOptions.map((c) => <SelectItem key={c.value} value={c.value}>{c.value}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          className="lg:w-40"
+          aria-label="Desde"
+        />
+        <Input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          className="lg:w-40"
+          aria-label="Hasta"
+        />
+      </div>
+
       <DataTable
         columns={columns}
         data={expenses}
@@ -89,10 +138,10 @@ export default function ExpensesPage() {
         isLoading={isLoading}
         isFetchingNextPage={isFetchingNextPage}
         actions={(e) => (
-          <div className="flex gap-1">
-            <Button variant="ghost" size="sm" onClick={() => openEdit(e)}>Editar</Button>
-            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setDeleteTarget(e)}>Eliminar</Button>
-          </div>
+          <RowActions
+            onEdit={() => openEdit(e)}
+            onDelete={() => setDeleteTarget(e)}
+          />
         )}
       />
 

@@ -22,8 +22,31 @@ export function getNextOffset<T>(
 
 export function flattenInfiniteItems<T>(
   data: InfiniteData<PaginatedResponse<T>> | undefined,
+  options?: {
+    /** Extract the value to sort by (e.g., `(s) => s.startDate`). */
+    sortBy?: (item: T) => string | number | null | undefined;
+    /** Sort direction. Defaults to `'desc'`. */
+    sortDir?: 'asc' | 'desc';
+  },
 ): T[] {
-  return data?.pages.flatMap((page) => page.items) ?? [];
+  const items = data?.pages.flatMap((page) => page.items) ?? [];
+  const sortBy = options?.sortBy;
+  if (!sortBy) return items;
+
+  const dir = options?.sortDir ?? 'desc';
+  const factor = dir === 'desc' ? -1 : 1;
+
+  return items.slice().sort((a, b) => {
+    const av = sortBy(a);
+    const bv = sortBy(b);
+    // Null/undefined sort to the end regardless of direction.
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (av < bv) return -1 * factor;
+    if (av > bv) return 1 * factor;
+    return 0;
+  });
 }
 
 export function getInfiniteTotal<T>(

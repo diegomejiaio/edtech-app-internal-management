@@ -232,6 +232,37 @@ export function formatLocalDateOnly(utcDate: Date | string | undefined | null): 
 }
 
 /**
+ * Format a date for compact table display as `dd/mm/yy`.
+ *
+ * - For plain `YYYY-MM-DD` strings (date-only fields like Schedule.startDate,
+ *   Expense.date, Payment.date), parses components directly to avoid timezone
+ *   shifts (e.g., "2026-04-11" → "11/04/26" regardless of locale).
+ * - For full ISO datetimes, converts to Peru timezone first.
+ * - Returns "—" for null/undefined/empty input.
+ *
+ * @param value - Date string (ISO or YYYY-MM-DD), Date object, or null/undefined
+ * @returns Formatted string like "11/04/26" or "—"
+ */
+export function formatTableDate(value: Date | string | null | undefined): string {
+  if (!value) return '—';
+  if (typeof value === 'string') {
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+    if (match) {
+      const [, year, month, day] = match;
+      return `${day}/${month}/${year.slice(2)}`;
+    }
+  }
+  const date = typeof value === 'string' ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('es-PE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    timeZone: PERU_TZ,
+  }).format(date);
+}
+
+/**
  * Format a UTC date as long date in browser's local timezone.
  * Shows full month name and year.
  *

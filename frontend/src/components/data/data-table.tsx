@@ -132,7 +132,7 @@ export function DataTable<T>({
                   {col.header}
                 </TableHead>
               ))}
-              {actions && <TableHead className="w-20">Acciones</TableHead>}
+              {actions && <TableHead className="w-24 text-right">Acciones</TableHead>}
             </TableRow>
           </TableHeader>
 
@@ -175,7 +175,7 @@ export function DataTable<T>({
                       {col.cell(row)}
                     </TableCell>
                   ))}
-                  {actions && <TableCell>{actions(row)}</TableCell>}
+                  {actions && <TableCell className="text-right">{actions(row)}</TableCell>}
                 </RowComponent>
               ))}
               {isFetchingNextPage && (

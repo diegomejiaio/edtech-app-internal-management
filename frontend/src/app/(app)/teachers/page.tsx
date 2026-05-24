@@ -7,10 +7,11 @@
  */
 
 import { useMemo, useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteTeachers, useCreateTeacher, useUpdateTeacher, useDeleteTeacher } from '@/hooks';
-import { PageHeader, DataTable, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { PageHeader, DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,6 +40,7 @@ const columns: Column<Teacher>[] = [
 
 export default function TeachersPage() {
   const client = useApiClient();
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const limit = 25;
 
@@ -46,7 +48,7 @@ export default function TeachersPage() {
     search: search || undefined,
     limit,
   });
-  const teachers = useMemo(() => flattenInfiniteItems(data), [data]);
+  const teachers = useMemo(() => flattenInfiniteItems(data, { sortBy: (t) => t.updatedAt ?? t.createdAt }), [data]);
   const total = getInfiniteTotal(data);
   const createMutation = useCreateTeacher(client);
   const updateMutation = useUpdateTeacher(client);
@@ -112,10 +114,11 @@ export default function TeachersPage() {
         isLoading={isLoading}
         isFetchingNextPage={isFetchingNextPage}
         actions={(t) => (
-          <div className="flex gap-1">
-            <Button variant="ghost" size="sm" onClick={() => openEdit(t)}>Editar</Button>
-            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setDeleteTarget(t)}>Eliminar</Button>
-          </div>
+          <RowActions
+            onView={() => router.push(`/teachers/detail?id=${t.id}`)}
+            onEdit={() => openEdit(t)}
+            onDelete={() => setDeleteTarget(t)}
+          />
         )}
       />
 
