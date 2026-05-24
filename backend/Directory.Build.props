@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- Disable Roslyn shared compilation server to avoid deadlocks
+         with VS Code Language Server on macOS 26 + .NET 10 preview -->
+    <UseSharedCompilation>false</UseSharedCompilation>
+  </PropertyGroup>
+</Project>

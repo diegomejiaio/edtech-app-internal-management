@@ -109,7 +109,7 @@ public sealed class ExpenseFunction
         ApplyMutableFields(body, expense);
 
         var created = await _repo.CreateAsync(expense, ct);
-        return new ObjectResult(created) { StatusCode = StatusCodes.Status201Created };
+        return req.Created(created, $"v1/expenses/{created.Id}");
     }
 
     /// <summary>

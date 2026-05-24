@@ -68,13 +68,25 @@ var host = new HostBuilder()
         services.AddScoped<ExpenseRepository>();
 
         // 7. JSON serialization defaults — per docs/07-api-contract-cheatsheet.md §2 + §4
-        services.Configure<JsonSerializerOptions>(opts =>
+        // AddMvc().AddJsonOptions() configures OkObjectResult / IActionResult serialization.
+        services.AddMvc().AddJsonOptions(opts =>
         {
-            opts.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-            opts.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
-            opts.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-            opts.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
-            opts.Converters.Add(new TimeOnlyHHmmJsonConverter());
+            opts.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            opts.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+            opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+            opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+            opts.JsonSerializerOptions.Converters.Add(new TimeOnlyHHmmJsonConverter());
+        });
+
+        // ReadFromJsonAsync uses Microsoft.AspNetCore.Http.Json.JsonOptions, not MVC options.
+        // Keep request bodies aligned with response and Cosmos serialization.
+        services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(opts =>
+        {
+            opts.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            opts.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+            opts.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+            opts.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+            opts.SerializerOptions.Converters.Add(new TimeOnlyHHmmJsonConverter());
         });
     })
     .Build();

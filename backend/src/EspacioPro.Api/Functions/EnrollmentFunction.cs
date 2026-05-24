@@ -24,17 +24,20 @@ public sealed class EnrollmentFunction
     private readonly EnrollmentRepository _repo;
     private readonly StudentRepository _studentRepo;
     private readonly ScheduleRepository _scheduleRepo;
+    private readonly StudentPaymentRepository _paymentRepo;
     private readonly ILogger<EnrollmentFunction> _logger;
 
     public EnrollmentFunction(
         EnrollmentRepository repo,
         StudentRepository studentRepo,
         ScheduleRepository scheduleRepo,
+        StudentPaymentRepository paymentRepo,
         ILogger<EnrollmentFunction> logger)
     {
         _repo = repo;
         _studentRepo = studentRepo;
         _scheduleRepo = scheduleRepo;
+        _paymentRepo = paymentRepo;
         _logger = logger;
     }
 
@@ -97,24 +100,26 @@ public sealed class EnrollmentFunction
             return req.ValidationError(errors);
 
         var student = await _studentRepo.GetByIdAsync(body.StudentId!, ct);
-        if (student is null)
+        if (student is null || !student.Active)
             return req.ValidationError("studentId", $"Student '{body.StudentId}' does not exist or is inactive.");
 
         var schedule = await _scheduleRepo.GetByIdAsync(body.ScheduleId!, ct);
-        if (schedule is null)
+        if (schedule is null || !schedule.Active)
             return req.ValidationError("scheduleId", $"Schedule '{body.ScheduleId}' does not exist or is inactive.");
 
         if (await _repo.ExistsActiveAsync(student.Id, schedule.Id, ct))
             return req.Duplicate(
                 $"Student '{student.Id}' already has an active enrollment in schedule '{schedule.Id}'.");
 
+        var activeCount = await _repo.CountActiveByScheduleAsync(schedule.Id, ct);
+        if (activeCount >= schedule.Capacity)
+            return req.CapacityFull(
+                $"Schedule '{schedule.Id}' is at full capacity ({schedule.Capacity}).");
+
         var enrollment = MapToEntity(body, new Enrollment(), student, schedule);
         var created = await _repo.CreateAsync(enrollment, ct);
 
-        return new ObjectResult(created)
-        {
-            StatusCode = StatusCodes.Status201Created,
-        };
+        return req.Created(created, $"v1/enrollments/{created.Id}");
     }
 
     /// <summary>PUT /api/v1/enrollments/{id} — full replace. Refreshes snapshots from current Student + Schedule.</summary>
@@ -138,11 +143,11 @@ public sealed class EnrollmentFunction
             return req.ValidationError(errors);
 
         var student = await _studentRepo.GetByIdAsync(body.StudentId!, ct);
-        if (student is null)
+        if (student is null || !student.Active)
             return req.ValidationError("studentId", $"Student '{body.StudentId}' does not exist or is inactive.");
 
         var schedule = await _scheduleRepo.GetByIdAsync(body.ScheduleId!, ct);
-        if (schedule is null)
+        if (schedule is null || !schedule.Active)
             return req.ValidationError("scheduleId", $"Schedule '{body.ScheduleId}' does not exist or is inactive.");
 
         // Re-check active uniqueness only if (student, schedule) is changing AND new status will be active.
@@ -157,8 +162,21 @@ public sealed class EnrollmentFunction
         }
 
         MapToEntity(body, existing, student, schedule);
-        var updated = await _repo.UpdateAsync(existing, ct);
-        return new OkObjectResult(updated);
+
+        // Honor If-Match for optimistic concurrency (docs §17).
+        var ifMatch = req.Headers.IfMatch.FirstOrDefault();
+        if (!string.IsNullOrEmpty(ifMatch))
+            existing.ETag = ifMatch;
+
+        try
+        {
+            var updated = await _repo.UpdateAsync(existing, ct);
+            return new OkObjectResult(updated);
+        }
+        catch (Microsoft.Azure.Cosmos.CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
+        {
+            return req.PreconditionFailed($"Enrollment '{id}' was modified by another request.");
+        }
     }
 
     /// <summary>DELETE /api/v1/enrollments/{id} — soft delete. Payments stay addressable per §3.5.</summary>
@@ -225,6 +243,26 @@ public sealed class EnrollmentFunction
 
         var (items, total) = await _repo.SearchAsync(studentId: null, scheduleId, status, includeInactive: false, limit, offset, ct);
         return new OkObjectResult(new Paginated<Enrollment>(items, total, limit, offset));
+    }
+
+    /// <summary>GET /api/v1/enrollments/{id}/payments — student payments for an enrollment.</summary>
+    [Function("StudentPaymentListByEnrollment")]
+    [RequireRole("admin")]
+    public async Task<IActionResult> ListPayments(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "v1/enrollments/{enrollmentId}/payments")] HttpRequest req,
+        string enrollmentId,
+        CancellationToken ct)
+    {
+        var fromRaw = req.Query["from"].FirstOrDefault();
+        var toRaw = req.Query["to"].FirstOrDefault();
+        var limit = ClampLimit(req.Query["limit"].FirstOrDefault());
+        var offset = Math.Max(0, ParseInt(req.Query["offset"].FirstOrDefault(), 0));
+
+        DateOnly? from = DateOnly.TryParse(fromRaw, out var f) ? f : null;
+        DateOnly? to = DateOnly.TryParse(toRaw, out var t) ? t : null;
+
+        var (items, total) = await _paymentRepo.SearchAsync(enrollmentId, studentId: null, from, to, includeInactive: false, limit, offset, ct);
+        return new OkObjectResult(new Paginated<StudentPayment>(items, total, limit, offset));
     }
 
     // --- Helpers ---

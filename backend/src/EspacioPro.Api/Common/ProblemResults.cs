@@ -34,9 +34,22 @@ internal static class ProblemResults
     public static ObjectResult DependentRecords(this HttpRequest req, string detail) =>
         Problem(ProblemDetailsFactory.DependentRecords(detail, req.Path, req.CorrelationId()));
 
+    public static ObjectResult PreconditionFailed(this HttpRequest req, string detail) =>
+        Problem(ProblemDetailsFactory.PreconditionFailed(detail, req.Path, req.CorrelationId()));
+
+    public static ObjectResult CapacityFull(this HttpRequest req, string detail) =>
+        Problem(ProblemDetailsFactory.Conflict(detail, req.Path, req.CorrelationId()));
+
     public static ObjectResult ValidationError(this HttpRequest req, IDictionary<string, string[]> errors) =>
         Problem(ProblemDetailsFactory.Validation(errors, req.Path, req.CorrelationId()));
 
     public static ObjectResult ValidationError(this HttpRequest req, string field, string message) =>
         Problem(ProblemDetailsFactory.Validation(field, message, req.Path, req.CorrelationId()));
+
+    /// <summary>Returns 201 with the created resource and a <c>Location</c> header.</summary>
+    public static ObjectResult Created(this HttpRequest req, object value, string resourcePath)
+    {
+        req.HttpContext.Response.Headers.Location = $"/api/{resourcePath}";
+        return new ObjectResult(value) { StatusCode = StatusCodes.Status201Created };
+    }
 }

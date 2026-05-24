@@ -95,11 +95,7 @@ public sealed class StudentPaymentRepository : CosmosRepository<StudentPayment>
         while (iter.HasMoreResults)
         {
             var page = await iter.ReadNextAsync(ct);
-            foreach (var p in page)
-            {
-                p.ETag = page.ETag;
-                items.Add(p);
-            }
+            items.AddRange(page);
         }
 
         return (items, total);

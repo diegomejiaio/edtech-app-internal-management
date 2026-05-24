@@ -101,7 +101,7 @@ public sealed class CatalogFunction
 
         var updated = await _repo.UpdateAsync(catalog, ct);
 
-        return new ObjectResult(updated) { StatusCode = StatusCodes.Status201Created };
+        return req.Created(updated, $"v1/catalogs/{code}/items/{body.Value}");
     }
 
     /// <summary>DELETE /api/v1/catalogs/{code}/items/{value} — soft-disable an item.</summary>

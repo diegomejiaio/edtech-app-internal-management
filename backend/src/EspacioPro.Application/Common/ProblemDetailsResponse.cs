@@ -8,7 +8,7 @@ namespace EspacioPro.Application.Common;
 /// - <c>errors</c>: ASP.NET-style field map for 422 (cheatsheet §6.2).
 /// Serialized as <c>application/problem+json</c>.
 /// </summary>
-public sealed class ProblemDetailsResponse
+public sealed record ProblemDetailsResponse
 {
     [JsonPropertyName("type")]
     public string Type { get; init; } = default!;

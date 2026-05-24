@@ -10,76 +10,76 @@ namespace EspacioPro.Application.Common;
 /// <c>docs/01-domain-model.md</c> §3.4 and <c>docs/04-api-design.md</c> §4.3.
 /// Computed fields are derived at request time and never persisted.
 /// </summary>
-public sealed class ScheduleResponse
+public sealed record ScheduleResponse
 {
     [JsonPropertyName("id")]
-    public string Id { get; set; } = default!;
+    public string Id { get; init; } = default!;
 
     [JsonPropertyName("type")]
-    public string Type { get; set; } = EntityTypes.Schedule;
+    public string Type { get; init; } = EntityTypes.Schedule;
 
     [JsonPropertyName("course")]
-    public string Course { get; set; } = default!;
+    public string Course { get; init; } = default!;
 
     [JsonPropertyName("level")]
-    public string Level { get; set; } = default!;
+    public string Level { get; init; } = default!;
 
     [JsonPropertyName("teacherId")]
-    public string TeacherId { get; set; } = default!;
+    public string TeacherId { get; init; } = default!;
 
     [JsonPropertyName("teacherName")]
-    public string TeacherName { get; set; } = default!;
+    public string TeacherName { get; init; } = default!;
 
     [JsonPropertyName("weekdays")]
-    public string Weekdays { get; set; } = default!;
+    public string Weekdays { get; init; } = default!;
 
     [JsonPropertyName("startTime")]
-    public TimeOnly StartTime { get; set; }
+    public TimeOnly StartTime { get; init; }
 
     [JsonPropertyName("endTime")]
-    public TimeOnly EndTime { get; set; }
+    public TimeOnly EndTime { get; init; }
 
     [JsonPropertyName("price")]
-    public decimal Price { get; set; }
+    public decimal Price { get; init; }
 
     [JsonPropertyName("capacity")]
-    public int Capacity { get; set; }
+    public int Capacity { get; init; }
 
     [JsonPropertyName("status")]
-    public ScheduleStatus Status { get; set; }
+    public ScheduleStatus Status { get; init; }
 
     [JsonPropertyName("startDate")]
-    public DateOnly StartDate { get; set; }
+    public DateOnly StartDate { get; init; }
 
     [JsonPropertyName("active")]
-    public bool Active { get; set; }
+    public bool Active { get; init; }
 
     [JsonPropertyName("enrolledActiveCount")]
-    public int EnrolledActiveCount { get; set; }
+    public int EnrolledActiveCount { get; init; }
 
     [JsonPropertyName("occupancyPct")]
-    public decimal OccupancyPct { get; set; }
+    public decimal OccupancyPct { get; init; }
 
     [JsonPropertyName("createdAt")]
-    public string CreatedAt { get; set; } = default!;
+    public string CreatedAt { get; init; } = default!;
 
     [JsonPropertyName("createdBy")]
-    public AuditUser? CreatedBy { get; set; }
+    public AuditUser? CreatedBy { get; init; }
 
     [JsonPropertyName("updatedAt")]
-    public string UpdatedAt { get; set; } = default!;
+    public string UpdatedAt { get; init; } = default!;
 
     [JsonPropertyName("updatedBy")]
-    public AuditUser? UpdatedBy { get; set; }
+    public AuditUser? UpdatedBy { get; init; }
 
     [JsonPropertyName("deletedAt")]
-    public string? DeletedAt { get; set; }
+    public string? DeletedAt { get; init; }
 
     [JsonPropertyName("deletedBy")]
-    public AuditUser? DeletedBy { get; set; }
+    public AuditUser? DeletedBy { get; init; }
 
     [JsonPropertyName("_etag")]
-    public string? ETag { get; set; }
+    public string? ETag { get; init; }
 
     /// <summary>Composes a response from a <see cref="Schedule"/> + a precomputed enrollment count.</summary>
     public static ScheduleResponse From(Schedule s, int enrolledActiveCount) => new()

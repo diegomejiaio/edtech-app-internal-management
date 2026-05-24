@@ -23,13 +23,21 @@ public sealed class StudentRepository : CosmosRepository<Student>
         ILogger<StudentRepository> logger)
         : base(cosmosClient, options, currentUser, logger) { }
 
+    /// <inheritdoc />
+    protected override void OnBeforeWrite(Student entity) =>
+        entity.SearchText = TextNormalizer.Compose(
+            entity.FirstName,
+            entity.LastName,
+            entity.DocNumber,
+            entity.Phone,
+            TextNormalizer.DigitsOnly(entity.Phone));
+
     /// <summary>
     /// Finds an active student by <c>docType + docNumber</c>. Used for dedup on POST/PUT.
     /// </summary>
     public async Task<Student?> GetByDocAsync(DocType docType, string docNumber, CancellationToken ct = default)
     {
-        // Stored value matches JsonStringEnumConverter(camelCase) output (see Program.cs).
-        var docTypeWire = char.ToLowerInvariant(docType.ToString()[0]) + docType.ToString()[1..];
+        var docTypeWire = EnumWire.ToCamel(docType);
 
         var query = new QueryDefinition(@"
             SELECT * FROM c
@@ -50,10 +58,7 @@ public sealed class StudentRepository : CosmosRepository<Student>
             var page = await iterator.ReadNextAsync(ct);
             var student = page.FirstOrDefault();
             if (student is not null)
-            {
-                student.ETag = page.ETag;
                 return student;
-            }
         }
 
         return null;
@@ -78,7 +83,7 @@ public sealed class StudentRepository : CosmosRepository<Student>
         var hasSource = !string.IsNullOrWhiteSpace(source);
 
         if (hasSearch)
-            where += " AND (CONTAINS(LOWER(c.firstName), @search) OR CONTAINS(LOWER(c.lastName), @search) OR CONTAINS(LOWER(c.docNumber), @search))";
+            where += " AND CONTAINS(c.searchText, @search)";
         if (docType is not null)
             where += " AND c.docType = @docType";
         if (hasSource)
@@ -95,12 +100,13 @@ public sealed class StudentRepository : CosmosRepository<Student>
 
         if (hasSearch)
         {
-            countDef.WithParameter("@search", search!.ToLowerInvariant());
-            pageDef.WithParameter("@search", search!.ToLowerInvariant());
+            var normalized = TextNormalizer.Normalize(search);
+            countDef.WithParameter("@search", normalized);
+            pageDef.WithParameter("@search", normalized);
         }
         if (docType is not null)
         {
-            var docTypeWire = char.ToLowerInvariant(docType.Value.ToString()[0]) + docType.Value.ToString()[1..];
+            var docTypeWire = EnumWire.ToCamel(docType.Value);
             countDef.WithParameter("@docType", docTypeWire);
             pageDef.WithParameter("@docType", docTypeWire);
         }
@@ -127,11 +133,7 @@ public sealed class StudentRepository : CosmosRepository<Student>
         while (iter.HasMoreResults)
         {
             var page = await iter.ReadNextAsync(ct);
-            foreach (var student in page)
-            {
-                student.ETag = page.ETag;
-                items.Add(student);
-            }
+            items.AddRange(page);
         }
 
         return (items, total);

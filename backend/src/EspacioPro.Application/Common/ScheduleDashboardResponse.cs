@@ -12,20 +12,20 @@ namespace EspacioPro.Application.Common;
 /// Aggregates a schedule, its active enrollments, and a per-enrollment paid/debtor
 /// flag for the requested month. All data is derived at request time and never persisted.
 /// </remarks>
-public sealed class ScheduleDashboardResponse
+public sealed record ScheduleDashboardResponse
 {
     [JsonPropertyName("schedule")]
-    public ScheduleResponse Schedule { get; set; } = default!;
+    public ScheduleResponse Schedule { get; init; } = default!;
 
     /// <summary>Year-month being reported, in <c>YYYY-MM</c> format.</summary>
     [JsonPropertyName("month")]
-    public string Month { get; set; } = default!;
+    public string Month { get; init; } = default!;
 
     [JsonPropertyName("enrollments")]
-    public IReadOnlyList<ScheduleDashboardEnrollment> Enrollments { get; set; } = [];
+    public IReadOnlyList<ScheduleDashboardEnrollment> Enrollments { get; init; } = [];
 
     [JsonPropertyName("summary")]
-    public ScheduleDashboardSummary Summary { get; set; } = default!;
+    public ScheduleDashboardSummary Summary { get; init; } = default!;
 
     /// <summary>
     /// Composes the dashboard from the underlying queries:
@@ -83,42 +83,42 @@ public sealed class ScheduleDashboardResponse
 }
 
 /// <summary>One enrollment row inside the schedule dashboard, with paid/debtor status for the month.</summary>
-public sealed class ScheduleDashboardEnrollment
+public sealed record ScheduleDashboardEnrollment
 {
     [JsonPropertyName("enrollmentId")]
-    public string EnrollmentId { get; set; } = default!;
+    public string EnrollmentId { get; init; } = default!;
 
     [JsonPropertyName("studentId")]
-    public string StudentId { get; set; } = default!;
+    public string StudentId { get; init; } = default!;
 
     [JsonPropertyName("studentName")]
-    public string StudentName { get; set; } = default!;
+    public string StudentName { get; init; } = default!;
 
     /// <summary>Concatenated <c>docType + docNumber</c> snapshot for display (e.g. <c>DNI 12345678</c>).</summary>
     [JsonPropertyName("studentDoc")]
-    public string StudentDoc { get; set; } = default!;
+    public string StudentDoc { get; init; } = default!;
 
     [JsonPropertyName("paidThisMonth")]
-    public bool PaidThisMonth { get; set; }
+    public bool PaidThisMonth { get; init; }
 
     /// <summary>Most recent active payment date within the requested month, or <c>null</c> if none.</summary>
     [JsonPropertyName("lastPaymentDate")]
-    public DateOnly? LastPaymentDate { get; set; }
+    public DateOnly? LastPaymentDate { get; init; }
 }
 
 /// <summary>Aggregate counters for the schedule dashboard month.</summary>
-public sealed class ScheduleDashboardSummary
+public sealed record ScheduleDashboardSummary
 {
     [JsonPropertyName("enrolled")]
-    public int Enrolled { get; set; }
+    public int Enrolled { get; init; }
 
     [JsonPropertyName("paid")]
-    public int Paid { get; set; }
+    public int Paid { get; init; }
 
     [JsonPropertyName("debtors")]
-    public int Debtors { get; set; }
+    public int Debtors { get; init; }
 
     /// <summary>Ratio <c>enrolled / capacity</c>, rounded to 4 decimals. <c>0</c> when capacity is 0.</summary>
     [JsonPropertyName("occupancyPct")]
-    public decimal OccupancyPct { get; set; }
+    public decimal OccupancyPct { get; init; }
 }

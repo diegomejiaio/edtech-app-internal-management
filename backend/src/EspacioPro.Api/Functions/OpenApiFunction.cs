@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using EspacioPro.Api.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
@@ -53,7 +54,7 @@ public sealed class OpenApiFunction
         catch (FileNotFoundException ex)
         {
             _logger.LogError(ex, "openapi.yaml not found in app base directory.");
-            return new NotFoundResult();
+            return req.NotFound("OpenAPI spec file (openapi.yaml) not found.");
         }
     }
 
@@ -74,7 +75,7 @@ public sealed class OpenApiFunction
         catch (FileNotFoundException ex)
         {
             _logger.LogError(ex, "openapi.yaml not found in app base directory.");
-            return new NotFoundResult();
+            return req.NotFound("OpenAPI spec file (openapi.yaml) not found.");
         }
     }
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using EspacioPro.Application.Abstractions;
 using EspacioPro.Domain.Common;
 using EspacioPro.Domain.Entities;
@@ -25,13 +26,15 @@ public sealed class ScheduleRepository : CosmosRepository<Schedule>
 
     /// <summary>
     /// Lists schedules with optional <paramref name="status"/>, <paramref name="teacherId"/>,
-    /// and <paramref name="course"/> filters, plus pagination.
+    /// <paramref name="course"/>, and start-date range filters, plus pagination.
     /// Per <c>docs/04-api-design.md</c> §5.4.
     /// </summary>
     public async Task<(IReadOnlyList<Schedule> Items, int Total)> SearchAsync(
         ScheduleStatus? status,
         string? teacherId,
         string? course,
+        DateOnly? startDateFrom,
+        DateOnly? startDateTo,
         bool includeInactive,
         int limit,
         int offset,
@@ -41,6 +44,8 @@ public sealed class ScheduleRepository : CosmosRepository<Schedule>
         if (status is not null) where += " AND c.status = @status";
         if (!string.IsNullOrWhiteSpace(teacherId)) where += " AND c.teacherId = @teacherId";
         if (!string.IsNullOrWhiteSpace(course)) where += " AND c.course = @course";
+        if (startDateFrom is not null) where += " AND c.startDate >= @startDateFrom";
+        if (startDateTo is not null) where += " AND c.startDate <= @startDateTo";
 
         var countDef = new QueryDefinition($"SELECT VALUE COUNT(1) FROM c WHERE {where}");
         var pageDef = new QueryDefinition(
@@ -67,6 +72,18 @@ public sealed class ScheduleRepository : CosmosRepository<Schedule>
             countDef.WithParameter("@course", course);
             pageDef.WithParameter("@course", course);
         }
+        if (startDateFrom is not null)
+        {
+            var from = startDateFrom.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            countDef.WithParameter("@startDateFrom", from);
+            pageDef.WithParameter("@startDateFrom", from);
+        }
+        if (startDateTo is not null)
+        {
+            var to = startDateTo.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            countDef.WithParameter("@startDateTo", to);
+            pageDef.WithParameter("@startDateTo", to);
+        }
 
         var partitionOpts = new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) };
 
@@ -85,11 +102,7 @@ public sealed class ScheduleRepository : CosmosRepository<Schedule>
         while (iter.HasMoreResults)
         {
             var page = await iter.ReadNextAsync(ct);
-            foreach (var s in page)
-            {
-                s.ETag = page.ETag;
-                items.Add(s);
-            }
+            items.AddRange(page);
         }
 
         return (items, total);

@@ -6,10 +6,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="*-*" />
-    <PackageReference Include="Microsoft.Azure.Cosmos" Version="*-*" />
+    <PackageReference Include="Azure.Identity" Version="1.21.0" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.60.0" />
     <!--
-      Microsoft.Azure.Cosmos 3.60-preview still has an internal hard dependency
+      Microsoft.Azure.Cosmos 3.60 still has an internal hard dependency
       on Newtonsoft.Json at runtime (DocumentClient ctor). The compile-time
       check is disabled by AzureCosmosDisableNewtonsoftJsonCheck in
       Directory.Build.props, but the assembly itself must still resolve at
@@ -17,8 +17,8 @@
     -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 
-    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="*" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="*" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.18.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.18.0" />
   </ItemGroup>
 
   <PropertyGroup>

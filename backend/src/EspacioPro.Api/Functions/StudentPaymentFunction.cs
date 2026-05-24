@@ -97,7 +97,7 @@ public sealed class StudentPaymentFunction
             return req.ValidationError(errors);
 
         var enrollment = await _enrollmentRepo.GetByIdAsync(body.EnrollmentId!, ct);
-        if (enrollment is null)
+        if (enrollment is null || !enrollment.Active)
             return req.ValidationError("enrollmentId", $"Enrollment '{body.EnrollmentId}' does not exist or is inactive.");
 
         var payment = new StudentPayment
@@ -111,7 +111,7 @@ public sealed class StudentPaymentFunction
         ApplyMutableFields(body, payment);
 
         var created = await _repo.CreateAsync(payment, ct);
-        return new ObjectResult(created) { StatusCode = StatusCodes.Status201Created };
+        return req.Created(created, $"v1/student-payments/{created.Id}");
     }
 
     /// <summary>

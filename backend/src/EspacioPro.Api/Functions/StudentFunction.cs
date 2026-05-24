@@ -107,10 +107,7 @@ public sealed class StudentFunction
         var student = MapToEntity(body, new Student());
         var created = await _repo.CreateAsync(student, ct);
 
-        return new ObjectResult(created)
-        {
-            StatusCode = StatusCodes.Status201Created,
-        };
+        return req.Created(created, $"v1/students/{created.Id}");
     }
 
     /// <summary>PUT /api/v1/students/{id} — full replace.</summary>

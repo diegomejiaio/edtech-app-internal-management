@@ -91,7 +91,7 @@ public sealed class TeacherPaymentFunction
             return req.ValidationError(errors);
 
         var teacher = await _teacherRepo.GetByIdAsync(body.TeacherId!, ct);
-        if (teacher is null)
+        if (teacher is null || !teacher.Active)
             return req.ValidationError("teacherId", $"Teacher '{body.TeacherId}' does not exist or is inactive.");
 
         var payment = new TeacherPayment
@@ -103,7 +103,7 @@ public sealed class TeacherPaymentFunction
         ApplyMutableFields(body, payment);
 
         var created = await _repo.CreateAsync(payment, ct);
-        return new ObjectResult(created) { StatusCode = StatusCodes.Status201Created };
+        return req.Created(created, $"v1/teacher-payments/{created.Id}");
     }
 
     /// <summary>

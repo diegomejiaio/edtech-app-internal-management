@@ -23,13 +23,21 @@ public sealed class TeacherRepository : CosmosRepository<Teacher>
         ILogger<TeacherRepository> logger)
         : base(cosmosClient, options, currentUser, logger) { }
 
+    /// <inheritdoc />
+    protected override void OnBeforeWrite(Teacher entity) =>
+        entity.SearchText = TextNormalizer.Compose(
+            entity.FirstName,
+            entity.LastName,
+            entity.DocNumber,
+            entity.Phone,
+            TextNormalizer.DigitsOnly(entity.Phone));
+
     /// <summary>
     /// Finds an active teacher by <c>docType + docNumber</c>. Used for dedup on POST.
     /// </summary>
     public async Task<Teacher?> GetByDocAsync(DocType docType, string docNumber, CancellationToken ct = default)
     {
-        // Stored value matches JsonStringEnumConverter(camelCase) output (see Program.cs).
-        var docTypeWire = char.ToLowerInvariant(docType.ToString()[0]) + docType.ToString()[1..];
+        var docTypeWire = EnumWire.ToCamel(docType);
 
         var query = new QueryDefinition(@"
             SELECT * FROM c
@@ -50,10 +58,7 @@ public sealed class TeacherRepository : CosmosRepository<Teacher>
             var page = await iterator.ReadNextAsync(ct);
             var teacher = page.FirstOrDefault();
             if (teacher is not null)
-            {
-                teacher.ETag = page.ETag;
                 return teacher;
-            }
         }
 
         return null;
@@ -77,7 +82,7 @@ public sealed class TeacherRepository : CosmosRepository<Teacher>
         var hasSpecialty = !string.IsNullOrWhiteSpace(specialty);
 
         if (hasSearch)
-            where += " AND (CONTAINS(LOWER(c.firstName), @search) OR CONTAINS(LOWER(c.lastName), @search) OR CONTAINS(LOWER(c.docNumber), @search))";
+            where += " AND CONTAINS(c.searchText, @search)";
         if (hasSpecialty)
             where += " AND c.specialty = @specialty";
 
@@ -92,8 +97,9 @@ public sealed class TeacherRepository : CosmosRepository<Teacher>
 
         if (hasSearch)
         {
-            countDef.WithParameter("@search", search!.ToLowerInvariant());
-            pageDef.WithParameter("@search", search!.ToLowerInvariant());
+            var normalized = TextNormalizer.Normalize(search);
+            countDef.WithParameter("@search", normalized);
+            pageDef.WithParameter("@search", normalized);
         }
         if (hasSpecialty)
         {
@@ -118,11 +124,7 @@ public sealed class TeacherRepository : CosmosRepository<Teacher>
         while (iter.HasMoreResults)
         {
             var page = await iter.ReadNextAsync(ct);
-            foreach (var teacher in page)
-            {
-                teacher.ETag = page.ETag;
-                items.Add(teacher);
-            }
+            items.AddRange(page);
         }
 
         return (items, total);

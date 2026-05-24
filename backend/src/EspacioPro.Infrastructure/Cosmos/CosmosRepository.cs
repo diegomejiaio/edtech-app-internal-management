@@ -40,6 +40,14 @@ public abstract class CosmosRepository<T> : IRepository<T> where T : BaseEntity
     /// <summary>Provides direct container access for derived repos with custom queries.</summary>
     protected Container Container => _container;
 
+    /// <summary>
+    /// Hook invoked at the top of <see cref="CreateAsync"/> and <see cref="UpdateAsync"/>
+    /// after audit fields are set but before the document is sent to Cosmos.
+    /// Derived repositories override this to populate computed projections
+    /// (for example, accent-folded <c>searchText</c>). Default impl is a no-op.
+    /// </summary>
+    protected virtual void OnBeforeWrite(T entity) { }
+
     public async Task<T?> GetByIdAsync(string id, CancellationToken ct = default)
     {
         try
@@ -84,11 +92,7 @@ public abstract class CosmosRepository<T> : IRepository<T> where T : BaseEntity
         while (iterator.HasMoreResults)
         {
             var page = await iterator.ReadNextAsync(ct);
-            foreach (var item in page)
-            {
-                item.ETag = page.ETag;
-                results.Add(item);
-            }
+            results.AddRange(page);
         }
 
         return results;
@@ -107,6 +111,8 @@ public abstract class CosmosRepository<T> : IRepository<T> where T : BaseEntity
         entity.UpdatedBy = auditUser;
         entity.DeletedAt = null;
         entity.DeletedBy = null;
+
+        OnBeforeWrite(entity);
 
         var response = await _container.CreateItemAsync(
             entity,
@@ -129,6 +135,8 @@ public abstract class CosmosRepository<T> : IRepository<T> where T : BaseEntity
         entity.UpdatedAt = DateTime.UtcNow.ToString("o");
         entity.UpdatedBy = auditUser;
 
+        OnBeforeWrite(entity);
+
         var requestOptions = new ItemRequestOptions();
         if (!string.IsNullOrEmpty(entity.ETag))
             requestOptions.IfMatchEtag = entity.ETag;
@@ -147,6 +155,43 @@ public abstract class CosmosRepository<T> : IRepository<T> where T : BaseEntity
             TypeDiscriminator, updated.Id, auditUser.Email);
 
         return updated;
+    }
+
+    /// <summary>
+    /// Re-applies <see cref="OnBeforeWrite"/> to every document of this type
+    /// (including inactive) and replaces them in Cosmos. Used for backfilling
+    /// computed projections (for example, <c>searchText</c>) after the
+    /// projection logic changes. Audit fields are preserved — this is a
+    /// system-level reindex, not a user-driven update.
+    /// </summary>
+    /// <returns>Number of documents reindexed.</returns>
+    public async Task<int> ReindexAllAsync(CancellationToken ct = default)
+    {
+        var queryDef = new QueryDefinition("SELECT * FROM c WHERE c.type = @type")
+            .WithParameter("@type", TypeDiscriminator);
+
+        var count = 0;
+        using var iterator = _container.GetItemQueryIterator<T>(
+            queryDef,
+            requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) });
+
+        while (iterator.HasMoreResults)
+        {
+            var page = await iterator.ReadNextAsync(ct);
+            foreach (var entity in page)
+            {
+                OnBeforeWrite(entity);
+                await _container.ReplaceItemAsync(
+                    entity,
+                    entity.Id,
+                    new PartitionKey(TypeDiscriminator),
+                    cancellationToken: ct);
+                count++;
+            }
+        }
+
+        _logger.LogInformation("Reindexed {Count} {Type} document(s)", count, TypeDiscriminator);
+        return count;
     }
 
     public async Task SoftDeleteAsync(string id, CancellationToken ct = default)

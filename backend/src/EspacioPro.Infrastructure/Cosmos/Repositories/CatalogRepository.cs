@@ -42,10 +42,7 @@ public sealed class CatalogRepository : CosmosRepository<Catalog>
             var page = await iterator.ReadNextAsync(ct);
             var catalog = page.FirstOrDefault();
             if (catalog is not null)
-            {
-                catalog.ETag = page.ETag;
                 return catalog;
-            }
         }
 
         return null;

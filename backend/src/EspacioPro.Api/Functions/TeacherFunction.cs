@@ -14,7 +14,6 @@ namespace EspacioPro.Api.Functions;
 /// <summary>
 /// Teacher CRUD endpoints (M2) per <c>docs/04-api-design.md §5.3</c>.
 /// All endpoints require <c>[RequireRole("admin")]</c>.
-/// Note: <c>/teachers/{id}/payments</c> and <c>/teachers/{id}/schedules</c> land in M7 / M4.
 /// </summary>
 public sealed class TeacherFunction
 {
@@ -23,15 +22,21 @@ public sealed class TeacherFunction
 
     private readonly TeacherRepository _repo;
     private readonly ScheduleRepository _scheduleRepo;
+    private readonly EnrollmentRepository _enrollmentRepo;
+    private readonly TeacherPaymentRepository _teacherPaymentRepo;
     private readonly ILogger<TeacherFunction> _logger;
 
     public TeacherFunction(
         TeacherRepository repo,
         ScheduleRepository scheduleRepo,
+        EnrollmentRepository enrollmentRepo,
+        TeacherPaymentRepository teacherPaymentRepo,
         ILogger<TeacherFunction> logger)
     {
         _repo = repo;
         _scheduleRepo = scheduleRepo;
+        _enrollmentRepo = enrollmentRepo;
+        _teacherPaymentRepo = teacherPaymentRepo;
         _logger = logger;
     }
 
@@ -89,11 +94,7 @@ public sealed class TeacherFunction
         var teacher = MapToEntity(body, new Teacher());
         var created = await _repo.CreateAsync(teacher, ct);
 
-        return new ObjectResult(created)
-        {
-            StatusCode = StatusCodes.Status201Created,
-            // RFC: Location header on 201
-        };
+        return req.Created(created, $"v1/teachers/{created.Id}");
     }
 
     /// <summary>PUT /api/v1/teachers/{id} — full replace.</summary>
@@ -150,6 +151,69 @@ public sealed class TeacherFunction
 
         await _repo.SoftDeleteAsync(id, ct);
         return new StatusCodeResult(StatusCodes.Status204NoContent);
+    }
+
+    // --- Nested collection endpoints (api-design §5.3) ---
+
+    /// <summary>GET /api/v1/teachers/{id}/payments — teacher payments with optional date range.</summary>
+    [Function("TeacherPaymentListByTeacher")]
+    [RequireRole("admin")]
+    public async Task<IActionResult> ListPayments(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "v1/teachers/{teacherId}/payments")] HttpRequest req,
+        string teacherId,
+        CancellationToken ct)
+    {
+        var fromRaw = req.Query["from"].FirstOrDefault();
+        var toRaw = req.Query["to"].FirstOrDefault();
+        var limit = ClampLimit(req.Query["limit"].FirstOrDefault());
+        var offset = Math.Max(0, ParseInt(req.Query["offset"].FirstOrDefault(), 0));
+
+        DateOnly? from = DateOnly.TryParse(fromRaw, out var f) ? f : null;
+        DateOnly? to = DateOnly.TryParse(toRaw, out var t) ? t : null;
+
+        var (items, total) = await _teacherPaymentRepo.SearchAsync(teacherId, from, to, includeInactive: false, limit, offset, ct);
+        return new OkObjectResult(new Paginated<TeacherPayment>(items, total, limit, offset));
+    }
+
+    /// <summary>GET /api/v1/teachers/{id}/schedules — schedules assigned to this teacher.</summary>
+    [Function("ScheduleListByTeacher")]
+    [RequireRole("admin")]
+    public async Task<IActionResult> ListSchedules(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "v1/teachers/{teacherId}/schedules")] HttpRequest req,
+        string teacherId,
+        CancellationToken ct)
+    {
+        var statusRaw = req.Query["status"].FirstOrDefault();
+        var limit = ClampLimit(req.Query["limit"].FirstOrDefault());
+        var offset = Math.Max(0, ParseInt(req.Query["offset"].FirstOrDefault(), 0));
+
+        ScheduleStatus? status = null;
+        if (!string.IsNullOrWhiteSpace(statusRaw))
+        {
+            if (!Enum.TryParse<ScheduleStatus>(statusRaw, ignoreCase: true, out var parsed))
+                return req.ValidationError("status", "status must be one of: active, inProgress, finished, cancelled.");
+            status = parsed;
+        }
+
+        var (items, total) = await _scheduleRepo.SearchAsync(
+            status,
+            teacherId,
+            course: null,
+            startDateFrom: null,
+            startDateTo: null,
+            includeInactive: false,
+            limit,
+            offset,
+            ct);
+
+        var responses = new List<ScheduleResponse>(items.Count);
+        foreach (var s in items)
+        {
+            var count = await _enrollmentRepo.CountActiveByScheduleAsync(s.Id, ct);
+            responses.Add(ScheduleResponse.From(s, count));
+        }
+
+        return new OkObjectResult(new Paginated<ScheduleResponse>(responses, total, limit, offset));
     }
 
     // --- Helpers ---

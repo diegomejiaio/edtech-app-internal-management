@@ -46,9 +46,10 @@ public abstract class BaseEntity
 
     /// <summary>
     /// Cosmos DB optimistic concurrency token.
-    /// Not serialized to the document body — populated from <c>ItemResponse.ETag</c> by repositories.
+    /// Deserialized from the Cosmos document's system <c>_etag</c> field and
+    /// exposed to API consumers so they can send it back via <c>If-Match</c>.
     /// </summary>
-    [JsonIgnore]
+    [JsonPropertyName("_etag")]
     public string? ETag { get; set; }
 
     /// <summary>

@@ -36,6 +36,14 @@ public sealed class Teacher : BaseEntity
     [JsonPropertyName("clerkUserId")]
     public string? ClerkUserId { get; set; }
 
+    /// <summary>
+    /// Precomputed accent- and case-insensitive index used by paginated search
+    /// (<see cref="TextNormalizer.Normalize"/>). Set by the repository on every
+    /// write; do not assign from domain or API code.
+    /// </summary>
+    [JsonPropertyName("searchText")]
+    public string? SearchText { get; set; }
+
     /// <inheritdoc />
     /// <remarks>One active <see cref="Teacher"/> per <c>(docType, docNumber)</c> pair.</remarks>
     [JsonPropertyName("dedupKey")]

@@ -89,11 +89,7 @@ public sealed class EnrollmentRepository : CosmosRepository<Enrollment>
         while (iter.HasMoreResults)
         {
             var page = await iter.ReadNextAsync(ct);
-            foreach (var e in page)
-            {
-                e.ETag = page.ETag;
-                items.Add(e);
-            }
+            items.AddRange(page);
         }
 
         return (items, total);

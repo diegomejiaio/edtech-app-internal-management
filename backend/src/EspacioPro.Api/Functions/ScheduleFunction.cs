@@ -41,7 +41,7 @@ public sealed class ScheduleFunction
         _logger = logger;
     }
 
-    /// <summary>GET /api/v1/schedules — paginated list with optional status/teacherId/course filter.</summary>
+    /// <summary>GET /api/v1/schedules — paginated list with optional status/teacherId/course/startDate filters.</summary>
     /// <remarks>
     /// Each item carries <c>enrolledActiveCount</c> + <c>occupancyPct</c> per §3.4 (computed at read).
     /// Implementation does N count queries per page (~3 RU each). At default limit=25 this is ~75 RU.
@@ -60,6 +60,11 @@ public sealed class ScheduleFunction
         var limit = ClampLimit(req.Query["limit"].FirstOrDefault());
         var offset = Math.Max(0, ParseInt(req.Query["offset"].FirstOrDefault(), 0));
 
+        if (!TryParseDate(req.Query["startDateFrom"].FirstOrDefault(), out var startDateFrom))
+            return req.ValidationError("startDateFrom", "startDateFrom must be ISO date YYYY-MM-DD.");
+        if (!TryParseDate(req.Query["startDateTo"].FirstOrDefault(), out var startDateTo))
+            return req.ValidationError("startDateTo", "startDateTo must be ISO date YYYY-MM-DD.");
+
         ScheduleStatus? status = null;
         if (!string.IsNullOrWhiteSpace(statusRaw))
         {
@@ -68,7 +73,16 @@ public sealed class ScheduleFunction
             status = parsed;
         }
 
-        var (items, total) = await _repo.SearchAsync(status, teacherId, course, includeInactive, limit, offset, ct);
+        var (items, total) = await _repo.SearchAsync(
+            status,
+            teacherId,
+            course,
+            startDateFrom,
+            startDateTo,
+            includeInactive,
+            limit,
+            offset,
+            ct);
 
         var responses = new List<ScheduleResponse>(items.Count);
         foreach (var s in items)
@@ -112,16 +126,13 @@ public sealed class ScheduleFunction
             return req.ValidationError(errors);
 
         var teacher = await _teacherRepo.GetByIdAsync(body.TeacherId!, ct);
-        if (teacher is null)
+        if (teacher is null || !teacher.Active)
             return req.ValidationError("teacherId", $"Teacher '{body.TeacherId}' does not exist or is inactive.");
 
         var schedule = MapToEntity(body, new Schedule(), teacher);
         var created = await _repo.CreateAsync(schedule, ct);
 
-        return new ObjectResult(ScheduleResponse.From(created, 0))
-        {
-            StatusCode = StatusCodes.Status201Created,
-        };
+        return req.Created(ScheduleResponse.From(created, 0), $"v1/schedules/{created.Id}");
     }
 
     /// <summary>PUT /api/v1/schedules/{id} — full replace. Refreshes teacherName snapshot.</summary>
@@ -145,13 +156,26 @@ public sealed class ScheduleFunction
             return req.ValidationError(errors);
 
         var teacher = await _teacherRepo.GetByIdAsync(body.TeacherId!, ct);
-        if (teacher is null)
+        if (teacher is null || !teacher.Active)
             return req.ValidationError("teacherId", $"Teacher '{body.TeacherId}' does not exist or is inactive.");
 
         MapToEntity(body, existing, teacher);
-        var updated = await _repo.UpdateAsync(existing, ct);
-        var count = await _enrollmentRepo.CountActiveByScheduleAsync(id, ct);
-        return new OkObjectResult(ScheduleResponse.From(updated, count));
+
+        // Honor If-Match for optimistic concurrency (docs §17).
+        var ifMatch = req.Headers.IfMatch.FirstOrDefault();
+        if (!string.IsNullOrEmpty(ifMatch))
+            existing.ETag = ifMatch;
+
+        try
+        {
+            var updated = await _repo.UpdateAsync(existing, ct);
+            var count = await _enrollmentRepo.CountActiveByScheduleAsync(id, ct);
+            return new OkObjectResult(ScheduleResponse.From(updated, count));
+        }
+        catch (Microsoft.Azure.Cosmos.CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
+        {
+            return req.PreconditionFailed($"Schedule '{id}' was modified by another request.");
+        }
     }
 
     /// <summary>DELETE /api/v1/schedules/{id} — soft delete. 409 if active enrollments exist.</summary>
@@ -253,6 +277,18 @@ public sealed class ScheduleFunction
 
     private static bool ParseBool(string? raw) =>
         bool.TryParse(raw, out var v) && v;
+
+    private static bool TryParseDate(string? raw, out DateOnly? date)
+    {
+        date = null;
+        if (string.IsNullOrWhiteSpace(raw)) return true;
+        if (DateOnly.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
+        {
+            date = d;
+            return true;
+        }
+        return false;
+    }
 
     private static Dictionary<string, string[]> Validate(ScheduleWriteRequest req)
     {
