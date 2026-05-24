@@ -176,7 +176,6 @@ module functionApp 'modules/function-app.bicep' = {
     tags: tags
     workspaceResourceId: monitoring.outputs.workspaceResourceId
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
-    storageAccountResourceId: storage.outputs.storageAccountResourceId
     storageAccountName: storage.outputs.storageAccountName
     storageBlobEndpoint: storage.outputs.blobEndpoint
     deploymentContainerName: storage.outputs.deploymentContainerName

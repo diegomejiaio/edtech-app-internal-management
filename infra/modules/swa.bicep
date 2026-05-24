@@ -62,7 +62,6 @@ module swa 'br/public:avm/res/web/static-site:0.6.1' = {
     location: location
     tags: tags
     sku: 'Free'
-    skuCode: 'Free'
     // No GitHub repo wiring at deploy time: deployment token is generated
     // post-deploy via `az staticwebapp secrets list` and stored as a GitHub
     // Actions secret. Avoids committing tokens.

@@ -47,9 +47,6 @@ param workspaceResourceId string
 @secure()
 param appInsightsConnectionString string
 
-@description('Resource ID of the Storage Account used by the Functions runtime.')
-param storageAccountResourceId string
-
 @description('Name of the Storage Account used by the Functions runtime.')
 param storageAccountName string
 
