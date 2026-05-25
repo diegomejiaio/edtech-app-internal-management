@@ -7,6 +7,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
+import { toIsoDate } from '@/lib/dashboard-period';
 import { formatTableDate } from '@/lib/dates';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense, useCatalog } from '@/hooks';
 import { PageHeader, DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
@@ -154,7 +155,7 @@ export default function ExpensesPage() {
         onSubmit={handleSubmit}
       >
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2"><Label htmlFor="date">Fecha</Label><Input id="date" name="date" type="date" defaultValue={editing?.date} required /></div>
+          <div className="space-y-2"><Label htmlFor="date">Fecha</Label><Input id="date" name="date" type="date" defaultValue={editing?.date ?? toIsoDate(new Date())} required /></div>
           <div className="space-y-2"><Label>Categoría</Label><CatalogSelect client={client} catalogCode="expenseCategories" value={pickedCategory} onChange={setPickedCategory} placeholder="Seleccionar categoría..." /></div>
         </div>
         <div className="space-y-2"><Label htmlFor="description">Descripción</Label><Input id="description" name="description" defaultValue={editing?.description} required /></div>
