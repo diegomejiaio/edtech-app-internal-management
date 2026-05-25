@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * Spaces page — backed by the `spaces` catalog (master/catalogs).
+ * Expense categories page — backed by the `expenseCategories` catalog (master/catalogs).
  *
  * Table-based CRUD matching the Courses page pattern.
  */
 
 import { useState, type FormEvent } from 'react';
-import { Ban, MapPin, Pencil, Plus, RotateCcw } from 'lucide-react';
+import { Ban, FolderOpen, Pencil, Plus, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { useCatalog, useAddCatalogItem, useReplaceCatalogItems } from '@/hooks';
@@ -21,9 +21,9 @@ import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/ui/empty-state';
 import { getApiErrorMessage, isApiError, type CatalogItem } from '@/lib/api';
 
-const CATALOG_CODE = 'spaces';
+const CATALOG_CODE = 'expenseCategories';
 
-export default function SpacesPage() {
+export default function ExpenseCategoriesPage() {
   const client = useApiClient();
   const { data: catalog, isLoading } = useCatalog(client, CATALOG_CODE);
   const addMutation = useAddCatalogItem(client, CATALOG_CODE);
@@ -47,7 +47,7 @@ export default function SpacesPage() {
     const fd = new FormData(ev.currentTarget);
     const value = (fd.get('value') as string)?.trim();
     if (!value) {
-      toast.error('Ingresa el nombre del espacio');
+      toast.error('Ingresa el nombre de la categoría');
       return;
     }
 
@@ -72,7 +72,7 @@ export default function SpacesPage() {
       .then(() => {
         setOpen(false);
         setEditing(null);
-        toast.success(editing ? 'Espacio actualizado' : `"${value}" agregado`);
+        toast.success(editing ? 'Categoría actualizada' : `"${value}" agregada`);
       })
       .catch((err) => {
         if (isApiError(err)) toast.error(getApiErrorMessage(err));
@@ -88,7 +88,7 @@ export default function SpacesPage() {
         ),
         ifMatch: catalog?._etag,
       })
-      .then(() => toast.success(`"${item.value}" ${item.active ? 'desactivado' : 'reactivado'}`))
+      .then(() => toast.success(`"${item.value}" ${item.active ? 'desactivada' : 'reactivada'}`))
       .catch(() => toast.error(item.active ? 'Error al desactivar' : 'Error al reactivar'));
   }
 
@@ -96,7 +96,7 @@ export default function SpacesPage() {
   const columns: Column<CatalogItem>[] = [
     {
       key: 'value',
-      header: 'Espacio',
+      header: 'Categoría',
       cell: (item) => <span className="font-medium">{item.value}</span>,
     },
     {
@@ -117,9 +117,9 @@ export default function SpacesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Espacios" subtitle="Aulas y locaciones disponibles" backHref="/catalogs">
+      <PageHeader title="Categorías de gastos" subtitle="Clasificación de gastos operativos" backHref="/catalogs">
         <PageHeaderButton icon={Plus} onClick={openCreate} shortcutKey="n">
-          Nuevo espacio
+          Nueva categoría
         </PageHeaderButton>
       </PageHeader>
 
@@ -127,9 +127,9 @@ export default function SpacesPage() {
 
       {!isLoading && items.length === 0 && (
         <EmptyState
-          icon={MapPin}
-          title="No hay espacios registrados aún"
-          description="Cuando registres tu primer aula o locación aparecerá aquí."
+          icon={FolderOpen}
+          title="No hay categorías creadas aún"
+          description="Cuando crees tu primera categoría aparecerá aquí."
         />
       )}
 
@@ -175,19 +175,19 @@ export default function SpacesPage() {
           setOpen(nextOpen);
           if (!nextOpen) setEditing(null);
         }}
-        title={editing ? 'Editar espacio' : 'Nuevo espacio'}
+        title={editing ? 'Editar categoría' : 'Nueva categoría'}
         isLoading={addMutation.isPending || replaceMutation.isPending}
         onSubmit={handleSubmit}
       >
         <div className="space-y-2">
-          <Label htmlFor="value">Nombre del espacio</Label>
+          <Label htmlFor="value">Nombre de la categoría</Label>
           <Input
             key={editing?.value ?? 'new'}
             id="value"
             name="value"
             required
             defaultValue={editing?.value ?? ''}
-            placeholder="Ej. Aula 1"
+            placeholder="Ej. Materiales"
           />
         </div>
       </FormSheetDialog>
