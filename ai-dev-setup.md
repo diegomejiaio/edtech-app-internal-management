@@ -171,6 +171,16 @@ edtech-app-internal-management/
 
 ## Troubleshooting
 
+### Cosmos DB MCP fails with `spawn cosmosdbshell EACCES`
+
+Fix the execute bit on the real .NET tool binary:
+
+```bash
+chmod 755 "$(dirname "$(which cosmosdbshell)")/$(readlink "$(which cosmosdbshell)")"
+```
+
+Restart Copilot CLI after changing permissions.
+
 ### .NET 10 slow builds on macOS
 
 The Roslyn shared compilation server deadlocks with VS Code Language Server on macOS 26 + .NET 10. Fix:
