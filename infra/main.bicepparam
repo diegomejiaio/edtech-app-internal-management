@@ -31,9 +31,9 @@ param cosmosDatabaseName = 'espaciopro'
 param clerkJwksUrl = 'https://legible-sunfish-48.clerk.accounts.dev/.well-known/jwks.json'
 param clerkIssuer  = 'https://legible-sunfish-48.clerk.accounts.dev'
 
-// CORS — populate the SWA hostname after the first deploy and re-run.
+// CORS — deployed SWA plus localhost for dev tooling against the deployed API.
 // Localhost is included for dev tooling against the deployed API.
-param corsOrigins = 'http://localhost:3000'
+param corsOrigins = 'https://calm-ground-055fb250f.7.azurestaticapps.net,http://localhost:3000'
 
 // Tags (minimal per Q5)
 param tags = {

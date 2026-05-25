@@ -2,7 +2,7 @@
 #
 # Espacio Pro — application code deploy (backend + frontend).
 #
-# Publishes the .NET backend to Azure Function App (Flex Consumption zip deploy)
+# Publishes the .NET backend to Azure Function App (Flex Consumption OneDeploy)
 # and the Next.js static export to Azure Static Web App.
 #
 # Idempotent — safe to re-run. Default action is dry-run (prints what it would
@@ -42,6 +42,7 @@ SUBSCRIPTION_ID="${ESPACIOPRO_SUBSCRIPTION_ID:-e3d59e44-d8a4-475a-a285-7433ca42b
 RG="${ESPACIOPRO_RG:-rg-espaciopro-prod}"
 FUNC_NAME="${ESPACIOPRO_FUNC_NAME:-func-espaciopro-prod-eus2}"
 SWA_NAME="${ESPACIOPRO_SWA_NAME:-stapp-espaciopro-prod-eus2}"
+DEPLOYMENT_PREFIX="${ESPACIOPRO_DEPLOYMENT_PREFIX:-espaciopro-prod}"
 
 # Temp dirs (cleaned up on exit)
 PUBLISH_DIR="$BACKEND_DIR/.publish"
@@ -61,6 +62,58 @@ cleanup() {
   rm -rf "$PUBLISH_DIR" "$ZIP_PATH" 2>/dev/null || true
 }
 trap cleanup EXIT
+
+latest_deployment_output() {
+  local key="$1"
+
+  az deployment sub list \
+    --query "[?starts_with(name, '${DEPLOYMENT_PREFIX}-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].properties.outputs.${key}.value" \
+    -o tsv 2>/dev/null || true
+}
+
+resolve_function_hostname() {
+  local expected_prefix hostname
+  expected_prefix="$FUNC_NAME."
+
+  hostname="$(az functionapp show --name "$FUNC_NAME" --resource-group "$RG" \
+    --query defaultHostName -o tsv 2>/dev/null || true)"
+
+  if [[ -n "$hostname" ]]; then
+    printf '%s\n' "$hostname"
+    return 0
+  fi
+
+  hostname="$(az functionapp show --name "$FUNC_NAME" --resource-group "$RG" \
+    --query "hostNames[0]" -o tsv 2>/dev/null || true)"
+
+  if [[ -n "$hostname" ]]; then
+    printf '%s\n' "$hostname"
+    return 0
+  fi
+
+  hostname="$(latest_deployment_output functionAppHostname)"
+
+  if [[ -n "$hostname" && "${hostname#"$expected_prefix"}" == "$hostname" ]]; then
+    yellow "  ⚠ Ignoring deployment output functionAppHostname=$hostname (does not match $FUNC_NAME)" >&2
+    return 0
+  fi
+
+  printf '%s\n' "$hostname"
+}
+
+resolve_swa_hostname() {
+  local hostname
+
+  hostname="$(az staticwebapp show --name "$SWA_NAME" --resource-group "$RG" \
+    --query defaultHostname -o tsv 2>/dev/null || true)"
+
+  if [[ -n "$hostname" ]]; then
+    printf '%s\n' "$hostname"
+    return 0
+  fi
+
+  latest_deployment_output swaHostname
+}
 
 # ----- arg parsing ------------------------------------------------------------
 
@@ -143,14 +196,19 @@ if ! az group show --name "$RG" >/dev/null 2>&1; then
 fi
 green "  ✓ resource group $RG"
 
-if [[ "$DEPLOY_BACKEND" == "true" ]]; then
+if [[ "$DEPLOY_BACKEND" == "true" || "$DEPLOY_FRONTEND" == "true" ]]; then
   if ! az functionapp show --name "$FUNC_NAME" --resource-group "$RG" >/dev/null 2>&1; then
     red "✗ Function App not found: $FUNC_NAME in $RG"
     red "  Run ./deploy.sh --apply first."
     exit 1
   fi
-  FUNC_HOSTNAME="$(az functionapp show --name "$FUNC_NAME" --resource-group "$RG" \
-    --query defaultHostName -o tsv 2>/dev/null)"
+  FUNC_HOSTNAME="$(resolve_function_hostname)"
+  if [[ -z "$FUNC_HOSTNAME" ]]; then
+    red "✗ Could not resolve Function App hostname for $FUNC_NAME."
+    red "  Re-run infra deploy or inspect latest deployment outputs:"
+    red "    az deployment sub show --name <deployment-name> --query properties.outputs.functionAppHostname.value -o tsv"
+    exit 1
+  fi
   green "  ✓ Function App: $FUNC_NAME ($FUNC_HOSTNAME)"
 fi
 
@@ -160,8 +218,13 @@ if [[ "$DEPLOY_FRONTEND" == "true" ]]; then
     red "  Run ./deploy.sh --apply first."
     exit 1
   fi
-  SWA_HOSTNAME="$(az staticwebapp show --name "$SWA_NAME" --resource-group "$RG" \
-    --query defaultHostname -o tsv 2>/dev/null)"
+  SWA_HOSTNAME="$(resolve_swa_hostname)"
+  if [[ -z "$SWA_HOSTNAME" ]]; then
+    red "✗ Could not resolve Static Web App hostname for $SWA_NAME."
+    red "  Re-run infra deploy or inspect latest deployment outputs:"
+    red "    az deployment sub show --name <deployment-name> --query properties.outputs.swaHostname.value -o tsv"
+    exit 1
+  fi
   green "  ✓ Static Web App: $SWA_NAME ($SWA_HOSTNAME)"
 fi
 echo
@@ -173,15 +236,13 @@ bold " Deploy plan"
 bold "===================================================================="
 echo
 if [[ "$DEPLOY_BACKEND" == "true" ]]; then
-  echo "  Backend:  dotnet publish → zip deploy → $FUNC_NAME"
+  echo "  Backend:  dotnet publish → OneDeploy zip → $FUNC_NAME"
   echo "            Health probe:  https://$FUNC_HOSTNAME/api/v1/health"
 fi
 if [[ "$DEPLOY_FRONTEND" == "true" ]]; then
   echo "  Frontend: pnpm build (static export) → swa deploy → $SWA_NAME"
   echo "            URL:           https://$SWA_HOSTNAME"
-  if [[ "$DEPLOY_BACKEND" == "true" ]]; then
-    echo "            API URL:       https://$FUNC_HOSTNAME"
-  fi
+  echo "            API URL:       https://$FUNC_HOSTNAME"
 fi
 if [[ "$SKIP_BUILD" == "true" ]]; then
   yellow "  ⚠ --skip-build: using previous build artifacts"
@@ -226,14 +287,12 @@ if [[ "$DEPLOY_BACKEND" == "true" ]]; then
     yellow "  • Reusing existing $ZIP_PATH"
   fi
 
-  blue "▶ Deploying to Function App (zip deploy)…"
-  az functionapp deploy \
-    --name "$FUNC_NAME" \
+  blue "▶ Deploying to Function App (OneDeploy zip)…"
+  az functionapp deployment source config-zip \
     --resource-group "$RG" \
-    --src-path "$ZIP_PATH" \
-    --type zip \
-    --clean true \
-    --restart true \
+    --name "$FUNC_NAME" \
+    --src "$ZIP_PATH" \
+    --timeout 600 \
     --output none
   green "  ✓ Backend deployed"
 
@@ -263,16 +322,7 @@ if [[ "$DEPLOY_FRONTEND" == "true" ]]; then
   blue " FRONTEND: Building + deploying Next.js to $SWA_NAME"
   blue "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-  # Resolve API URL: from backend (if deployed) or from existing Function App
-  if [[ -n "${FUNC_HOSTNAME:-}" ]]; then
-    API_URL="https://$FUNC_HOSTNAME"
-  else
-    API_URL="$(az functionapp show --name "$FUNC_NAME" --resource-group "$RG" \
-      --query "\"https://\" + defaultHostName" -o tsv 2>/dev/null || echo "")"
-    if [[ -z "$API_URL" ]]; then
-      yellow "  ⚠ Could not resolve Function App URL. Using .env.production value."
-    fi
-  fi
+  API_URL="https://$FUNC_HOSTNAME"
 
   if [[ "$SKIP_BUILD" != "true" ]]; then
     blue "▶ Installing dependencies…"
