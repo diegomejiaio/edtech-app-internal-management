@@ -145,7 +145,16 @@ export function WeeklySchedulesCalendar({ client }: WeeklySchedulesCalendarProps
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-base">Calendario semanal</CardTitle>
+        <div className="flex items-center justify-between w-full sm:w-auto">
+          <CardTitle className="text-base">Calendario semanal</CardTitle>
+          <Link
+            href="/schedules"
+            className="text-sm font-medium text-primary hover:underline inline-flex items-center gap-1 sm:hidden"
+          >
+            Ver todos
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -181,7 +190,7 @@ export function WeeklySchedulesCalendar({ client }: WeeklySchedulesCalendarProps
           </div>
           <Link
             href="/schedules"
-            className="text-sm font-medium text-primary hover:underline inline-flex items-center gap-1"
+            className="hidden sm:inline-flex text-sm font-medium text-primary hover:underline items-center gap-1"
           >
             Ver todos
             <ArrowRight className="h-3.5 w-3.5" />
