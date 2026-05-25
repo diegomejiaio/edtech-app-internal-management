@@ -79,9 +79,10 @@ or whenever the schema changes), then `deploy.sh` for the app stack.
 ### 1. Cosmos DB database + containers — `deploy-cosmos.sh`
 
 Targets the **pre-existing** `shared-cosmos-nosql` account in `rg-shared-services`
-and creates the `espaciopro` database with the `master` and `operations`
-containers. This is split out because the deployer for the main app stack
-typically does not have control-plane permissions on the shared-services RG.
+and creates one logical database with the `master` and `operations` containers.
+Production uses `espaciopro`; local development and E2E use `espaciopro-dev`.
+Both DBs use the same `cosmos-database.bicep` module so container schema,
+indexes, unique keys, and partition keys stay identical.
 
 ```bash
 cd infra
@@ -89,8 +90,14 @@ cd infra
 # Preview only
 ./deploy-cosmos.sh
 
+# Preview dev DB
+./deploy-cosmos.sh --dev
+
 # Apply (interactive confirmation)
 ./deploy-cosmos.sh --apply
+
+# Apply dev DB
+./deploy-cosmos.sh --apply --dev
 
 # CI mode
 ./deploy-cosmos.sh --apply --yes
@@ -101,6 +108,11 @@ Override defaults via env:
 `ESPACIOPRO_COSMOS_ACCOUNT`, `ESPACIOPRO_COSMOS_DB`.
 
 Required role on `rg-shared-services`: **Cosmos DB Operator** or **Contributor**.
+
+The full app-stack deployment (`./deploy.sh --apply`) also ensures
+`espaciopro-dev` exists through `localDevCosmosDatabaseName` in
+`main.bicepparam`. `deploy-cosmos.sh --dev` is the focused path when you only
+need the local/E2E DB.
 
 ### 2. App stack (Functions + SWA + monitoring) — `deploy.sh`
 
@@ -247,6 +259,10 @@ The Function App's system-assigned MI is granted `Storage Blob Data Owner` on th
 | `CORS_ORIGINS` | bicepparam |
 
 These names are read by `backend/src/EspacioPro.Api/Program.cs` and the middleware. **Renaming any of them is a coordinated change** across `main.bicepparam`, `function-app.bicep`, `Program.cs`, `local.settings.json.example`, and `tools/EspacioPro.Seed/Program.cs`.
+
+Local backend and E2E runs should use `COSMOS_DATABASE_NAME=espaciopro-dev` in
+`backend/src/EspacioPro.Api/local.settings.json`. The deployed Function App keeps
+using `COSMOS_DATABASE_NAME=espaciopro`.
 
 ---
 

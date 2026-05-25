@@ -105,7 +105,7 @@ To override the Excel path or any setting:
 ```bash
 dotnet run --project tools/EspacioPro.Seed -- \
   --excel /absolute/path/to/data.xlsx \
-  --COSMOS_DATABASE_NAME=espaciopro
+  --COSMOS_DATABASE_NAME=espaciopro-dev
 ```
 
 ### Idempotency

@@ -23,8 +23,9 @@ param appResourceGroupName             = 'rg-espaciopro-prod'
 param sharedServicesResourceGroupName  = 'rg-shared-services'
 
 // Cosmos (account is pre-existing in rg-shared-services)
-param cosmosAccountName  = 'shared-cosmos-nosql'
-param cosmosDatabaseName = 'espaciopro'
+param cosmosAccountName           = 'shared-cosmos-nosql'
+param cosmosDatabaseName          = 'espaciopro'
+param localDevCosmosDatabaseName  = 'espaciopro-dev'
 
 // Clerk (public — JWKS-only, no secrets)
 // Update these to match the actual Clerk dev/prod instance before first deploy.

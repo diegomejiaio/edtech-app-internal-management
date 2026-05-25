@@ -16,7 +16,7 @@
 //   monitoring (LA + AppI)
 //   storage (account + deployment container)            ┐ parallel
 //   swa                                                 │
-//   cosmosDatabase (cross-RG: rg-shared-services)       ┘
+//   cosmosDatabase + cosmosDevDatabase (cross-RG)        ┘
 //   functionApp (depends on monitoring + storage + cosmos endpoint)
 //   roleAssignmentCosmos (cross-RG: rg-shared-services; depends on functionApp.principalId)
 // =============================================================================
@@ -63,6 +63,9 @@ param cosmosAccountName string
 
 @description('Name of the SQL database to create on the Cosmos account.')
 param cosmosDatabaseName string
+
+@description('Optional local/E2E SQL database name to create with the same containers. Leave empty to skip.')
+param localDevCosmosDatabaseName string = ''
 
 // -----------------------------------------------------------------------------
 // Clerk params
@@ -161,6 +164,18 @@ module cosmosDatabase 'modules/cosmos-database.bicep' = {
   }
 }
 
+module cosmosDevDatabase 'modules/cosmos-database.bicep' = if (!empty(localDevCosmosDatabaseName)) {
+  scope: resourceGroup(sharedServicesResourceGroupName)
+  name: 'cosmos-database-dev'
+  params: {
+    cosmosAccountName: cosmosAccountName
+    databaseName: localDevCosmosDatabaseName
+    tags: union(tags, {
+      env: 'dev'
+    })
+  }
+}
+
 // -----------------------------------------------------------------------------
 // Function App (depends on monitoring + storage + cosmos endpoint)
 // -----------------------------------------------------------------------------
@@ -229,6 +244,9 @@ output cosmosAccountEndpoint string = cosmosDatabase.outputs.cosmosAccountEndpoi
 
 @description('Cosmos database name.')
 output cosmosDatabaseName string = cosmosDatabase.outputs.databaseName
+
+@description('Local/E2E Cosmos database name, when deployed.')
+output localDevCosmosDatabaseName string = !empty(localDevCosmosDatabaseName) ? cosmosDevDatabase!.outputs.databaseName : ''
 
 @description('Application Insights connection string (sensitive — for CI/CD reference only).')
 output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString

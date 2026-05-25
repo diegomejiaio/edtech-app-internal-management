@@ -7,7 +7,7 @@
 # account (default: rg-shared-services / shared-cosmos-nosql).
 #
 # Use this BEFORE the main app deploy when:
-#   - the Cosmos account already exists but the espaciopro database does not,
+#   - the Cosmos account already exists but the espaciopro/espaciopro-dev database does not,
 #   - or the deployer for main.bicep does not have control-plane access to
 #     the shared-services RG.
 #
@@ -15,7 +15,9 @@
 #
 # Usage:
 #   ./deploy-cosmos.sh                  # what-if (preview only)
+#   ./deploy-cosmos.sh --dev            # what-if for espaciopro-dev
 #   ./deploy-cosmos.sh --apply          # what-if then create
+#   ./deploy-cosmos.sh --apply --dev    # create espaciopro-dev
 #   ./deploy-cosmos.sh --apply --yes    # create without re-confirming what-if
 #   ./deploy-cosmos.sh --apply --name X # custom deployment name
 #   ./deploy-cosmos.sh --help
@@ -43,8 +45,9 @@ SHARED_RG="${ESPACIOPRO_SHARED_RG:-rg-shared-services}"
 COSMOS_ACCOUNT="${ESPACIOPRO_COSMOS_ACCOUNT:-shared-cosmos-nosql}"
 COSMOS_DB="${ESPACIOPRO_COSMOS_DB:-espaciopro}"
 DEFAULT_NAME_PREFIX="espaciopro-cosmos"
+TARGET_ENV="prod"
 
-# Tags — kept inline (no Key Vault, no secrets, fixed prod values for v1).
+# Tags — kept inline (no Key Vault, no secrets).
 TAGS_JSON='{"workload":"espaciopro","env":"prod","managedBy":"bicep"}'
 
 red()    { printf "\033[31m%s\033[0m\n" "$*"; }
@@ -65,12 +68,17 @@ DEPLOYMENT_NAME=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply)         APPLY=true; shift ;;
+    --dev)           COSMOS_DB="espaciopro-dev"; TARGET_ENV="dev"; DEFAULT_NAME_PREFIX="espaciopro-cosmos-dev"; shift ;;
     --yes|-y)        SKIP_WHATIF=true; shift ;;
     --name)          DEPLOYMENT_NAME="${2:-}"; shift 2 ;;
     --help|-h)       usage; exit 0 ;;
     *)               red "✗ Unknown flag: $1"; usage; exit 2 ;;
   esac
 done
+
+if [[ "$TARGET_ENV" == "dev" ]]; then
+  TAGS_JSON='{"workload":"espaciopro","env":"dev","managedBy":"bicep"}'
+fi
 
 if [[ -z "$DEPLOYMENT_NAME" ]]; then
   DEPLOYMENT_NAME="${DEFAULT_NAME_PREFIX}-$(date +%Y%m%d-%H%M%S)"
@@ -209,6 +217,11 @@ az cosmosdb sql container list \
 
 echo
 green "▶ Done. Next steps:"
-green "    1. Run the main app deploy:    ./deploy.sh --apply"
-green "    2. Grant the Function App MI 'Cosmos DB Built-in Data Contributor'"
-green "       on $COSMOS_ACCOUNT (data plane). See modules/role-assignment-cosmos.bicep."
+if [[ "$TARGET_ENV" == "dev" ]]; then
+  green "    1. Point local.settings.json to COSMOS_DATABASE_NAME=$COSMOS_DB"
+  green "    2. Seed dev data with the backend seeder before running E2E tests."
+else
+  green "    1. Run the main app deploy:    ./deploy.sh --apply"
+  green "    2. Grant the Function App MI 'Cosmos DB Built-in Data Contributor'"
+  green "       on $COSMOS_ACCOUNT (data plane). See modules/role-assignment-cosmos.bicep."
+fi
