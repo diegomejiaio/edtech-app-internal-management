@@ -11,12 +11,13 @@ test.describe('Dashboard enrollment action @smoke', () => {
     await dashboardPage.openNewEnrollment();
 
     await expect(dashboardPage.enrollmentWizard).toBeVisible();
-    await expect(page.getByText('Matricula un alumno en un horario activo')).toBeVisible();
-    await expect(page.getByText('Alumno', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '+ Crear alumno' })).toBeVisible();
-    await expect(page.getByText('Horario', { exact: true })).toBeVisible();
-    await expect(page.getByLabel('Fecha de inscripción')).toBeVisible();
-    await expect(page.getByText('Pago inicial (opcional)')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Matricular' })).toBeVisible();
+    const dialog = dashboardPage.dialog;
+    await expect(dialog.getByText('Matricula un alumno en un horario activo')).toBeVisible();
+    await expect(dialog.getByText('Alumno', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: '+ Crear alumno' })).toBeVisible();
+    await expect(dialog.getByText('Horario', { exact: true })).toBeVisible();
+    await expect(dialog.getByLabel('Fecha de inscripción')).toBeVisible();
+    await expect(dialog.getByText('Pago inicial (opcional)')).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Matricular' })).toBeVisible();
   });
 });

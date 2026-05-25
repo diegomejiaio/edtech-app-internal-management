@@ -20,8 +20,11 @@ test.describe('Weekdays catalog @regression', () => {
   });
 
   test('should add a new weekday value', async ({ page }) => {
+    // Use unique suffix per run: catalog values are persisted in Cosmos and a
+    // duplicate would surface the toast `"X" ya existe`, breaking strict mode.
+    const value = `LMaJ-${Date.now().toString().slice(-6)}`;
     await weekdaysPage.clickNew();
-    await weekdaysPage.fillAndSubmit('LMaJ');
-    await expect(page.getByText('LMaJ')).toBeVisible();
+    await weekdaysPage.fillAndSubmit(value);
+    await expect(page.getByText(value, { exact: true })).toBeVisible();
   });
 });

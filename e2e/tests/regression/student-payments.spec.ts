@@ -34,7 +34,7 @@ test.describe('Student payments @regression', () => {
     await expect(page.getByText('Saldo pendiente')).toBeVisible();
     await expect(page.getByText('Precio')).toBeVisible();
     await expect(page.getByText('Pagado')).toBeVisible();
-    await expect(page.getByText('Pendiente')).toBeVisible();
+    await expect(page.getByText('Pendiente', { exact: true })).toBeVisible();
     await expect(page.getByText('S/ 400.00')).toBeVisible();
     await expect(page.getByText('S/ 150.00')).toBeVisible();
     await expect(page.getByText('S/ 250.00')).toHaveCount(2);
@@ -45,6 +45,6 @@ test.describe('Student payments @regression', () => {
     }
 
     await expect(page.getByText('Boleta B001-0001')).toBeVisible();
-    await expect(page.getByText('Registrado')).toHaveCount(mockStudentPayments.length);
+    await expect(page.getByText('Registrado', { exact: true })).toHaveCount(mockStudentPayments.length);
   });
 });
