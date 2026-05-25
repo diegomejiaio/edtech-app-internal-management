@@ -13,9 +13,9 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useApiClient } from '@/hooks/use-api-client';
 import { PageHeader, PageHeaderButton } from '@/components/layout';
+import { EnrollmentWizard } from '@/components/enrollments/enrollment-wizard';
 import {
   GlobalKpis,
-  QuickEnrollmentSheet,
   ScheduleDashboard,
   WeeklySchedulesCalendar,
 } from '@/components/dashboard';
@@ -45,8 +45,7 @@ export default function DashboardPage() {
 
       <ScheduleDashboard client={client} />
 
-      <QuickEnrollmentSheet
-        client={client}
+      <EnrollmentWizard
         open={enrollOpen}
         onOpenChange={setEnrollOpen}
       />
