@@ -13,6 +13,7 @@
 *.key
 **/secrets/
 .credentials/
+.DS_Store
 
 # ----------------
 # Dependencies

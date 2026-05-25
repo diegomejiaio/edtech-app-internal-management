@@ -1,10 +1,19 @@
 import { execSync } from 'child_process';
 
+export type CosmosContainer = 'master' | 'operations';
+
+export function hasCosmosConfig(): boolean {
+  return Boolean(process.env.COSMOSDB_CONNECTION_STRING && process.env.COSMOSDB_DATABASE);
+}
+
 /**
  * Query Cosmos DB using cosmosdbshell CLI.
  * Requires COSMOSDB_CONNECTION_STRING and COSMOSDB_DATABASE in env.
  */
-export async function queryCosmosDB(sql: string): Promise<Record<string, unknown>[]> {
+export async function queryCosmosDB(
+  sql: string,
+  container: CosmosContainer = 'master',
+): Promise<Record<string, unknown>[]> {
   const conn = process.env.COSMOSDB_CONNECTION_STRING;
   const db = process.env.COSMOSDB_DATABASE || 'espacio-pro';
 
@@ -12,7 +21,8 @@ export async function queryCosmosDB(sql: string): Promise<Record<string, unknown
     throw new Error('COSMOSDB_CONNECTION_STRING not set in e2e/.env');
   }
 
-  const cmd = `cosmosdbshell --connection "${conn}" --execute "cd ${db}/master; query '${sql.replace(/'/g, "\\'")}';"`;
+  const safeSql = sql.replace(/'/g, "\\'");
+  const cmd = `cosmosdbshell --connection "${conn}" --execute "cd ${db}/${container}; query '${safeSql}';"`;
 
   const output = execSync(cmd, { encoding: 'utf-8', timeout: 15_000 });
 
@@ -29,9 +39,11 @@ export async function queryCosmosDB(sql: string): Promise<Record<string, unknown
 export async function verifyDocumentCreated(
   type: string,
   filter: string,
+  container: CosmosContainer = 'master',
 ): Promise<Record<string, unknown>> {
   const results = await queryCosmosDB(
-    `SELECT * FROM c WHERE c.type = '${type}' AND ${filter}`
+    `SELECT * FROM c WHERE c.type = '${type}' AND ${filter}`,
+    container,
   );
 
   if (results.length === 0) {
@@ -39,13 +51,19 @@ export async function verifyDocumentCreated(
   }
 
   const doc = results[0];
+  const createdBy = doc.createdBy as Record<string, unknown> | undefined;
 
-  // Verify mandatory audit fields
   if (!doc.createdAt) throw new Error(`${type} missing createdAt`);
-  if (!doc.createdBy) throw new Error(`${type} missing createdBy`);
+  if (!createdBy?.userId && !createdBy?.clerkUserId) throw new Error(`${type} missing createdBy.userId`);
+  if (!createdBy?.name && !createdBy?.displayName) throw new Error(`${type} missing createdBy.name`);
   if (doc.deletedAt !== null && doc.deletedAt !== undefined) {
     throw new Error(`${type} has deletedAt set (should be null for active docs)`);
   }
 
   return doc;
+}
+
+export function verifyDocumentSoftDeleted(type: string, doc: Record<string, unknown>) {
+  if (!doc.deletedAt) throw new Error(`${type} missing deletedAt after delete`);
+  if (!doc.deletedBy) throw new Error(`${type} missing deletedBy after delete`);
 }
