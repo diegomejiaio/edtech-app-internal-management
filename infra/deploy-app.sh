@@ -400,8 +400,13 @@ fi
 echo
 
 yellow "▶ Post-deploy checklist:"
-yellow "  1. Verify CORS_ORIGINS includes the SWA hostname in Bicep params:"
-yellow "       corsOrigins = 'https://$SWA_HOSTNAME,http://localhost:3000'"
-yellow "     Then re-run: ./deploy.sh --apply"
-yellow "  2. Test end-to-end: login via Clerk → call a protected API endpoint"
-yellow "  3. If first deploy, seed catalog data in Cosmos (no script yet)"
+if [[ "$DEPLOY_FRONTEND" == "true" ]]; then
+  yellow "  1. Verify CORS_ORIGINS includes the SWA hostname in Bicep params:"
+  yellow "       corsOrigins = 'https://$SWA_HOSTNAME,http://localhost:3000'"
+  yellow "     Then re-run: ./deploy.sh --apply"
+  yellow "  2. Test end-to-end: login via Clerk → call a protected API endpoint"
+  yellow "  3. If first deploy, seed catalog data in Cosmos (no script yet)"
+else
+  yellow "  1. Test end-to-end: login via Clerk → call a protected API endpoint"
+  yellow "  2. If first deploy, seed catalog data in Cosmos (no script yet)"
+fi

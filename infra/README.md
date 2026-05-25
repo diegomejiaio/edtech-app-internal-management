@@ -139,6 +139,34 @@ az deployment sub create --name espaciopro-prod-$(date +%Y%m%d-%H%M%S) \
 
 > The deployment is **idempotent** — re-running `--apply` is safe and only emits diffs.
 
+### 3. Application code deploy — `deploy-app.sh`
+
+Wrapper around backend publish/deploy and frontend static export deploy. Use it after
+the app stack exists.
+
+```bash
+cd infra
+
+# Preview only (default — zero side effects)
+./deploy-app.sh
+
+# Build + deploy backend and frontend
+./deploy-app.sh --apply
+
+# Backend only (.NET publish → OneDeploy zip)
+./deploy-app.sh --apply --backend
+
+# Frontend only (Next.js static export → Static Web App)
+./deploy-app.sh --apply --frontend
+
+# Deploy from previous build artifacts
+./deploy-app.sh --apply --skip-build
+```
+
+The backend deploy uses Azure Functions Flex Consumption OneDeploy via
+`az functionapp deployment source config-zip`. The frontend deploy injects
+`NEXT_PUBLIC_API_URL` from the deployed Function App hostname.
+
 ---
 
 ## Post-deploy validation
@@ -182,7 +210,12 @@ The SWA hostname (`<random>.azurestaticapps.net`) is only known after `swa.bicep
      --query properties.outputs.swaHostname.value -o tsv
    ```
 2. Edit `main.bicepparam` →  `corsOrigins = 'http://localhost:3000,https://<swa-hostname>'`
-3. Re-run the `az deployment sub create` command above.
+3. Re-run `./deploy.sh --apply`.
+
+Runtime CORS is configured in `function-app.bicep` for preflight requests, and
+the API also adds CORS headers in middleware for normal responses and auth/problem
+responses. Keep `AzureWebJobsFeatureFlags=EnableWorkerIndexing` enabled for the
+Flex Consumption isolated worker to honor runtime CORS.
 
 ---
 
@@ -206,6 +239,7 @@ The Function App's system-assigned MI is granted `Storage Blob Data Owner` on th
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | `monitoring.outputs.appInsightsConnectionString` |
 | `AzureWebJobsStorage__accountName` | storage account name |
 | `AzureWebJobsStorage__credential` | `managedidentity` (literal) |
+| `AzureWebJobsFeatureFlags` | `EnableWorkerIndexing` |
 | `COSMOS_ACCOUNT_ENDPOINT` | `cosmos-database.outputs.cosmosAccountEndpoint` |
 | `COSMOS_DATABASE_NAME` | `cosmos-database.outputs.databaseName` |
 | `CLERK_JWKS_URL` | bicepparam |

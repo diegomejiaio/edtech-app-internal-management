@@ -78,7 +78,7 @@ param clerkIssuer string
 // CORS params
 // -----------------------------------------------------------------------------
 
-@description('Comma-separated CORS allowlist for the API (read by Program.cs middleware, NOT Functions runtime). Include the SWA hostname after first deploy.')
+@description('Comma-separated CORS allowlist for the API. Include the SWA hostname after first deploy.')
 param corsOrigins string
 
 // -----------------------------------------------------------------------------

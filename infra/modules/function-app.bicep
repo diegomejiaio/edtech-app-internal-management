@@ -68,7 +68,7 @@ param clerkJwksUrl string
 @description('Clerk issuer URL. Wired as CLERK_ISSUER.')
 param clerkIssuer string
 
-@description('CORS allowlist (comma-separated). Wired as CORS_ORIGINS. Read by EspacioPro.Api/Program.cs middleware (per arch §8.1). NOT applied at the Functions runtime level.')
+@description('CORS allowlist (comma-separated). Wired as CORS_ORIGINS and Functions runtime CORS.')
 param corsOrigins string
 
 @description('Maximum instance count for Flex Consumption. Default 40 (max 1000).')
@@ -147,13 +147,16 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
     siteConfig: {
       minTlsVersion: '1.2'
       ftpsState: 'FtpsOnly'
-      // CORS is configured in app code (Program.cs middleware), per arch §8.1.
-      // We deliberately leave the Functions runtime CORS allowlist empty.
+      // Runtime CORS handles preflight; app middleware adds headers to auth/problem responses.
       cors: {
-        allowedOrigins: []
+        allowedOrigins: split(corsOrigins, ',')
         supportCredentials: false
       }
       appSettings: [
+        {
+          name: 'AzureWebJobsFeatureFlags'
+          value: 'EnableWorkerIndexing'
+        }
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
           value: appInsightsConnectionString
