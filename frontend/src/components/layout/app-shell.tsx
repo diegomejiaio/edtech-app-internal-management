@@ -20,7 +20,6 @@ import {
   Receipt,
   Settings,
   HandCoins,
-  Banknote,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -56,7 +55,6 @@ const FINANCE_NAV: NavItem[] = [
   { label: 'Pagos profesores', href: '/teacher-payments', icon: Wallet },
   { label: 'Cobranzas', href: '/collections', icon: HandCoins },
   { label: 'Gastos', href: '/expenses', icon: Receipt },
-  { label: 'Medios de pago', href: '/payment-methods', icon: Banknote },
 ];
 
 const SETTINGS_ITEM: NavItem = {

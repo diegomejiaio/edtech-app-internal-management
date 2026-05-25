@@ -31,6 +31,18 @@ const CATALOG_ROUTES: Record<string, string> = {
   studentSources: '/student-sources',
   spaces: '/spaces',
   paymentMethods: '/payment-methods',
+  expenseCategories: '/expense-categories',
+};
+
+/** Maps catalog code → user-friendly Spanish label */
+const CATALOG_LABELS: Record<string, string> = {
+  courses: 'Cursos',
+  levels: 'Niveles',
+  weekdays: 'Días',
+  studentSources: 'Fuentes de alumnos',
+  spaces: 'Espacios',
+  paymentMethods: 'Medios de pago',
+  expenseCategories: 'Categorías de gastos',
 };
 
 export default function CatalogsPage() {
@@ -84,7 +96,7 @@ export default function CatalogsPage() {
       <FormSheetDialog
         open={!!addingTo}
         onOpenChange={(open) => !open && setAddingTo(null)}
-        title={`Agregar item — ${addingTo}`}
+        title={`Agregar item — ${CATALOG_LABELS[addingTo ?? ''] ?? addingTo}`}
         isLoading={addMutation.isPending}
         onSubmit={handleAddSubmit}
       >
@@ -118,7 +130,7 @@ function CatalogCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-base">{catalog.code}</CardTitle>
+        <CardTitle className="text-base">{CATALOG_LABELS[catalog.code] ?? catalog.code}</CardTitle>
         <div className="flex items-center gap-2">
           {editRoute && (
             <Button variant="outline" size="sm" asChild>
