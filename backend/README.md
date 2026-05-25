@@ -82,7 +82,7 @@ backend/
 ## Seed initial data from Excel
 
 One-shot importer that loads the seed dataset from `tmp/ESPACIO_PRO_SYSTEM.xlsx`
-into Cosmos. Imports, in order: catalogs (`courses`, `levels`, `paymentMethods`,
+into Cosmos. Imports, in order: catalogs (`courses`, `levels`, `spaces`, `paymentMethods`,
 `expenseCategories`, `weekdays`, `studentSources`), teachers, students, schedules,
 enrollments, student payments, and expenses. Source IDs (`PRF-0001`, `ALU-0002`, ...)
 are discarded; new GUIDs are generated and FKs are remapped automatically. Audit

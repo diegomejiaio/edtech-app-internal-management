@@ -26,7 +26,8 @@ internal sealed class CatalogSeeder
 
     public async Task<int> RunAsync(CancellationToken ct = default)
     {
-        var rows = _excel.ReadCatalogs();
+        var rows = _excel.ReadCatalogs()
+            .Append(new ExcelCatalog("spaces", []));
         var created = 0;
 
         foreach (var c in rows)

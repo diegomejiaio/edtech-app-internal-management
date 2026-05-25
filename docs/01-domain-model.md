@@ -91,12 +91,13 @@ One document per catalog. F1 model: items as inline array.
 }
 ```
 
-**Catalog codes seeded at install** (idénticos al GAS):
+**Catalog codes seeded at install** (legacy GAS catalogs plus v1 UI catalogs):
 
 | code | Initial items |
 |------|---------------|
 | `courses` | Melamina, Drywall |
 | `levels` | Principiante, Intermedio, Profesional |
+| `spaces` | Empty at seed; admin adds classroom/workshop spaces from UI |
 | `paymentMethods` | Yape, Transferencia, Efectivo |
 | `expenseCategories` | Materiales, Alquiler, Marketing, Servicios, Equipos, Otros |
 | `enrollmentStatuses` | (NOT a catalog — domain enum `EnrollmentStatus`: `active`, `completed`, `cancelled`, `pending`. Removed from catalogs.) |

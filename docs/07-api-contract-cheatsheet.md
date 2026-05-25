@@ -109,7 +109,7 @@ All enums serialize as **camelCase strings**, never as numbers.
 
 ### Catalog items vs domain enums
 
-Catalog items (`paymentMethods`, `courses`, `expenseCategories`, `weekdays`, `studentSources`) are **user-editable strings**, stored verbatim. They're **NOT enums**. They stay in Spanish because the admin edits them in UI. Example: `paymentMethod: "Yape"`, `course: "Melamina"`.
+Catalog items (`paymentMethods`, `courses`, `spaces`, `expenseCategories`, `weekdays`, `studentSources`) are **user-editable strings**, stored verbatim. They're **NOT enums**. They stay in Spanish because the admin edits them in UI. Example: `paymentMethod: "Yape"`, `course: "Melamina"`.
 
 Rule of thumb: if it's an editable catalog → Spanish, stored as-is. If it's a code-level enum → English camelCase.
 

@@ -9,6 +9,7 @@ import type { ApiClient } from './client';
 export type CatalogCode =
   | 'courses'
   | 'levels'
+  | 'spaces'
   | 'paymentMethods'
   | 'expenseCategories'
   | 'enrollmentStatuses'
