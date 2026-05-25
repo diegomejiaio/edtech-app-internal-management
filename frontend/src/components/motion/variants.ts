@@ -123,20 +123,28 @@ export const staggerItemVariants: Variants = {
   },
 };
 
-/** Table row animation — entrance flashes primary tint, exit flashes destructive tint */
+/** Table row animation — entrance flashes primary tint, exit flashes destructive tint.
+ *
+ * NOTE: backgroundColor uses static start (orange) → end (transparent) values
+ * rather than a keyframe array, because framer-motion always animates keyframe
+ * arrays — even when AnimatePresence's `initial={false}` suppresses the variant
+ * transition. With static values, the row mounts directly in the transparent
+ * `visible` state on initial paint (no flash), and only animates orange→transparent
+ * when entering from `hidden` (i.e. when AnimatePresence detects a new key). */
 export const tableRowVariants: Variants = {
-  hidden: { opacity: 0, x: -12 },
+  hidden: {
+    opacity: 0,
+    x: -12,
+    backgroundColor: 'rgba(249, 115, 22, 0.32)',
+  },
   visible: {
     opacity: 1,
     x: 0,
-    backgroundColor: [
-      'rgba(249, 115, 22, 0.28)',
-      'rgba(249, 115, 22, 0)',
-    ],
+    backgroundColor: 'rgba(249, 115, 22, 0)',
     transition: {
       duration: 0.35,
       ease: EASE_DEFAULT,
-      backgroundColor: { duration: 1.4, ease: 'easeOut', times: [0, 1] },
+      backgroundColor: { duration: 1.4, ease: 'easeOut' },
     },
   },
   exit: {
