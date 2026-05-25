@@ -114,19 +114,19 @@ export default function TeacherPaymentsPage() {
         isLoading={createMutation.isPending || updateMutation.isPending}
         onSubmit={handleSubmit}
       >
-        <div>
+        <div className="space-y-2">
           <Label>Profesor</Label>
           <TeacherPicker client={client} value={pickedTeacherId} onChange={(id) => setPickedTeacherId(id)} name="teacherId" />
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div><Label htmlFor="date">Fecha</Label><Input id="date" name="date" type="date" defaultValue={editing?.date} required /></div>
-          <div><Label htmlFor="amount">Monto (S/)</Label><Input id="amount" name="amount" type="number" step="0.01" defaultValue={editing?.amount} required /></div>
+          <div className="space-y-2"><Label htmlFor="date">Fecha</Label><Input id="date" name="date" type="date" defaultValue={editing?.date} required /></div>
+          <div className="space-y-2"><Label htmlFor="amount">Monto (S/)</Label><Input id="amount" name="amount" type="number" step="0.01" defaultValue={editing?.amount} required /></div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div><Label htmlFor="concept">Concepto</Label><Input id="concept" name="concept" defaultValue={editing?.concept} required /></div>
-          <div><Label>Medio de pago</Label><CatalogSelect client={client} catalogCode="paymentMethods" value={pickedPaymentMethod} onChange={setPickedPaymentMethod} placeholder="Seleccionar medio..." /></div>
+          <div className="space-y-2"><Label htmlFor="concept">Concepto</Label><Input id="concept" name="concept" defaultValue={editing?.concept} required /></div>
+          <div className="space-y-2"><Label>Medio de pago</Label><CatalogSelect client={client} catalogCode="paymentMethods" value={pickedPaymentMethod} onChange={setPickedPaymentMethod} placeholder="Seleccionar medio..." /></div>
         </div>
-        <div><Label htmlFor="notes">Notas</Label><Input id="notes" name="notes" defaultValue={editing?.notes ?? ''} /></div>
+        <div className="space-y-2"><Label htmlFor="notes">Notas</Label><Input id="notes" name="notes" defaultValue={editing?.notes ?? ''} /></div>
       </FormSheetDialog>
 
       <ConfirmDeleteDialog

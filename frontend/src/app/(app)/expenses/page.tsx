@@ -154,19 +154,19 @@ export default function ExpensesPage() {
         onSubmit={handleSubmit}
       >
         <div className="grid grid-cols-2 gap-4">
-          <div><Label htmlFor="date">Fecha</Label><Input id="date" name="date" type="date" defaultValue={editing?.date} required /></div>
-          <div><Label>Categoría</Label><CatalogSelect client={client} catalogCode="expenseCategories" value={pickedCategory} onChange={setPickedCategory} placeholder="Seleccionar categoría..." /></div>
+          <div className="space-y-2"><Label htmlFor="date">Fecha</Label><Input id="date" name="date" type="date" defaultValue={editing?.date} required /></div>
+          <div className="space-y-2"><Label>Categoría</Label><CatalogSelect client={client} catalogCode="expenseCategories" value={pickedCategory} onChange={setPickedCategory} placeholder="Seleccionar categoría..." /></div>
         </div>
-        <div><Label htmlFor="description">Descripción</Label><Input id="description" name="description" defaultValue={editing?.description} required /></div>
+        <div className="space-y-2"><Label htmlFor="description">Descripción</Label><Input id="description" name="description" defaultValue={editing?.description} required /></div>
         <div className="grid grid-cols-2 gap-4">
-          <div><Label htmlFor="amount">Monto (S/)</Label><Input id="amount" name="amount" type="number" step="0.01" defaultValue={editing?.amount} required /></div>
-          <div><Label>Medio de pago</Label><CatalogSelect client={client} catalogCode="paymentMethods" value={pickedPaymentMethod} onChange={setPickedPaymentMethod} placeholder="Seleccionar medio..." /></div>
+          <div className="space-y-2"><Label htmlFor="amount">Monto (S/)</Label><Input id="amount" name="amount" type="number" step="0.01" defaultValue={editing?.amount} required /></div>
+          <div className="space-y-2"><Label>Medio de pago</Label><CatalogSelect client={client} catalogCode="paymentMethods" value={pickedPaymentMethod} onChange={setPickedPaymentMethod} placeholder="Seleccionar medio..." /></div>
         </div>
-        <div>
+        <div className="space-y-2">
           <Label>Horario (opcional)</Label>
           <SchedulePicker client={client} value={pickedScheduleId} onChange={(id) => setPickedScheduleId(id)} name="scheduleId" activeOnly={false} />
         </div>
-        <div><Label htmlFor="notes">Notas</Label><Input id="notes" name="notes" defaultValue={editing?.notes ?? ''} /></div>
+        <div className="space-y-2"><Label htmlFor="notes">Notas</Label><Input id="notes" name="notes" defaultValue={editing?.notes ?? ''} /></div>
       </FormSheetDialog>
 
       <ConfirmDeleteDialog
