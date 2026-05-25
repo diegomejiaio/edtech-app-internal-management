@@ -18,8 +18,8 @@ export default function CollectionsPage() {
 
       <EmptyState
         icon={HandCoins}
-        title="No hay cobranzas pendientes"
-        description="Cuando existan pagos pendientes por cobrar aparecerán aquí."
+        title="Próximamente"
+        description="Estamos construyendo esta sección. Las cobranzas estarán disponibles pronto."
       />
     </div>
   );
