@@ -111,6 +111,31 @@ When asked to validate a code change:
 - **Language**: Test code in English. UI assertions match Spanish strings (`/estudiantes/i`).
 - **Isolation**: Each test must be independent. Use `beforeEach` for setup, never depend on test order.
 - **Audit fields**: When verifying DB, always check `createdAt`, `createdBy` exist and `deletedAt` is null.
+- **`getByLabel` requires linked labels**: every `<Input>`/`<Textarea>`/`<Select>` in the frontend must have a `<Label htmlFor="…">` paired with a matching `id`. Naked labels next to inputs break both screen readers and `getByLabel()`.
+
+## Selector patterns (lessons learned)
+
+- **Pick combobox/select by label, not by index.** Index-based selection (`getByRole('combobox').nth(N)`) is brittle when dialogs contain conditional subforms (e.g. "+ Crear alumno" adds new comboboxes that shift the order). Use the `BasePage` helpers:
+  - `selectFirstCommandItemByLabel(scope, 'Horario')` — for cmdk-based pickers (`[cmdk-item]`).
+  - `selectFirstSelectOptionByLabel(scope, 'Medio de pago')` — for Radix Selects (`[role="option"]`).
+  Both filter by surrounding label text, immune to combobox count.
+- **Always wait for the dialog to close after a mutation** before searching/asserting:
+
+  ```ts
+  await this.dialog.getByRole('button', { name: 'Guardar' }).click();
+  await this.dialog.waitFor({ state: 'hidden', timeout: 60_000 });
+  ```
+
+  Skipping this causes a race: search runs before the new row exists in the list. The 60s timeout absorbs Azure Functions Consumption cold starts.
+- **Disambiguate Spanish words that repeat** in the UI (e.g. "Alumno", "Horario", "Días") with `{ exact: true }`, `getByRole('heading')`, or scope filtering. Strict mode violations are not bugs — they are selector design issues.
+- **When a row contains both a unique text and an action button**, filter the row container with both predicates to avoid matching the form's textbox that holds the same value:
+
+  ```ts
+  dialog.locator('div')
+    .filter({ hasText: notes })
+    .filter({ has: dialog.getByTitle('Eliminar pago') })
+    .first();
+  ```
 
 ## Project structure
 
