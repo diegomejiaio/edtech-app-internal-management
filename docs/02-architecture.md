@@ -262,7 +262,7 @@ Future: log de auditoría con before/after. Out of scope v1.
 
 ### 8.1 CORS policy
 
-Configurada en `EspacioPro.Api/Program.cs` vía `ConfigureFunctionsWebApplication` + middleware estándar de ASP.NET Core (Functions isolated worker soporta `app.UseCors`).
+Configurada en dos capas: runtime CORS de Azure Functions para `OPTIONS` preflight y `CorsMiddleware` en `EspacioPro.Api/Program.cs` para respuestas reales, incluyendo errores de auth/problem details.
 
 | Setting | Value | Notas |
 |---|---|---|
@@ -273,19 +273,18 @@ Configurada en `EspacioPro.Api/Program.cs` vía `ConfigureFunctionsWebApplicatio
 | Allow credentials | `false` | JWT viaja en `Authorization`, no en cookies. Cookies no se usan. |
 | Preflight max age | `3600` (1h) | Reduce OPTIONS round-trips. |
 
-Implementación pseudo:
+Implementación:
 ```csharp
-builder.Services.AddCors(opts => opts.AddPolicy("default", p => p
-    .WithOrigins(builder.Configuration["CORS_ORIGINS"]!.Split(','))
-    .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-    .WithHeaders("Authorization", "Content-Type", "x-correlation-id", "If-Match")
-    .WithExposedHeaders("x-correlation-id", "ETag", "Location")
-    .SetPreflightMaxAge(TimeSpan.FromHours(1))
-));
-// app.UseCors("default") antes de UseAuthorization
+// Bicep siteConfig.cors.allowedOrigins = split(corsOrigins, ',')
+// Bicep app setting AzureWebJobsFeatureFlags = EnableWorkerIndexing
+worker.UseMiddleware<EspacioPro.Api.Middleware.CorsMiddleware>();
+
+[Function("CorsPreflight")]
+[HttpTrigger(AuthorizationLevel.Anonymous, "options", Route = "{*path}")]
+// Applies Access-Control-Allow-* headers and returns 204.
 ```
 
-> El JWT validation middleware **NO** corre sobre requests `OPTIONS` (preflight). Functions isolated worker maneja esto vía short-circuit en el middleware de CORS.
+> El JWT validation middleware **NO** exige token sobre requests `OPTIONS` (preflight). En Flex Consumption + isolated worker, `EnableWorkerIndexing` debe mantenerse para que el runtime respete el CORS configurado al responder preflights.
 
 ### 8.2 Logs
 

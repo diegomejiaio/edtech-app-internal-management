@@ -15,6 +15,7 @@ using Microsoft.Extensions.Options;
 var host = new HostBuilder()
     .ConfigureFunctionsWebApplication(worker =>
     {
+        worker.UseMiddleware<EspacioPro.Api.Middleware.CorsMiddleware>();
         worker.UseMiddleware<EspacioPro.Api.Middleware.CorrelationIdMiddleware>();
         worker.UseMiddleware<EspacioPro.Api.Middleware.JwtAuthMiddleware>();
     })
