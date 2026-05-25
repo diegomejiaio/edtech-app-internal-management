@@ -281,8 +281,9 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>N° Documento <span className="text-destructive">*</span></Label>
+                <Label htmlFor="newDocNumber">N° Documento <span className="text-destructive">*</span></Label>
                 <Input
+                  id="newDocNumber"
                   value={newDocNumber}
                   onChange={(e) => setNewDocNumber(e.target.value)}
                   placeholder="12345678"
@@ -291,22 +292,23 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Nombre <span className="text-destructive">*</span></Label>
-                <Input value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} />
+                <Label htmlFor="newFirstName">Nombre <span className="text-destructive">*</span></Label>
+                <Input id="newFirstName" value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label>Apellido <span className="text-destructive">*</span></Label>
-                <Input value={newLastName} onChange={(e) => setNewLastName(e.target.value)} />
+                <Label htmlFor="newLastName">Apellido <span className="text-destructive">*</span></Label>
+                <Input id="newLastName" value={newLastName} onChange={(e) => setNewLastName(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Teléfono</Label>
-                <Input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+                <Label htmlFor="newPhone">Teléfono</Label>
+                <Input id="newPhone" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label>Email</Label>
+                <Label htmlFor="newEmail">Email</Label>
                 <Input
+                  id="newEmail"
                   type="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
@@ -324,8 +326,9 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Notas alumno</Label>
+              <Label htmlFor="newStudentNotes">Notas alumno</Label>
               <Textarea
+                id="newStudentNotes"
                 value={newStudentNotes}
                 onChange={(e) => setNewStudentNotes(e.target.value)}
                 rows={2}
@@ -364,8 +367,9 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
         <div className="text-sm font-medium">Pago inicial (opcional)</div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label>Monto (S/)</Label>
+            <Label htmlFor="paymentAmount">Monto (S/)</Label>
             <Input
+              id="paymentAmount"
               type="number"
               min="0"
               step="0.01"
@@ -375,8 +379,9 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Cuota N°</Label>
+            <Label htmlFor="paymentInstallment">Cuota N°</Label>
             <Input
+              id="paymentInstallment"
               type="number"
               min="1"
               value={installmentNumber}
@@ -400,8 +405,9 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
         </div>
         {hasReceipt && (
           <div className="space-y-1.5">
-            <Label>N° Boleta</Label>
+            <Label htmlFor="paymentReceiptNumber">N° Boleta</Label>
             <Input
+              id="paymentReceiptNumber"
               value={receiptNumber}
               onChange={(e) => setReceiptNumber(e.target.value)}
               placeholder="B001-00123"
@@ -409,8 +415,9 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
           </div>
         )}
         <div className="space-y-1.5">
-          <Label>Notas</Label>
+          <Label htmlFor="paymentNotes">Notas</Label>
           <Textarea
+            id="paymentNotes"
             value={paymentNotes}
             onChange={(e) => setPaymentNotes(e.target.value)}
             rows={2}

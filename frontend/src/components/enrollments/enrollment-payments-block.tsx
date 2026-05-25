@@ -172,12 +172,13 @@ export function EnrollmentPaymentsBlock({ enrollmentId }: EnrollmentPaymentsBloc
         <div className="space-y-3 rounded-md border p-3 bg-muted/30">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Fecha</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Label htmlFor="epbDate">Fecha</Label>
+              <Input id="epbDate" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Cuota N°</Label>
+              <Label htmlFor="epbInstallment">Cuota N°</Label>
               <Input
+                id="epbInstallment"
                 type="number"
                 min="1"
                 value={installmentNumber}
@@ -187,8 +188,9 @@ export function EnrollmentPaymentsBlock({ enrollmentId }: EnrollmentPaymentsBloc
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Monto (S/) <span className="text-destructive">*</span></Label>
+              <Label htmlFor="epbAmount">Monto (S/) <span className="text-destructive">*</span></Label>
               <Input
+                id="epbAmount"
                 type="number"
                 min="0"
                 step="0.01"
@@ -214,8 +216,9 @@ export function EnrollmentPaymentsBlock({ enrollmentId }: EnrollmentPaymentsBloc
           </div>
           {hasReceipt && (
             <div className="space-y-1.5">
-              <Label>N° Boleta</Label>
+              <Label htmlFor="epbReceiptNumber">N° Boleta</Label>
               <Input
+                id="epbReceiptNumber"
                 value={receiptNumber}
                 onChange={(e) => setReceiptNumber(e.target.value)}
                 placeholder="B001-00123"
@@ -223,8 +226,8 @@ export function EnrollmentPaymentsBlock({ enrollmentId }: EnrollmentPaymentsBloc
             </div>
           )}
           <div className="space-y-1.5">
-            <Label>Notas</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+            <Label htmlFor="epbNotes">Notas</Label>
+            <Textarea id="epbNotes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
           <Button
             type="button"
