@@ -26,6 +26,7 @@ test.describe('Table row animations @session-features', () => {
     await students.goto();
     await students.createStudent({ firstName: 'E2E', lastName: `Animación ${suffix}`, docNumber: `77${suffix}`, phone });
 
+    await students.search(phone);
     const newRow = students.rows.filter({ hasText: phone }).first();
     await expect(newRow).toBeVisible();
     await expect.poll(async () => newRow.evaluate((row) => getComputedStyle(row).backgroundColor), { timeout: 1_500 }).toContain('249, 115, 22');

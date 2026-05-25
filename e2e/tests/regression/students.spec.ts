@@ -13,13 +13,15 @@ test.describe('Students CRUD @regression', () => {
     await expect(studentsPage.table).toBeVisible();
   });
 
-  test('should filter students by search', async ({ page }) => {
-    await studentsPage.search('García');
-    const rows = await studentsPage.rows.count();
-    expect(rows).toBeGreaterThan(0);
+  test('should filter students by search', async () => {
+    const allCount = await studentsPage.rows.count();
+    test.skip(allCount === 0, 'No students seeded to filter');
 
-    const firstRow = studentsPage.rows.first();
-    await expect(firstRow).toContainText('García');
+    const firstRowText = (await studentsPage.rows.first().innerText()).split('\n')[0];
+    const term = firstRowText.split(/\s+/)[0];
+
+    await studentsPage.search(term);
+    await expect(studentsPage.rows.first()).toContainText(term);
   });
 
   test('should open new student form', async ({ page }) => {

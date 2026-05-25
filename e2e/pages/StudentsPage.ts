@@ -32,5 +32,6 @@ export class StudentsPage extends BasePage {
     if (data.phone) await this.dialog.getByLabel('Teléfono').fill(data.phone);
     if (data.email) await this.dialog.getByLabel('Email').fill(data.email);
     await this.dialog.getByRole('button', { name: 'Guardar' }).click();
+    await this.dialog.waitFor({ state: 'hidden' });
   }
 }

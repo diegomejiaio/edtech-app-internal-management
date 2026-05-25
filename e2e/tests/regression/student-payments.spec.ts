@@ -30,7 +30,7 @@ test.describe('Student payments @regression', () => {
     await studentPaymentsPage.openNewPayment();
     await studentPaymentsPage.selectEnrollment('Ana Pago');
 
-    await expect(page.getByText('Pagos registrados')).toBeVisible();
+    await expect(page.getByText('Pagos registrados', { exact: true })).toBeVisible();
     await expect(page.getByText('Saldo pendiente')).toBeVisible();
     await expect(page.getByText('Precio')).toBeVisible();
     await expect(page.getByText('Pagado')).toBeVisible();

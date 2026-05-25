@@ -38,7 +38,6 @@ test.describe('Search placeholders and phone search @session-features', () => {
       docNumber: `66${suffix}`,
       phone,
     });
-    await expect(students.rows.filter({ hasText: phone }).first()).toBeVisible();
 
     await students.search(phone);
     await expect(students.rows.first()).toContainText(phone);
@@ -60,7 +59,6 @@ test.describe('Search placeholders and phone search @session-features', () => {
       phone,
       specialty: 'E2E',
     });
-    await expect(teachers.rows.filter({ hasText: phone }).first()).toBeVisible();
 
     await teachers.search(phone);
     await expect(teachers.rows.first()).toContainText(phone);

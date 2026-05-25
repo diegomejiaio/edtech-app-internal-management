@@ -21,7 +21,8 @@ test.describe('Student Sources catalog @regression', () => {
 
   test('should add a new source', async ({ page }) => {
     await sourcesPage.clickNew();
-    await sourcesPage.fillAndSubmit('LinkedIn');
-    await expect(page.getByText('LinkedIn')).toBeVisible();
+    const unique = `LinkedIn-${Date.now()}`;
+    await sourcesPage.fillAndSubmit(unique);
+    await expect(page.getByText(unique).first()).toBeVisible();
   });
 });

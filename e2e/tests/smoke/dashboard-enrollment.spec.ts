@@ -12,9 +12,9 @@ test.describe('Dashboard enrollment action @smoke', () => {
 
     await expect(dashboardPage.enrollmentWizard).toBeVisible();
     await expect(page.getByText('Matricula un alumno en un horario activo')).toBeVisible();
-    await expect(page.getByText('Alumno')).toBeVisible();
+    await expect(page.getByText('Alumno', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '+ Crear alumno' })).toBeVisible();
-    await expect(page.getByText('Horario')).toBeVisible();
+    await expect(page.getByText('Horario', { exact: true })).toBeVisible();
     await expect(page.getByLabel('Fecha de inscripción')).toBeVisible();
     await expect(page.getByText('Pago inicial (opcional)')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Matricular' })).toBeVisible();

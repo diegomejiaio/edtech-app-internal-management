@@ -20,7 +20,6 @@ test.describe('Spaces @regression', () => {
 
   test('should open new space form', async ({ page }) => {
     await spacesPage.clickNew();
-    // Spaces is scaffold — currently shows toast "próximamente"
-    await expect(page.getByText(/próximamente/i)).toBeVisible();
+    await expect(page.getByRole('dialog')).toBeVisible();
   });
 });

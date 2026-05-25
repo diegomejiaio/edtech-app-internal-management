@@ -11,7 +11,7 @@ test.describe('Weekdays catalog @regression', () => {
 
   test('should display weekdays page', async ({ page }) => {
     await expect(page).toHaveURL(/weekdays/);
-    await expect(page.getByText(/días/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Días' })).toBeVisible();
   });
 
   test('should show existing weekday items', async () => {
