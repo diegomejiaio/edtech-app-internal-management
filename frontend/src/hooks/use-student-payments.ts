@@ -20,10 +20,15 @@ import {
 
 type InfiniteStudentPaymentListParams = Omit<StudentPaymentListParams, 'offset'>;
 
-export function useStudentPayments(client: ApiClient, params?: StudentPaymentListParams) {
+export function useStudentPayments(
+  client: ApiClient,
+  params?: StudentPaymentListParams,
+  options?: { enabled?: boolean },
+) {
   return useQuery<PaginatedResponse<StudentPayment>>({
     queryKey: ['student-payments', params],
     queryFn: () => getStudentPayments(client, params),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousWhenLoadingMore<PaginatedResponse<StudentPayment>>(params),
   });
 }

@@ -8,7 +8,8 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { formatTableDate } from '@/lib/dates';
-import { flattenInfiniteItems, getInfiniteTotal, useInfiniteStudentPayments, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from '@/hooks';
+import { toIsoDate } from '@/lib/dashboard-period';
+import { flattenInfiniteItems, getInfiniteTotal, useEnrollment, useStudentPayments, useInfiniteStudentPayments, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from '@/hooks';
 import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { EnrollmentPicker, CatalogSelect } from '@/components/pickers';
 import { Button } from '@/components/ui/button';
@@ -19,11 +20,13 @@ import { Switch } from '@/components/ui/switch';
 import { getApiErrorMessage, isApiError } from '@/lib/api';
 import type { StudentPayment, StudentPaymentBody } from '@/lib/api';
 
+const formatMoney = (value: number) => `S/ ${value.toFixed(2)}`;
+
 const columns: Column<StudentPayment>[] = [
   { key: 'student', header: 'Alumno', cell: (p) => p.studentName },
   { key: 'schedule', header: 'Horario', cell: (p) => p.scheduleName },
   { key: 'date', header: 'Fecha', cell: (p) => formatTableDate(p.date) },
-  { key: 'amount', header: 'Monto', cell: (p) => `S/ ${p.amount.toFixed(2)}` },
+  { key: 'amount', header: 'Monto', cell: (p) => formatMoney(p.amount) },
   { key: 'installment', header: 'Cuota', cell: (p) => `#${p.installmentNumber}` },
   { key: 'method', header: 'Medio', cell: (p) => p.paymentMethod },
   {
@@ -38,13 +41,9 @@ const columns: Column<StudentPayment>[] = [
 export default function StudentPaymentsPage() {
   const client = useApiClient();
   const limit = 25;
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
 
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteStudentPayments(client, {
     limit,
-    from: dateFrom || undefined,
-    to: dateTo || undefined,
   });
   const studentPayments = useMemo(() => flattenInfiniteItems(data, { sortBy: (p) => p.date }), [data]);
   const total = getInfiniteTotal(data);
@@ -57,6 +56,27 @@ export default function StudentPaymentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<StudentPayment | null>(null);
   const [pickedEnrollmentId, setPickedEnrollmentId] = useState<string | undefined>();
   const [pickedPaymentMethod, setPickedPaymentMethod] = useState<string | undefined>();
+  const selectedPaymentsParams = useMemo(
+    () => pickedEnrollmentId ? { enrollmentId: pickedEnrollmentId, limit: 20 } : undefined,
+    [pickedEnrollmentId],
+  );
+  const { data: selectedEnrollment } = useEnrollment(client, pickedEnrollmentId);
+  const { data: selectedPaymentsData, isLoading: isLoadingSelectedPayments } = useStudentPayments(
+    client,
+    selectedPaymentsParams,
+    { enabled: !!pickedEnrollmentId },
+  );
+  const selectedPayments = useMemo(
+    () => selectedPaymentsData?.items ?? [],
+    [selectedPaymentsData],
+  );
+  const selectedPaymentsTotal = useMemo(
+    () => selectedPayments.reduce((totalAmount, payment) => totalAmount + payment.amount, 0),
+    [selectedPayments],
+  );
+  const selectedPendingAmount = selectedEnrollment
+    ? Math.max(selectedEnrollment.schedulePrice - selectedPaymentsTotal, 0)
+    : undefined;
 
   function openCreate() { setEditing(null); setPickedEnrollmentId(undefined); setPickedPaymentMethod(undefined); setFormOpen(true); }
   function openEdit(p: StudentPayment) { setEditing(p); setPickedEnrollmentId(p.enrollmentId); setPickedPaymentMethod(p.paymentMethod); setFormOpen(true); }
@@ -95,11 +115,6 @@ export default function StudentPaymentsPage() {
         action={<Button onClick={openCreate}>Nuevo pago</Button>}
       />
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="sm:w-40" aria-label="Desde" />
-        <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="sm:w-40" aria-label="Hasta" />
-      </div>
-
       <DataTable
         columns={columns}
         data={studentPayments}
@@ -129,8 +144,70 @@ export default function StudentPaymentsPage() {
           <Label>Inscripción</Label>
           <EnrollmentPicker client={client} value={pickedEnrollmentId} onChange={(id) => setPickedEnrollmentId(id)} name="enrollmentId" />
         </div>
+        {pickedEnrollmentId && (
+          <div className="space-y-3 rounded-md border p-3 bg-muted/30">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">Pagos registrados</p>
+                <p className="text-xs text-muted-foreground">
+                  Revisa los pagos previos antes de registrar el monto pendiente.
+                </p>
+              </div>
+              {selectedPendingAmount !== undefined && (
+                <div className="text-right text-sm">
+                  <p className="text-muted-foreground">Saldo pendiente</p>
+                  <p className="font-semibold">{formatMoney(selectedPendingAmount)}</p>
+                </div>
+              )}
+            </div>
+
+            {selectedEnrollment && (
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <div className="rounded-md border bg-background p-2">
+                  <p className="text-xs text-muted-foreground">Precio</p>
+                  <p className="font-medium">{formatMoney(selectedEnrollment.schedulePrice)}</p>
+                </div>
+                <div className="rounded-md border bg-background p-2">
+                  <p className="text-xs text-muted-foreground">Pagado</p>
+                  <p className="font-medium">{formatMoney(selectedPaymentsTotal)}</p>
+                </div>
+                <div className="rounded-md border bg-background p-2">
+                  <p className="text-xs text-muted-foreground">Pendiente</p>
+                  <p className="font-medium">{formatMoney(selectedPendingAmount ?? 0)}</p>
+                </div>
+              </div>
+            )}
+
+            {isLoadingSelectedPayments && (
+              <p className="text-sm text-muted-foreground">Cargando pagos registrados...</p>
+            )}
+
+            {!isLoadingSelectedPayments && selectedPayments.length === 0 && (
+              <p className="text-sm text-muted-foreground">Esta inscripción todavía no tiene pagos registrados.</p>
+            )}
+
+            {selectedPayments.length > 0 && (
+              <div className="divide-y rounded-md border bg-background">
+                {selectedPayments.map((payment) => (
+                  <div key={payment.id} className="flex items-start justify-between gap-3 p-2 text-sm">
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        {formatMoney(payment.amount)} · Cuota {payment.installmentNumber}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatTableDate(payment.date)} · {payment.paymentMethod}
+                        {payment.hasReceipt ? ` · Boleta ${payment.receiptNumber ?? ''}` : ''}
+                      </p>
+                    </div>
+                    <Badge variant="secondary">{payment.id === editing?.id ? 'Editando' : 'Registrado'}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2"><Label htmlFor="date">Fecha</Label><Input id="date" name="date" type="date" defaultValue={editing?.date} required /></div>
+          <div className="space-y-2"><Label htmlFor="date">Fecha</Label><Input id="date" name="date" type="date" defaultValue={editing?.date ?? toIsoDate(new Date())} required /></div>
           <div className="space-y-2"><Label htmlFor="amount">Monto (S/)</Label><Input id="amount" name="amount" type="number" step="0.01" defaultValue={editing?.amount} required /></div>
         </div>
         <div className="grid grid-cols-2 gap-4">
