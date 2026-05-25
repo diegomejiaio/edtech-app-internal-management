@@ -111,7 +111,7 @@ export default function StudentsPage() {
       />
 
       <SearchBar
-        placeholder="Buscar por nombre o documento..."
+        placeholder="Buscar por nombre, documento o teléfono..."
         value={search}
         onChange={setSearch}
       />
