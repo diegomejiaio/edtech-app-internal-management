@@ -51,16 +51,27 @@ export class BasePage {
   }
 
   /**
-   * Opens a cmdk/Command picker located near a given label and selects the first item.
-   * Use this when the dialog has multiple comboboxes and `selectFirstCommandItem(scope, index)`
-   * would be brittle due to index drift.
+   * Resolves the picker trigger sitting next to a Label inside `scope`.
+   *
+   * Labels can include children (e.g. `<Label>Medio de pago <span>*</span></Label>`),
+   * so we match by substring (escaped regex) and traverse to the wrapper div that
+   * contains both the label and the picker (`<div class="space-y-*">`).
+   */
+  private triggerByLabel(scope: Locator, labelText: string | RegExp): Locator {
+    const matcher = typeof labelText === 'string'
+      ? new RegExp(`^\\s*${labelText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
+      : labelText;
+    const label = scope.getByText(matcher).first();
+    // xpath=.. = immediate parent (wrapper div containing Label + Picker).
+    return label.locator('xpath=..').getByRole('combobox').first();
+  }
+
+  /**
+   * Opens a cmdk/Command picker located next to the given label and selects the first item.
+   * Resilient to extra combobox triggers elsewhere in the dialog.
    */
   async selectFirstCommandItemByLabel(scope: Locator, labelText: string | RegExp): Promise<boolean> {
-    const trigger = scope
-      .locator('div')
-      .filter({ has: scope.getByText(labelText, typeof labelText === 'string' ? { exact: true } : undefined) })
-      .locator('[role="combobox"]')
-      .first();
+    const trigger = this.triggerByLabel(scope, labelText);
     await trigger.click();
     const empty = this.page.getByText('Sin resultados');
     if (await empty.isVisible().catch(() => false)) return false;
@@ -71,15 +82,11 @@ export class BasePage {
   }
 
   /**
-   * Opens a Radix Select trigger located near a given label and selects the first
+   * Opens a Radix Select trigger located next to the given label and selects the first
    * non-empty option. Use this when multiple Selects share the same dialog.
    */
   async selectFirstSelectOptionByLabel(scope: Locator, labelText: string | RegExp) {
-    const trigger = scope
-      .locator('div')
-      .filter({ has: scope.getByText(labelText, typeof labelText === 'string' ? { exact: true } : undefined) })
-      .locator('[role="combobox"]')
-      .first();
+    const trigger = this.triggerByLabel(scope, labelText);
     await trigger.click();
     const options = this.page.getByRole('option').filter({ hasNotText: /sin opciones/i });
     await expect(options.first()).toBeVisible();

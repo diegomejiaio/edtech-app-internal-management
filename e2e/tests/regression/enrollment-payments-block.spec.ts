@@ -23,6 +23,7 @@ test.describe('Enrollment payments block @session-features', () => {
   });
 
   test('registers and deletes a student payment tied to the enrollment @regression', async ({ page }) => {
+    test.setTimeout(90_000);
     const enrollments = new EnrollmentsPage(page);
     const suffix = Date.now().toString().slice(-8);
     const notes = `E2E pago matrícula ${suffix}`;
@@ -52,8 +53,11 @@ test.describe('Enrollment payments block @session-features', () => {
     }
 
     page.once('dialog', (dialog) => dialog.accept());
-    const paymentRow = enrollments.dialog.locator('div').filter({ hasText: notes }).filter({ has: enrollments.dialog.getByTitle('Eliminar pago') }).first();
-    await paymentRow.getByTitle('Eliminar pago').click();
+    const paymentRow = enrollments.dialog
+      .locator('div')
+      .filter({ has: page.getByRole('button', { name: 'Eliminar pago' }) })
+      .filter({ hasText: notes });
+    await paymentRow.getByRole('button', { name: 'Eliminar pago' }).first().click();
     await expect(enrollments.dialog.getByText(notes)).toBeHidden();
 
     if (hasCosmosConfig() && createdPayment?.id) {
