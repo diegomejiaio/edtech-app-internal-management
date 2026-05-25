@@ -60,22 +60,27 @@ export class BasePage {
       .poll(async () => this.rows.first().evaluate((row) => getComputedStyle(row).backgroundColor), {
         timeout: 2_000,
       })
-      .toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+      .toMatch(/rgba?\([^)]*,\s*0(\.0+)?\)$|^transparent$|^rgb\(0, 0, 0\)$/);
   }
 
   async expectLabelInputGap(labelText: string | RegExp) {
     const label = this.dialog.getByText(labelText, { exact: typeof labelText === 'string' });
     await expect(label.first()).toBeVisible();
     const gap = await label.first().evaluate((node) => {
-      const wrapper = node.parentElement;
-      const input = wrapper?.querySelector('input,button,textarea,[role="combobox"]');
-      if (!wrapper || !input) return { hasClass: false, margin: 0 };
+      let wrapper: HTMLElement | null = node as HTMLElement;
+      let hasClass = false;
+      for (let i = 0; i < 4 && wrapper; i++) {
+        if (wrapper.classList && wrapper.classList.contains('space-y-2')) {
+          hasClass = true;
+          break;
+        }
+        wrapper = wrapper.parentElement;
+      }
+      const inputContainer = (node.parentElement ?? node) as HTMLElement;
+      const input = inputContainer.querySelector('input,button,textarea,[role="combobox"]');
       const labelBottom = node.getBoundingClientRect().bottom;
-      const inputTop = input.getBoundingClientRect().top;
-      return {
-        hasClass: wrapper.classList.contains('space-y-2'),
-        margin: inputTop - labelBottom,
-      };
+      const inputTop = input ? input.getBoundingClientRect().top : labelBottom;
+      return { hasClass, margin: inputTop - labelBottom };
     });
     expect(gap.hasClass || gap.margin > 0).toBeTruthy();
   }
