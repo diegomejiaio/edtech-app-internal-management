@@ -19,12 +19,7 @@ import {
   Wallet,
   Receipt,
   Settings,
-  BookOpen,
-  MapPin,
   HandCoins,
-  Layers,
-  CalendarDays,
-  Megaphone,
   Banknote,
 } from 'lucide-react';
 import {
@@ -41,6 +36,7 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
+import { Logo } from '@/components/logo';
 
 interface NavItem {
   label: string;
@@ -54,15 +50,6 @@ const MAIN_NAV: NavItem[] = [
   { label: 'Alumnos', href: '/students', icon: Users },
   { label: 'Inscripciones', href: '/enrollments', icon: ClipboardList },
   { label: 'Pagos alumnos', href: '/student-payments', icon: CreditCard },
-];
-
-const CATALOG_NAV: NavItem[] = [
-  { label: 'Cursos', href: '/courses', icon: BookOpen },
-  { label: 'Niveles', href: '/levels', icon: Layers },
-  { label: 'Días', href: '/weekdays', icon: CalendarDays },
-  { label: 'Fuentes', href: '/student-sources', icon: Megaphone },
-  { label: 'Espacios', href: '/spaces', icon: MapPin },
-  { label: 'Profesores', href: '/teachers', icon: GraduationCap },
 ];
 
 const FINANCE_NAV: NavItem[] = [
@@ -91,11 +78,11 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-                  EP
-                </div>
+                <Logo variant="icon" className="size-8 shrink-0" />
                 <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-                  <span className="font-semibold">Espacio Pro</span>
+                  <span className="text-base font-semibold tracking-tight text-sidebar-foreground">
+                    Espacio Pro
+                  </span>
                   <span className="text-xs text-muted-foreground">
                     Gestión de academia
                   </span>
@@ -112,28 +99,6 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {MAIN_NAV.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.href)}
-                    tooltip={item.label}
-                  >
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Catálogo</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {CATALOG_NAV.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild

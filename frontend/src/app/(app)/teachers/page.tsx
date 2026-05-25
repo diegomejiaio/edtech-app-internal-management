@@ -95,6 +95,7 @@ export default function TeachersPage() {
       <PageHeader
         title="Profesores"
         description="Gestión de profesores"
+        backHref="/catalogs"
         action={<Button onClick={openCreate}>Nuevo profesor</Button>}
       />
 

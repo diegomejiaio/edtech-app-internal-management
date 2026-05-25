@@ -19,7 +19,7 @@ export default function SpacesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Espacios" subtitle="Aulas y locaciones disponibles">
+      <PageHeader title="Espacios" subtitle="Aulas y locaciones disponibles" backHref="/catalogs">
         <PageHeaderButton icon={MapPin} onClick={handleCreate} shortcutKey="n">
           Nuevo espacio
         </PageHeaderButton>

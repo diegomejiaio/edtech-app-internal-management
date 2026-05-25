@@ -44,6 +44,12 @@ function currency(value: number | undefined) {
   return `S/ ${(value ?? 0).toFixed(2)}`;
 }
 
+type ScheduleEnrollmentRow = ScheduleEnrollment & {
+  amount: number;
+  paidAmount: number;
+  pendingAmount: number;
+};
+
 export function ScheduleDetailView() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id') ?? '';
@@ -59,9 +65,29 @@ export function ScheduleDetailView() {
   const updateSession = useUpdateScheduleSession(client);
 
   const sessions = useMemo(() => flattenInfiniteItems(sessionQuery.data, { sortBy: (s) => s.date }), [sessionQuery.data]);
-  const enrollments = useMemo(() => flattenInfiniteItems(enrollmentQuery.data), [enrollmentQuery.data]);
   const schedule = scheduleQuery.data;
   const dashboard = dashboardQuery.data;
+  const dashboardEnrollmentsById = useMemo(
+    () => new Map(dashboard?.enrollments.map((row) => [row.enrollmentId, row]) ?? []),
+    [dashboard?.enrollments],
+  );
+  const enrollments = useMemo(
+    () => flattenInfiniteItems(enrollmentQuery.data).map((enrollment) => {
+      const dashboardEnrollment = dashboardEnrollmentsById.get(enrollment.id);
+      const amount = [enrollment.amount, dashboardEnrollment?.amount, schedule?.price]
+        .find((value) => value !== undefined && value > 0) ?? 0;
+      const paidAmount = [enrollment.paidAmount, dashboardEnrollment?.paidAmount]
+        .find((value) => value !== undefined && value > 0) ?? 0;
+
+      return {
+        ...enrollment,
+        amount,
+        paidAmount,
+        pendingAmount: Math.max(amount - paidAmount, 0),
+      };
+    }),
+    [dashboardEnrollmentsById, enrollmentQuery.data, schedule?.price],
+  );
   const attendanceRate = useMemo(() => {
     const entries = sessions.flatMap((session) => session.attendance);
     if (entries.length === 0) return 0;
@@ -84,7 +110,7 @@ export function ScheduleDetailView() {
     { key: 'attendance', header: 'Asistencia', cell: (s) => `${s.attendance.filter((a) => a.status === 'present').length}/${s.attendance.length}` },
   ];
 
-  const enrollmentColumns: Column<ScheduleEnrollment>[] = [
+  const enrollmentColumns: Column<ScheduleEnrollmentRow>[] = [
     { key: 'student', header: 'Alumno', cell: (e) => e.studentName },
     { key: 'status', header: 'Estado', cell: (e) => e.status },
     { key: 'amount', header: 'Monto', cell: (e) => currency(e.amount) },

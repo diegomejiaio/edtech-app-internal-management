@@ -29,6 +29,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Star,
   Users,
 } from 'lucide-react';
 import {
@@ -96,7 +97,7 @@ export function WeeklySchedulesCalendar({ client }: WeeklySchedulesCalendarProps
     sort: 'course:asc',
   });
 
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data?.items]);
 
   const sessionsByDay = useMemo(() => {
     const map = new Map<number, ScheduleWithCounts[]>();
@@ -118,7 +119,7 @@ export function WeeklySchedulesCalendar({ client }: WeeklySchedulesCalendarProps
     return map;
   }, [items, weekStart]);
 
-  const courseIndex = useMemo(() => new Map<string, number>(), [data]);
+  const courseIndex = new Map<string, number>();
 
   const totalRendered = useMemo(
     () => Array.from(sessionsByDay.values()).reduce((sum, l) => sum + l.length, 0),
@@ -255,6 +256,8 @@ export function WeeklySchedulesCalendar({ client }: WeeklySchedulesCalendarProps
                         sessions.map((s) => {
                           const color = courseColor(s.course, courseIndex);
                           const pct = Math.round((s.occupancyPct ?? 0) * 100);
+                          const sessionNumber = getScheduleSessionNumber(s, dayDate);
+                          const isCourseStart = sessionNumber === 1;
                           return (
                             <button
                               key={`${day}-${s.id}`}
@@ -264,10 +267,22 @@ export function WeeklySchedulesCalendar({ client }: WeeklySchedulesCalendarProps
                                 'group w-full text-left rounded-md border border-l-[3px] p-2 transition-all',
                                 'hover:shadow-sm hover:-translate-y-0.5',
                                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                                isCourseStart && 'ring-1 ring-warning/70',
                                 color.bg,
                                 color.border,
                               )}
                             >
+                              {sessionNumber && (
+                                <div
+                                  className={cn(
+                                    'mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide',
+                                    isCourseStart ? 'text-warning' : 'text-muted-foreground',
+                                  )}
+                                >
+                                  {isCourseStart && <Star className="h-3 w-3 fill-current" />}
+                                  <span>Sesión #{sessionNumber}</span>
+                                </div>
+                              )}
                               <p className={cn('text-xs font-semibold truncate', color.text)}>
                                 {s.course}
                               </p>
@@ -316,6 +331,20 @@ function isScheduleActiveOnDate(schedule: ScheduleWithCounts, date: Date) {
   if (target < start) return false;
   if (end && target > end) return false;
   return true;
+}
+
+function getScheduleSessionNumber(schedule: ScheduleWithCounts, date: Date) {
+  const start = parseDateOnly(schedule.startDate);
+  const target = startOfLocalDay(date);
+  const weekdays = new Set(parseWeekdays(schedule.weekdays));
+  if (target < start || !weekdays.has(target.getDay())) return null;
+
+  let sequence = 0;
+  for (let cursor = start; cursor <= target; cursor = addDays(cursor, 1)) {
+    if (weekdays.has(cursor.getDay())) sequence += 1;
+  }
+
+  return sequence;
 }
 
 function parseDateOnly(value: string) {

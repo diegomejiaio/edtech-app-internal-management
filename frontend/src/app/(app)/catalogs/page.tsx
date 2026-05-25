@@ -3,11 +3,14 @@
 /**
  * Catalogs management page — M1.
  *
- * Lists all catalogs and allows adding/disabling items within each.
+ * Lists all catalogs with quick view of items.
+ * Edit button navigates to the individual catalog CRUD page.
  */
 
 import { useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
+import { Pencil } from 'lucide-react';
 import { useApiClient } from '@/hooks/use-api-client';
 import { useCatalogs, useAddCatalogItem, useDisableCatalogItem } from '@/hooks';
 import { PageHeader, FormSheetDialog } from '@/components/data';
@@ -19,6 +22,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getApiErrorMessage, isApiError } from '@/lib/api';
 import type { Catalog } from '@/lib/api';
+
+/** Maps catalog code → individual CRUD route */
+const CATALOG_ROUTES: Record<string, string> = {
+  courses: '/courses',
+  levels: '/levels',
+  weekdays: '/weekdays',
+  studentSources: '/student-sources',
+  spaces: '/spaces',
+  paymentMethods: '/payment-methods',
+};
 
 export default function CatalogsPage() {
   const client = useApiClient();
@@ -94,6 +107,7 @@ function CatalogCard({
   onAddItem: () => void;
 }) {
   const disableMutation = useDisableCatalogItem(client, catalog.code);
+  const editRoute = CATALOG_ROUTES[catalog.code];
 
   function handleDisable(value: string) {
     disableMutation.mutateAsync(value)
@@ -105,7 +119,17 @@ function CatalogCard({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-base">{catalog.code}</CardTitle>
-        <Button variant="outline" size="sm" onClick={onAddItem}>Agregar</Button>
+        <div className="flex items-center gap-2">
+          {editRoute && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={editRoute}>
+                <Pencil className="mr-1 size-3.5" />
+                Editar
+              </Link>
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={onAddItem}>Agregar</Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap gap-2">
