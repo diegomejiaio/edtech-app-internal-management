@@ -19,7 +19,7 @@ test.describe('Student Sources catalog @regression', () => {
     await expect(sourcesPage.badges.first()).toBeVisible();
   });
 
-  test('should add a new source', async ({ page }) => {
+  test('should add a new source @write-heavy', async ({ page }) => {
     await sourcesPage.clickNew();
     const unique = `LinkedIn-${Date.now()}`;
     await sourcesPage.fillAndSubmit(unique);

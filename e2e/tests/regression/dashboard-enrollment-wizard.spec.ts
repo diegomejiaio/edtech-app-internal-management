@@ -18,7 +18,7 @@ test.describe('Dashboard enrollment wizard @session-features', () => {
     await expect(dashboard.dialog).not.toContainText('QuickEnrollmentSheet');
   });
 
-  test('creates an enrollment from the dashboard wizard @regression', async ({ page }) => {
+  test('creates an enrollment from the dashboard wizard @write-heavy', async ({ page }) => {
     test.setTimeout(90_000);
     const dashboard = new DashboardPage(page);
     const suffix = Date.now().toString().slice(-8);

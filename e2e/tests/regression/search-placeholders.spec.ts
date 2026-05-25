@@ -26,7 +26,7 @@ test.describe('Search placeholders and phone search @session-features', () => {
     await expect(page.getByPlaceholder('Buscar por curso, nivel, profesor o días...')).toBeVisible();
   });
 
-  test('filters students by phone number @regression', async ({ page }) => {
+  test('filters students by phone number @write-heavy', async ({ page }) => {
     test.skip(true, 'flaky-env: real backend create under parallel load');
     test.setTimeout(90_000);
     const students = new StudentsPage(page);
@@ -48,7 +48,7 @@ test.describe('Search placeholders and phone search @session-features', () => {
     await students.confirmDelete();
   });
 
-  test('filters teachers by phone number @regression', async ({ page }) => {
+  test('filters teachers by phone number @write-heavy', async ({ page }) => {
     test.skip(true, 'flaky-env: real backend create under parallel load');
     test.setTimeout(90_000);
     const teachers = new TeachersPage(page);

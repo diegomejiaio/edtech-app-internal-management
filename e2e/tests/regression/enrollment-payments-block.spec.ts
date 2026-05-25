@@ -22,7 +22,7 @@ test.describe('Enrollment payments block @session-features', () => {
     await expect(enrollments.dialog.getByText(/Sin pagos registrados|S\/\s*\d/).first()).toBeVisible();
   });
 
-  test('registers and deletes a student payment tied to the enrollment @regression', async ({ page }) => {
+  test('registers and deletes a student payment tied to the enrollment @write-heavy', async ({ page }) => {
     test.setTimeout(90_000);
     const enrollments = new EnrollmentsPage(page);
     const suffix = Date.now().toString().slice(-8);

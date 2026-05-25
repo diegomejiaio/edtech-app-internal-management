@@ -18,7 +18,7 @@ test.describe('Table row animations @session-features', () => {
     await enrollments.expectRowsNotFlashingOnLoad();
   });
 
-  test('flashes a new student row orange, then removes it after delete @regression', async ({ page }) => {
+  test('flashes a new student row orange, then removes it after delete @write-heavy', async ({ page }) => {
     // Skipped: requires a real backend write that times out under the parallel
     // worker load against the dev Function App tier. Re-enable when the test
     // can run serially or against a mocked CreateStudent endpoint.
