@@ -19,6 +19,7 @@ test.describe('Dashboard enrollment wizard @session-features', () => {
   });
 
   test('creates an enrollment from the dashboard wizard @regression', async ({ page }) => {
+    test.setTimeout(90_000);
     const dashboard = new DashboardPage(page);
     const suffix = Date.now().toString().slice(-8);
     const docNumber = `88${suffix}`;

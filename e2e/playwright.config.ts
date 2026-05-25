@@ -8,7 +8,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Limit concurrency to avoid overwhelming the dev Function App / Cosmos tier,
+  // which causes spurious blank-page renders when many parallel workers compete
+  // for the same backend. Override locally with `PW_WORKERS=N pnpm test`.
+  workers: process.env.CI ? 1 : Number(process.env.PW_WORKERS ?? 3),
   reporter: [
     ['html', { open: 'never' }],
     ['list'],
