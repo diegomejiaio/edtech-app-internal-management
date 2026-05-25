@@ -464,7 +464,7 @@ public sealed class ScheduleFunction
             errors["teacherId"] = ["The teacherId field is required."];
         if (string.IsNullOrWhiteSpace(req.Weekdays))
             errors["weekdays"] = ["The weekdays field is required."];
-        else if (!ScheduleWeekdayParser.CanonicalCodes.Contains(req.Weekdays.Trim()))
+        else if (!ScheduleWeekdayParser.TryNormalizeCanonical(req.Weekdays, out _))
             errors["weekdays"] = [$"weekdays must be one of: {ScheduleWeekdayParser.CanonicalListForMessage()}."];
         if (req.Capacity <= 0)
             errors["capacity"] = ["Capacity must be greater than zero."];
@@ -492,7 +492,14 @@ public sealed class ScheduleFunction
             errors["course"] = [$"Course '{body.Course}' does not exist or is inactive."];
         if (levels is null || !levels.Items.Any(i => i.Active && i.Value.Equals(body.Level, StringComparison.OrdinalIgnoreCase)))
             errors["level"] = [$"Level '{body.Level}' does not exist or is inactive."];
-        if (weekdays is null || !weekdays.Items.Any(i => i.Active && i.Value.Equals(body.Weekdays, StringComparison.Ordinal)))
+        var normalizedWeekdays = ScheduleWeekdayParser.TryNormalizeCanonical(body.Weekdays, out var canonicalWeekdays)
+            ? canonicalWeekdays
+            : body.Weekdays;
+
+        if (weekdays is null || !weekdays.Items.Any(i =>
+                i.Active
+                && ScheduleWeekdayParser.TryNormalizeCanonical(i.Value, out var catalogWeekdays)
+                && catalogWeekdays.Equals(normalizedWeekdays, StringComparison.Ordinal)))
             errors["weekdays"] = [$"Weekdays '{body.Weekdays}' does not exist or is inactive."];
 
         var durationHours = 0m;
@@ -524,7 +531,9 @@ public sealed class ScheduleFunction
         target.Level = req.Level!.Trim();
         target.TeacherId = teacher.Id;
         target.TeacherName = $"{teacher.FirstName} {teacher.LastName}".Trim();
-        target.Weekdays = req.Weekdays!.Trim();
+        target.Weekdays = ScheduleWeekdayParser.TryNormalizeCanonical(req.Weekdays, out var weekdays)
+            ? weekdays
+            : req.Weekdays!.Trim();
         target.StartTime = req.StartTime;
         target.EndTime = req.EndTime;
         target.Price = req.Price;

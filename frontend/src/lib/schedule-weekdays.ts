@@ -31,9 +31,31 @@ const WEEKDAY_PATTERNS: Record<string, number[]> = {
   M: [2],
 };
 
+const CANONICAL_WEEKDAY_CODES: Record<string, string> = {
+  L: 'L',
+  Ma: 'Ma',
+  Mi: 'Mi',
+  J: 'J',
+  V: 'V',
+  S: 'S',
+  D: 'D',
+  LMiV: 'LMiV',
+  MaJ: 'MaJ',
+  SD: 'SD',
+  'L-V': 'L-V',
+  LMV: 'LMiV',
+  MJ: 'MaJ',
+  M: 'Ma',
+};
+
+export function normalizeWeekdayCode(code: string): string {
+  const trimmed = code.trim();
+  return CANONICAL_WEEKDAY_CODES[trimmed] ?? trimmed;
+}
+
 export function parseWeekdays(code: string | null | undefined): number[] {
   if (!code) return [];
-  const trimmed = code.trim();
+  const trimmed = normalizeWeekdayCode(code);
   return WEEKDAY_PATTERNS[trimmed] ?? [];
 }
 

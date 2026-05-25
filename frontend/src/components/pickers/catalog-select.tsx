@@ -10,6 +10,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api';
+import { normalizeWeekdayCode } from '@/lib/schedule-weekdays';
 import { useCatalog } from '@/hooks';
 
 interface CatalogSelectProps {
@@ -37,23 +38,30 @@ export function CatalogSelect({
   const { data: catalog, isLoading } = useCatalog(client, catalogCode);
 
   const activeItems = catalog?.items.filter((i) => i.active).sort((a, b) => a.order - b.order) ?? [];
+  const options = catalogCode === 'weekdays'
+    ? Array.from(new Map(activeItems.map((item) => {
+        const normalizedValue = normalizeWeekdayCode(item.value);
+        return [normalizedValue, { ...item, value: normalizedValue }];
+      })).values())
+    : activeItems;
+  const selectedValue = catalogCode === 'weekdays' && value ? normalizeWeekdayCode(value) : value;
 
   if (isLoading) {
     return <Skeleton className="h-10 w-full" />;
   }
 
   return (
-    <Select value={value} onValueChange={onChange} name={name}>
+    <Select value={selectedValue} onValueChange={onChange} name={name}>
       <SelectTrigger>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        {activeItems.map((item) => (
+        {options.map((item) => (
           <SelectItem key={item.value} value={item.value}>
             {item.value}
           </SelectItem>
         ))}
-        {activeItems.length === 0 && (
+        {options.length === 0 && (
           <SelectItem value="_empty" disabled>
             Sin opciones
           </SelectItem>

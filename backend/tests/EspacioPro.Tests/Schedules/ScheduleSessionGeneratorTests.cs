@@ -20,6 +20,18 @@ public class ScheduleWeekdayParserTests
 
         actual.Should().BeEquivalentTo(expected);
     }
+
+    [Theory]
+    [InlineData("M", "Ma")]
+    [InlineData("LMV", "LMiV")]
+    [InlineData("MJ", "MaJ")]
+    [InlineData(" Ma ", "Ma")]
+    public void TryNormalizeCanonical_MapsLegacyAliases(string input, string expected)
+    {
+        ScheduleWeekdayParser.TryNormalizeCanonical(input, out var actual).Should().BeTrue();
+
+        actual.Should().Be(expected);
+    }
 }
 
 public class ScheduleSessionGeneratorTests
@@ -88,4 +100,3 @@ public class ScheduleSessionGeneratorTests
         Status = ScheduleStatus.Active,
     };
 }
-

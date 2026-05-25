@@ -1,4 +1,5 @@
 using EspacioPro.Domain.Entities;
+using EspacioPro.Application.Schedules;
 using EspacioPro.Infrastructure.Cosmos.Repositories;
 using EspacioPro.Seed.Excel;
 using Microsoft.Extensions.Logging;
@@ -33,7 +34,10 @@ internal sealed class CatalogSeeder
             var catalog = new Catalog
             {
                 Code = c.Code,
-                Items = [.. c.Items.Select((value, idx) => new CatalogItem
+                Items = [.. c.Items
+                    .Select(value => NormalizeCatalogValue(c.Code, value))
+                    .Distinct(StringComparer.Ordinal)
+                    .Select((value, idx) => new CatalogItem
                 {
                     Value = value,
                     Order = idx + 1,
@@ -58,4 +62,9 @@ internal sealed class CatalogSeeder
             ["Profesional"] = 32,
         },
     };
+
+    private static string NormalizeCatalogValue(string code, string value) =>
+        code == "weekdays" && ScheduleWeekdayParser.TryNormalizeCanonical(value, out var canonical)
+            ? canonical
+            : value;
 }

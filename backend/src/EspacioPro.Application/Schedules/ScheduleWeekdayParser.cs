@@ -26,6 +26,38 @@ public static class ScheduleWeekdayParser
     public static IReadOnlySet<string> CanonicalCodes { get; } =
         new HashSet<string>(["L", "Ma", "Mi", "J", "V", "S", "D", "LMiV", "MaJ", "L-V", "SD"]);
 
+    private static readonly IReadOnlyDictionary<string, string> CanonicalByAlias =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["L"] = "L",
+            ["Ma"] = "Ma",
+            ["Mi"] = "Mi",
+            ["J"] = "J",
+            ["V"] = "V",
+            ["S"] = "S",
+            ["D"] = "D",
+            ["LMiV"] = "LMiV",
+            ["MaJ"] = "MaJ",
+            ["L-V"] = "L-V",
+            ["SD"] = "SD",
+            ["M"] = "Ma",
+            ["LMV"] = "LMiV",
+            ["MJ"] = "MaJ",
+        };
+
+    public static bool TryNormalizeCanonical(string? code, out string canonical)
+    {
+        canonical = string.Empty;
+        if (string.IsNullOrWhiteSpace(code))
+            return false;
+
+        if (!CanonicalByAlias.TryGetValue(code.Trim(), out var value))
+            return false;
+
+        canonical = value;
+        return true;
+    }
+
     public static bool TryParse(string? code, out IReadOnlySet<DayOfWeek> weekdays)
     {
         weekdays = new HashSet<DayOfWeek>();
