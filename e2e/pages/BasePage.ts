@@ -50,6 +50,42 @@ export class BasePage {
     return true;
   }
 
+  /**
+   * Opens a cmdk/Command picker located near a given label and selects the first item.
+   * Use this when the dialog has multiple comboboxes and `selectFirstCommandItem(scope, index)`
+   * would be brittle due to index drift.
+   */
+  async selectFirstCommandItemByLabel(scope: Locator, labelText: string | RegExp): Promise<boolean> {
+    const trigger = scope
+      .locator('div')
+      .filter({ has: scope.getByText(labelText, typeof labelText === 'string' ? { exact: true } : undefined) })
+      .locator('[role="combobox"]')
+      .first();
+    await trigger.click();
+    const empty = this.page.getByText('Sin resultados');
+    if (await empty.isVisible().catch(() => false)) return false;
+    const item = this.page.locator('[cmdk-item]').first();
+    await expect(item).toBeVisible();
+    await item.click();
+    return true;
+  }
+
+  /**
+   * Opens a Radix Select trigger located near a given label and selects the first
+   * non-empty option. Use this when multiple Selects share the same dialog.
+   */
+  async selectFirstSelectOptionByLabel(scope: Locator, labelText: string | RegExp) {
+    const trigger = scope
+      .locator('div')
+      .filter({ has: scope.getByText(labelText, typeof labelText === 'string' ? { exact: true } : undefined) })
+      .locator('[role="combobox"]')
+      .first();
+    await trigger.click();
+    const options = this.page.getByRole('option').filter({ hasNotText: /sin opciones/i });
+    await expect(options.first()).toBeVisible();
+    await options.first().click();
+  }
+
   async confirmDelete() {
     await this.page.getByRole('alertdialog').getByRole('button', { name: /^Eliminar$/ }).click();
   }

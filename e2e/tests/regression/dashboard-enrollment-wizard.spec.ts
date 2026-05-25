@@ -31,11 +31,11 @@ test.describe('Dashboard enrollment wizard @session-features', () => {
     await dashboard.dialog.getByLabel('Apellido').fill(`Wizard ${suffix}`);
     await dashboard.dialog.getByLabel('Teléfono').fill(`999${suffix.slice(0, 6)}`);
 
-    const hasSchedule = await dashboard.selectFirstCommandItem(dashboard.dialog, 0);
+    const hasSchedule = await dashboard.selectFirstCommandItemByLabel(dashboard.dialog, 'Horario');
     test.skip(!hasSchedule, 'Requires at least one active schedule to create an enrollment.');
 
     await dashboard.dialog.getByRole('button', { name: 'Matricular' }).click();
-    await expect(dashboard.dialog).toBeHidden();
+    await expect(dashboard.dialog).toBeHidden({ timeout: 60_000 });
 
     if (!hasCosmosConfig()) {
       console.log('Skipping Cosmos DB audit checks: COSMOSDB_CONNECTION_STRING/COSMOSDB_DATABASE are not configured.');

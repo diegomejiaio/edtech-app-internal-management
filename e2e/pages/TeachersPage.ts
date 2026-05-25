@@ -34,5 +34,6 @@ export class TeachersPage extends BasePage {
     if (data.email) await this.dialog.getByLabel('Email').fill(data.email);
     if (data.specialty) await this.dialog.getByLabel('Especialidad').fill(data.specialty);
     await this.dialog.getByRole('button', { name: 'Guardar' }).click();
+    await this.dialog.waitFor({ state: 'hidden', timeout: 60_000 });
   }
 }

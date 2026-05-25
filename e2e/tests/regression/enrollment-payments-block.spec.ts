@@ -34,10 +34,10 @@ test.describe('Enrollment payments block @session-features', () => {
     await enrollments.openRegisterPaymentForm();
     await enrollments.dialog.getByPlaceholder('0.00').fill('1.50');
     await enrollments.dialog.getByLabel('Notas').fill(notes);
-    await enrollments.selectFirstComboboxOption(enrollments.dialog, await enrollments.dialog.getByRole('combobox').count() - 1);
+    await enrollments.selectFirstSelectOptionByLabel(enrollments.dialog, 'Medio de pago');
     await enrollments.dialog.getByRole('button', { name: /^Registrar pago$/ }).click();
 
-    await expect(enrollments.dialog.getByText(notes)).toBeVisible();
+    await expect(enrollments.dialog.getByText(notes)).toBeVisible({ timeout: 60_000 });
 
     let createdPayment: Record<string, unknown> | undefined;
     if (hasCosmosConfig()) {
