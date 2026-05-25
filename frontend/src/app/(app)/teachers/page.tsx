@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { isApiError, isConflict, DOC_TYPE_LABELS } from '@/lib/api';
+import { getApiErrorMessage, isApiError, isConflict, DOC_TYPE_LABELS } from '@/lib/api';
 import type { Teacher, TeacherBody, DocType } from '@/lib/api';
 
 const DOC_TYPES: DocType[] = ['dni', 'ce', 'passport'];
@@ -85,7 +85,7 @@ export default function TeachersPage() {
       })
       .catch((err) => {
         if (isConflict(err)) toast.error('Ya existe un profesor con ese documento');
-        else if (isApiError(err)) toast.error(err.problem.detail ?? err.message);
+        else if (isApiError(err)) toast.error(getApiErrorMessage(err));
         else toast.error('Error inesperado');
       });
   }

@@ -244,6 +244,11 @@ Schedules use this metadata to generate bounded class sessions from course durat
 
 > Snapshots `studentName/studentDoc/scheduleName/schedulePrice` evitan joins en el dashboard. Se refrescan cuando se hace `PUT /enrollments/{id}`. Stale aceptable (mismo patrón que `AuditUser`). Detalle: `04-api-design.md` §4.
 
+**Computed at read time** (not stored):
+- `amount` = `schedulePrice` snapshot.
+- `paidAmount` = sum of active `StudentPayment.amount` for the enrollment across all dates.
+- `pendingAmount` = `max(amount - paidAmount, 0)`.
+
 **Rules**
 - On create: reject if exists `Enrollment` with same `studentId + scheduleId AND status='active' AND active=true`. (NEW vs GAS — GAS no validaba.)
 - Status transitions: free (admin can set any). Audit log out of scope v1.

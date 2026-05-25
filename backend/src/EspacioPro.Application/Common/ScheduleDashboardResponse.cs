@@ -29,33 +29,49 @@ public sealed record ScheduleDashboardResponse
 
     /// <summary>
     /// Composes the dashboard from the underlying queries:
-    /// schedule entity + its active enrollments + the last-payment-date map for the month.
+    /// schedule entity + its active enrollments + payment maps.
     /// </summary>
     /// <param name="schedule">Schedule entity loaded by id (Q1).</param>
     /// <param name="month">Year-month label echoed in the response (e.g. <c>2026-05</c>).</param>
     /// <param name="enrollments">Active enrollments for the schedule (Q2).</param>
     /// <param name="lastPaymentDates">
-    /// Map <c>enrollmentId → MAX(date)</c> for active payments inside the month window (Q3).
+    /// Map <c>enrollmentId → MAX(date)</c> for active payments inside the month window.
     /// Enrollments not present are treated as debtors (no payment in month).
+    /// </param>
+    /// <param name="totalPaidAmounts">
+    /// Map <c>enrollmentId → SUM(amount)</c> for all active payments.
+    /// Missing entries are treated as zero paid.
     /// </param>
     public static ScheduleDashboardResponse From(
         Schedule schedule,
         string month,
         IReadOnlyList<Enrollment> enrollments,
-        IReadOnlyDictionary<string, DateOnly> lastPaymentDates)
+        IReadOnlyDictionary<string, DateOnly> lastPaymentDates,
+        IReadOnlyDictionary<string, decimal> totalPaidAmounts)
     {
         var rows = new List<ScheduleDashboardEnrollment>(enrollments.Count);
         var paid = 0;
+        var expectedAmount = 0m;
+        var paidAmount = 0m;
+        var pendingAmount = 0m;
         foreach (var e in enrollments)
         {
             var hasPayment = lastPaymentDates.TryGetValue(e.Id, out var lastDate);
+            var enrollmentPaidAmount = totalPaidAmounts.GetValueOrDefault(e.Id);
+            var enrollmentPendingAmount = Math.Max(e.SchedulePrice - enrollmentPaidAmount, 0m);
             if (hasPayment) paid++;
+            expectedAmount += e.SchedulePrice;
+            paidAmount += enrollmentPaidAmount;
+            pendingAmount += enrollmentPendingAmount;
             rows.Add(new ScheduleDashboardEnrollment
             {
                 EnrollmentId = e.Id,
                 StudentId = e.StudentId,
                 StudentName = e.StudentName,
                 StudentDoc = e.StudentDoc,
+                Amount = e.SchedulePrice,
+                PaidAmount = enrollmentPaidAmount,
+                PendingAmount = enrollmentPendingAmount,
                 PaidThisMonth = hasPayment,
                 LastPaymentDate = hasPayment ? lastDate : null,
             });
@@ -73,6 +89,9 @@ public sealed record ScheduleDashboardResponse
             Sessions = schedule.Sessions.Count(s => s.Active),
             CompletedSessions = schedule.Sessions.Count(s => s.Active && s.Status == Domain.Common.ScheduleSessionStatus.Completed),
             PendingSessions = schedule.Sessions.Count(s => s.Active && s.Status == Domain.Common.ScheduleSessionStatus.Scheduled),
+            ExpectedAmount = expectedAmount,
+            PaidAmount = paidAmount,
+            PendingAmount = pendingAmount,
         };
 
         return new ScheduleDashboardResponse
@@ -104,6 +123,15 @@ public sealed record ScheduleDashboardEnrollment
     [JsonPropertyName("paidThisMonth")]
     public bool PaidThisMonth { get; init; }
 
+    [JsonPropertyName("amount")]
+    public decimal Amount { get; init; }
+
+    [JsonPropertyName("paidAmount")]
+    public decimal PaidAmount { get; init; }
+
+    [JsonPropertyName("pendingAmount")]
+    public decimal PendingAmount { get; init; }
+
     /// <summary>Most recent active payment date within the requested month, or <c>null</c> if none.</summary>
     [JsonPropertyName("lastPaymentDate")]
     public DateOnly? LastPaymentDate { get; init; }
@@ -133,4 +161,13 @@ public sealed record ScheduleDashboardSummary
 
     [JsonPropertyName("pendingSessions")]
     public int PendingSessions { get; init; }
+
+    [JsonPropertyName("expectedAmount")]
+    public decimal ExpectedAmount { get; init; }
+
+    [JsonPropertyName("paidAmount")]
+    public decimal PaidAmount { get; init; }
+
+    [JsonPropertyName("pendingAmount")]
+    public decimal PendingAmount { get; init; }
 }

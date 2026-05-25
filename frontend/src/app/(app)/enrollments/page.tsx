@@ -12,12 +12,13 @@ import { flattenInfiniteItems, getInfiniteTotal, useInfiniteEnrollments, useUpda
 import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { StudentPicker, SchedulePicker } from '@/components/pickers';
 import { EnrollmentWizard } from '@/components/enrollments/enrollment-wizard';
+import { EnrollmentPaymentsBlock } from '@/components/enrollments/enrollment-payments-block';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { isApiError, isConflict, ENROLLMENT_STATUS_LABELS } from '@/lib/api';
+import { getApiErrorMessage, isApiError, isConflict, ENROLLMENT_STATUS_LABELS } from '@/lib/api';
 import type { Enrollment, EnrollmentBody, EnrollmentStatus } from '@/lib/api';
 
 const STATUSES: EnrollmentStatus[] = ['active', 'completed', 'cancelled', 'pending'];
@@ -81,7 +82,7 @@ export default function EnrollmentsPage() {
       .then(() => { setFormOpen(false); toast.success('Inscripción actualizada'); })
       .catch((err) => {
         if (isConflict(err)) toast.error('Ya existe una inscripción activa para este alumno en este horario');
-        else if (isApiError(err)) toast.error(err.problem.detail ?? err.message);
+        else if (isApiError(err)) toast.error(getApiErrorMessage(err));
         else toast.error('Error inesperado');
       });
   }
@@ -153,6 +154,8 @@ export default function EnrollmentsPage() {
             </Select>
           </div>
         </div>
+
+        {editing && <EnrollmentPaymentsBlock enrollmentId={editing.id} />}
       </FormSheetDialog>
 
       <ConfirmDeleteDialog

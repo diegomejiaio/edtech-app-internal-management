@@ -54,7 +54,21 @@ public sealed class CorrelationIdMiddleware : IFunctionsWorkerMiddleware
         // Add to logger scope so all downstream log entries include it.
         using (_logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = correlationId }))
         {
-            await next(context);
+            try
+            {
+                await next(context);
+            }
+            catch (OperationCanceledException) when (httpContext.RequestAborted.IsCancellationRequested)
+            {
+                // Client disconnected mid-flight (browser navigated away, React effect
+                // cleanup, abort signal from TanStack Query, etc.). This is benign:
+                // log at info level and return without re-throwing so the Functions
+                // host doesn't record it as a 500. The response is already aborted.
+                _logger.LogInformation(
+                    "Request aborted by client for {FunctionName} (correlationId={CorrelationId})",
+                    context.FunctionDefinition.Name,
+                    correlationId);
+            }
         }
     }
 }

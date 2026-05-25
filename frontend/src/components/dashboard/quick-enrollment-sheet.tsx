@@ -19,6 +19,7 @@ import { useCreateEnrollment } from '@/hooks';
 import {
   isApiError,
   isConflict,
+  getApiErrorMessage,
   type ApiClient,
   type EnrollmentBody,
 } from '@/lib/api';
@@ -74,7 +75,7 @@ export function QuickEnrollmentSheet({
         if (isConflict(err)) {
           toast.error('Ya existe una inscripción activa para este alumno en este horario');
         } else if (isApiError(err)) {
-          toast.error(err.problem.detail ?? err.message);
+          toast.error(getApiErrorMessage(err));
         } else {
           toast.error('Error inesperado');
         }

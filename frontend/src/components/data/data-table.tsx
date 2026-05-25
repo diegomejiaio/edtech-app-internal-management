@@ -179,7 +179,7 @@ export function DataTable<T>({
                 </RowComponent>
               ))}
               {isFetchingNextPage && (
-                <TableRow>
+                <TableRow key="__fetch_next_skeleton__">
                   {Array.from({ length: colCount }).map((_, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-5 w-full" />

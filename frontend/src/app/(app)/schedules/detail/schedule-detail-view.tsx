@@ -24,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatCard } from '@/components/ui/stat-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ATTENDANCE_STATUS_LABELS, isApiError, SCHEDULE_SESSION_STATUS_LABELS, SCHEDULE_STATUS_LABELS } from '@/lib/api';
+import { ATTENDANCE_STATUS_LABELS, getApiErrorMessage, isApiError, SCHEDULE_SESSION_STATUS_LABELS, SCHEDULE_STATUS_LABELS } from '@/lib/api';
 import { formatTableDate } from '@/lib/dates';
 import type { AttendanceStatus, ScheduleEnrollment, ScheduleSession, ScheduleSessionStatus } from '@/lib/api';
 
@@ -107,7 +107,7 @@ export function ScheduleDetailView() {
           setScheduleEtag(updated.scheduleEtag ?? undefined);
           toast.success('Sesión actualizada');
         },
-        onError: (err) => toast.error(isApiError(err) ? err.problem.detail ?? err.message : 'No se pudo actualizar la sesión'),
+        onError: (err) => toast.error(isApiError(err) ? getApiErrorMessage(err) : 'No se pudo actualizar la sesión'),
       },
     );
   }
@@ -133,7 +133,7 @@ export function ScheduleDetailView() {
           setScheduleEtag(updated.scheduleEtag ?? undefined);
           toast.success('Asistencia actualizada');
         },
-        onError: (err) => toast.error(isApiError(err) ? err.problem.detail ?? err.message : 'No se pudo actualizar la asistencia'),
+        onError: (err) => toast.error(isApiError(err) ? getApiErrorMessage(err) : 'No se pudo actualizar la asistencia'),
       },
     );
   }
@@ -154,10 +154,32 @@ export function ScheduleDetailView() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <StatCard label="Sesiones" value={schedule?.sessionCount ?? 0} icon={Calendar} isLoading={scheduleQuery.isLoading} description="Generadas por duración" />
-        <StatCard label="Matriculados" value={dashboard?.summary.enrolled ?? 0} icon={Users} isLoading={dashboardQuery.isLoading} />
-        <StatCard label="Pagaron" value={dashboard?.summary.paid ?? 0} icon={CircleDollarSign} isLoading={dashboardQuery.isLoading} />
-        <StatCard label="Asistencia" value={`${Math.round(attendanceRate * 100)}%`} icon={CheckCircle2} isLoading={dashboardQuery.isLoading || sessionQuery.isLoading} />
+        <StatCard
+          label="Sesiones"
+          value={schedule?.sessionCount ?? 0}
+          icon={Calendar}
+          isLoading={scheduleQuery.isLoading}
+          description="Generadas por duración"
+        />
+        <StatCard
+          label="Matriculados"
+          value={dashboard?.summary.enrolled ?? 0}
+          icon={Users}
+          isLoading={dashboardQuery.isLoading}
+        />
+        <StatCard
+          label="Saldo pendiente"
+          value={currency(dashboard?.summary.pendingAmount)}
+          icon={CircleDollarSign}
+          isLoading={dashboardQuery.isLoading}
+          valueClassName={(dashboard?.summary.pendingAmount ?? 0) > 0 ? 'text-destructive' : undefined}
+        />
+        <StatCard
+          label="Asistencia"
+          value={`${Math.round(attendanceRate * 100)}%`}
+          icon={CheckCircle2}
+          isLoading={dashboardQuery.isLoading || sessionQuery.isLoading}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">

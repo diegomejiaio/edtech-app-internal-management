@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { isApiError } from '@/lib/api';
+import { getApiErrorMessage, isApiError } from '@/lib/api';
 import type { StudentPayment, StudentPaymentBody } from '@/lib/api';
 
 const columns: Column<StudentPayment>[] = [
@@ -82,7 +82,7 @@ export default function StudentPaymentsPage() {
     mutation
       .then(() => { setFormOpen(false); toast.success(editing ? 'Pago actualizado' : 'Pago registrado'); })
       .catch((err) => {
-        if (isApiError(err)) toast.error(err.problem.detail ?? err.message);
+        if (isApiError(err)) toast.error(getApiErrorMessage(err));
         else toast.error('Error inesperado');
       });
   }

@@ -364,14 +364,15 @@ public sealed class ScheduleFunction
     /// <summary>
     /// GET /api/v1/schedules/{id}/dashboard?month=YYYY-MM — composite read view (M9).
     /// Per <c>docs/04-api-design.md §6.1</c>: schedule + active enrollments + per-enrollment
-    /// paid/debtor flag for the requested month, plus aggregate summary.
+    /// paid/debtor flag for the requested month, derived balances, plus aggregate summary.
     /// </summary>
     /// <remarks>
-    /// Query plan (3 round-trips, ~10–15 RU total at v1 scale):
+    /// Query plan (4 round-trips, ~15–25 RU total at v1 scale):
     /// <list type="number">
     ///   <item>Q1: point read schedule by id.</item>
     ///   <item>Q2: active enrollments for the schedule (single-partition).</item>
     ///   <item>Q3: <c>MAX(date)</c> per enrollment for active payments inside the month window.</item>
+    ///   <item>Q4: <c>SUM(amount)</c> per enrollment across all active payments.</item>
     /// </list>
     /// Defaults <paramref name="req"/>.month to the current UTC month when omitted.
     /// </remarks>
@@ -407,11 +408,12 @@ public sealed class ScheduleFunction
             offset: 0,
             ct);
 
-        // Q3: last-payment-date per enrollment within the month.
+        // Q3/Q4: payment aggregates per enrollment.
         var enrollmentIds = enrollments.Select(e => e.Id).ToArray();
         var lastDates = await _paymentRepo.GetLastPaymentDatesAsync(enrollmentIds, monthStart, monthEnd, ct);
+        var totalPaidAmounts = await _paymentRepo.GetTotalPaidAmountsAsync(enrollmentIds, ct);
 
-        var dashboard = ScheduleDashboardResponse.From(schedule, monthRaw, enrollments, lastDates);
+        var dashboard = ScheduleDashboardResponse.From(schedule, monthRaw, enrollments, lastDates, totalPaidAmounts);
         return new OkObjectResult(dashboard);
     }
 

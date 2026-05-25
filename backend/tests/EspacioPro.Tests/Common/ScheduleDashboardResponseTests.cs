@@ -36,6 +36,7 @@ public class ScheduleDashboardResponseTests
         StudentDoc = "DNI 12345678",
         ScheduleId = "sch-1",
         ScheduleName = "Melamina · Intermedio · L-V 18:00",
+        SchedulePrice = 250m,
         Status = EnrollmentStatus.Active,
         EnrollmentDate = new DateOnly(2026, 5, 1),
     };
@@ -55,8 +56,14 @@ public class ScheduleDashboardResponseTests
             ["e1"] = new(2026, 5, 3),
             ["e3"] = new(2026, 5, 28),
         };
+        var paidAmounts = new Dictionary<string, decimal>
+        {
+            ["e1"] = 250m,
+            ["e2"] = 100m,
+            ["e3"] = 300m,
+        };
 
-        var dto = ScheduleDashboardResponse.From(schedule, "2026-05", enrollments, lastDates);
+        var dto = ScheduleDashboardResponse.From(schedule, "2026-05", enrollments, lastDates, paidAmounts);
 
         dto.Schedule.Id.Should().Be("sch-1");
         dto.Schedule.EnrolledActiveCount.Should().Be(3);
@@ -65,11 +72,16 @@ public class ScheduleDashboardResponseTests
         dto.Enrollments.Should().Contain(e => e.EnrollmentId == "e1" && e.PaidThisMonth && e.LastPaymentDate == new DateOnly(2026, 5, 3));
         dto.Enrollments.Should().Contain(e => e.EnrollmentId == "e2" && !e.PaidThisMonth && e.LastPaymentDate == null);
         dto.Enrollments.Should().Contain(e => e.EnrollmentId == "e3" && e.PaidThisMonth && e.LastPaymentDate == new DateOnly(2026, 5, 28));
+        dto.Enrollments.Should().Contain(e => e.EnrollmentId == "e2" && e.Amount == 250m && e.PaidAmount == 100m && e.PendingAmount == 150m);
+        dto.Enrollments.Should().Contain(e => e.EnrollmentId == "e3" && e.PendingAmount == 0m, "overpayments must not create negative pending balances");
 
         dto.Summary.Enrolled.Should().Be(3);
         dto.Summary.Paid.Should().Be(2);
         dto.Summary.Debtors.Should().Be(1);
         dto.Summary.OccupancyPct.Should().Be(0.3m);
+        dto.Summary.ExpectedAmount.Should().Be(750m);
+        dto.Summary.PaidAmount.Should().Be(650m);
+        dto.Summary.PendingAmount.Should().Be(150m);
     }
 
     [Fact]
@@ -79,7 +91,8 @@ public class ScheduleDashboardResponseTests
             SampleSchedule(capacity: 10),
             "2026-05",
             enrollments: [],
-            lastPaymentDates: new Dictionary<string, DateOnly>());
+            lastPaymentDates: new Dictionary<string, DateOnly>(),
+            totalPaidAmounts: new Dictionary<string, decimal>());
 
         dto.Enrollments.Should().BeEmpty();
         dto.Summary.Enrolled.Should().Be(0);
@@ -95,7 +108,8 @@ public class ScheduleDashboardResponseTests
             SampleSchedule(capacity: 0),
             "2026-05",
             enrollments: [SampleEnrollment("e1", "Ana")],
-            lastPaymentDates: new Dictionary<string, DateOnly> { ["e1"] = new(2026, 5, 3) });
+            lastPaymentDates: new Dictionary<string, DateOnly> { ["e1"] = new(2026, 5, 3) },
+            totalPaidAmounts: new Dictionary<string, decimal>());
 
         dto.Summary.Enrolled.Should().Be(1);
         dto.Summary.Paid.Should().Be(1);
@@ -112,7 +126,12 @@ public class ScheduleDashboardResponseTests
             ["e2"] = new(2026, 5, 2),
         };
 
-        var dto = ScheduleDashboardResponse.From(SampleSchedule(4), "2026-05", enrollments, lastDates);
+        var dto = ScheduleDashboardResponse.From(
+            SampleSchedule(4),
+            "2026-05",
+            enrollments,
+            lastDates,
+            new Dictionary<string, decimal>());
 
         dto.Summary.Paid.Should().Be(2);
         dto.Summary.Debtors.Should().Be(0);
@@ -130,9 +149,28 @@ public class ScheduleDashboardResponseTests
             ["e-unknown"] = new(2026, 5, 9),
         };
 
-        var dto = ScheduleDashboardResponse.From(SampleSchedule(2), "2026-05", enrollments, lastDates);
+        var dto = ScheduleDashboardResponse.From(
+            SampleSchedule(2),
+            "2026-05",
+            enrollments,
+            lastDates,
+            new Dictionary<string, decimal> { ["e1"] = 250m });
 
         dto.Enrollments.Should().HaveCount(1);
         dto.Summary.Paid.Should().Be(1);
+    }
+
+    [Fact]
+    public void ScheduleEnrollmentResponse_From_ComputesPendingBalance()
+    {
+        var enrollment = SampleEnrollment("e1", "Ana");
+        enrollment.SchedulePrice = 400m;
+
+        var dto = ScheduleEnrollmentResponse.From(enrollment, paidAmount: 125m);
+
+        dto.Id.Should().Be("e1");
+        dto.Amount.Should().Be(400m);
+        dto.PaidAmount.Should().Be(125m);
+        dto.PendingAmount.Should().Be(275m);
     }
 }

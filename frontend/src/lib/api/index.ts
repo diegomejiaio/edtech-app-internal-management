@@ -3,7 +3,7 @@ export type { AuditUser, BaseEntity, ProblemDetails, ListParams, PaginatedRespon
 export { DOC_TYPE_LABELS, ENROLLMENT_STATUS_LABELS, SCHEDULE_STATUS_LABELS, SCHEDULE_SESSION_STATUS_LABELS, ATTENDANCE_STATUS_LABELS } from './types';
 
 // Error handling
-export { ApiError, isApiError, isNotFound, isConflict, isValidation, isUnauthorized, isForbidden } from './errors';
+export { ApiError, getApiErrorMessage, isApiError, isNotFound, isConflict, isValidation, isUnauthorized, isForbidden } from './errors';
 
 // HTTP client
 export { createApiClient } from './client';

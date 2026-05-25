@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { isApiError } from '@/lib/api';
+import { getApiErrorMessage, isApiError } from '@/lib/api';
 import type { Expense, ExpenseBody } from '@/lib/api';
 
 const columns: Column<Expense>[] = [
@@ -84,7 +84,7 @@ export default function ExpensesPage() {
     mutation
       .then(() => { setFormOpen(false); toast.success(editing ? 'Gasto actualizado' : 'Gasto registrado'); })
       .catch((err) => {
-        if (isApiError(err)) toast.error(err.problem.detail ?? err.message);
+        if (isApiError(err)) toast.error(getApiErrorMessage(err));
         else toast.error('Error inesperado');
       });
   }

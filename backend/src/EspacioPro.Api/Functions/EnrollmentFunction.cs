@@ -242,7 +242,12 @@ public sealed class EnrollmentFunction
         }
 
         var (items, total) = await _repo.SearchAsync(studentId: null, scheduleId, status, includeInactive: false, limit, offset, ct);
-        return new OkObjectResult(new Paginated<Enrollment>(items, total, limit, offset));
+        var totalPaidAmounts = await _paymentRepo.GetTotalPaidAmountsAsync(items.Select(e => e.Id).ToArray(), ct);
+        var rows = items
+            .Select(e => ScheduleEnrollmentResponse.From(e, totalPaidAmounts.GetValueOrDefault(e.Id)))
+            .ToArray();
+
+        return new OkObjectResult(new Paginated<ScheduleEnrollmentResponse>(rows, total, limit, offset));
     }
 
     /// <summary>GET /api/v1/enrollments/{id}/payments — student payments for an enrollment.</summary>

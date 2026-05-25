@@ -78,6 +78,9 @@ export interface DashboardEnrollment {
   studentId: string;
   studentName: string;
   studentDoc: string;
+  amount: number;
+  paidAmount: number;
+  pendingAmount: number;
   paidThisMonth: boolean;
   lastPaymentDate?: string | null;
 }
@@ -91,6 +94,9 @@ export interface DashboardSummary {
   sessions: number;
   completedSessions: number;
   pendingSessions: number;
+  expectedAmount: number;
+  paidAmount: number;
+  pendingAmount: number;
 }
 
 export interface ScheduleAttendance {
@@ -124,9 +130,9 @@ export interface ScheduleEnrollment {
   studentId: string;
   studentName: string;
   status: EnrollmentStatus;
-  amount?: number;
-  paidAmount?: number;
-  pendingAmount?: number;
+  amount: number;
+  paidAmount: number;
+  pendingAmount: number;
 }
 
 /** Composite response from `GET /schedules/{id}/dashboard`. */

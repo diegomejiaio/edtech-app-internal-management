@@ -123,15 +123,29 @@ export const staggerItemVariants: Variants = {
   },
 };
 
-/** Table row animation */
+/** Table row animation — entrance flashes primary tint, exit flashes destructive tint */
 export const tableRowVariants: Variants = {
-  hidden: { opacity: 0, x: -8 },
+  hidden: { opacity: 0, x: -12 },
   visible: {
     opacity: 1,
     x: 0,
+    backgroundColor: [
+      'rgba(249, 115, 22, 0.28)',
+      'rgba(249, 115, 22, 0)',
+    ],
     transition: {
-      duration: 0.25,
+      duration: 0.35,
       ease: EASE_DEFAULT,
+      backgroundColor: { duration: 1.4, ease: 'easeOut', times: [0, 1] },
+    },
+  },
+  exit: {
+    opacity: 0,
+    x: 24,
+    backgroundColor: 'rgba(239, 68, 68, 0.32)',
+    transition: {
+      duration: 0.28,
+      ease: EASE_SNAPPY,
     },
   },
 };

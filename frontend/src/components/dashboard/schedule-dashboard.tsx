@@ -56,6 +56,10 @@ function formatScheduleTitle(schedule: ScheduleWithCounts): string {
   return `${schedule.course} · ${schedule.level} · ${schedule.weekdays} ${schedule.startTime}`;
 }
 
+function currency(value: number): string {
+  return `S/ ${value.toFixed(2)}`;
+}
+
 function isScheduleInMonth(schedule: ScheduleWithCounts, month: string): boolean {
   return schedule.startDate.startsWith(month);
 }
@@ -234,11 +238,11 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
                 valueClassName="text-success"
               />
               <StatCard
-                label="Pendientes"
-                value={dashboard.summary.debtors}
+                label="Saldo pendiente"
+                value={currency(dashboard.summary.pendingAmount)}
                 icon={AlertCircle}
                 valueClassName={
-                  dashboard.summary.debtors > 0 ? 'text-destructive' : undefined
+                  dashboard.summary.pendingAmount > 0 ? 'text-destructive' : undefined
                 }
               />
               <StatCard
@@ -283,6 +287,9 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
                     <TableRow>
                       <TableHead>Alumno</TableHead>
                       <TableHead>Documento</TableHead>
+                      <TableHead>Precio</TableHead>
+                      <TableHead>Pagado</TableHead>
+                      <TableHead>Saldo</TableHead>
                       <TableHead>Estado pago</TableHead>
                       <TableHead>Último pago</TableHead>
                     </TableRow>
@@ -292,6 +299,17 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
                       <TableRow key={e.enrollmentId}>
                         <TableCell className="font-medium">{e.studentName}</TableCell>
                         <TableCell>{e.studentDoc}</TableCell>
+                        <TableCell>{currency(e.amount)}</TableCell>
+                        <TableCell>{currency(e.paidAmount)}</TableCell>
+                        <TableCell
+                          className={
+                            e.pendingAmount > 0
+                              ? 'font-medium text-destructive'
+                              : 'text-muted-foreground'
+                          }
+                        >
+                          {currency(e.pendingAmount)}
+                        </TableCell>
                         <TableCell>
                           {e.paidThisMonth ? (
                             <Badge variant="success">Pagado</Badge>

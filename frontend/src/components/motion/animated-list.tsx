@@ -130,7 +130,16 @@ export function AnimatedTableBody({
   // that rows added after the initial render (e.g. when a search filter is
   // cleared and the dataset grows) still play their entrance animation
   // instead of getting stuck at the parent's stale "hidden" state.
-  return <tbody className={className}>{children}</tbody>;
+  //
+  // AnimatePresence with initial={false} ensures the entrance flash only
+  // plays for rows added after the first paint (create / filter widens /
+  // pagination expands). Rows present on the initial render appear without
+  // animation, so a fresh list doesn't strobe orange.
+  return (
+    <tbody className={className}>
+      <AnimatePresence initial={false}>{children}</AnimatePresence>
+    </tbody>
+  );
 }
 
 // =============================================================================
@@ -152,8 +161,10 @@ export function AnimatedTableRow({
 }: AnimatedTableRowProps) {
   return (
     <motion.tr
+      layout
       initial="hidden"
       animate="visible"
+      exit="exit"
       variants={tableRowVariants}
       className={cn(
         "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",

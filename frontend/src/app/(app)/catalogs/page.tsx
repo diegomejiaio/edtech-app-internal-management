@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { isApiError } from '@/lib/api';
+import { getApiErrorMessage, isApiError } from '@/lib/api';
 import type { Catalog } from '@/lib/api';
 
 export default function CatalogsPage() {
@@ -36,7 +36,7 @@ export default function CatalogsPage() {
     addMutation.mutateAsync({ value })
       .then(() => { setAddingTo(null); toast.success(`"${value}" agregado`); })
       .catch((err) => {
-        if (isApiError(err)) toast.error(err.problem.detail ?? err.message);
+        if (isApiError(err)) toast.error(getApiErrorMessage(err));
         else toast.error('Error inesperado');
       });
   }

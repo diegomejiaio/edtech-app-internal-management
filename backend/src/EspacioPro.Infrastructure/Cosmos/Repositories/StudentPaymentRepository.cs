@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using EspacioPro.Application.Abstractions;
 using EspacioPro.Domain.Common;
 using EspacioPro.Domain.Entities;
@@ -149,5 +150,47 @@ public sealed class StudentPaymentRepository : CosmosRepository<StudentPayment>
         return result;
     }
 
+    /// <summary>
+    /// Returns the total active student payments per enrollment across all dates.
+    /// Used by read models that show enrollment-level balances.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, decimal>> GetTotalPaidAmountsAsync(
+        IReadOnlyCollection<string> enrollmentIds,
+        CancellationToken ct = default)
+    {
+        if (enrollmentIds.Count == 0)
+            return new Dictionary<string, decimal>(0);
+
+        var query = new QueryDefinition(@"
+            SELECT c.enrollmentId AS enrollmentId, SUM(c.amount) AS totalAmount
+              FROM c
+             WHERE c.type = @type
+               AND c.active = true
+               AND ARRAY_CONTAINS(@enrollmentIds, c.enrollmentId)
+             GROUP BY c.enrollmentId")
+            .WithParameter("@type", TypeDiscriminator)
+            .WithParameter("@enrollmentIds", enrollmentIds.ToArray());
+
+        var result = new Dictionary<string, decimal>(enrollmentIds.Count);
+        using var iter = Container.GetItemQueryIterator<PaymentTotalRow>(
+            query,
+            requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) });
+
+        while (iter.HasMoreResults)
+        {
+            var page = await iter.ReadNextAsync(ct);
+            foreach (var row in page)
+            {
+                result[row.EnrollmentId] = row.TotalAmount;
+            }
+        }
+
+        return result;
+    }
+
     private sealed record DebtorRow(string EnrollmentId, string LastDate);
+
+    private sealed record PaymentTotalRow(
+        [property: JsonPropertyName("enrollmentId")] string EnrollmentId,
+        [property: JsonPropertyName("totalAmount")] decimal TotalAmount);
 }

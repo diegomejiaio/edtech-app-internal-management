@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/ui/empty-state';
-import { isApiError } from '@/lib/api';
+import { getApiErrorMessage, isApiError } from '@/lib/api';
 
 const CATALOG_CODE = 'levels';
 
@@ -45,7 +45,7 @@ export default function LevelsPage() {
         toast.success(`"${value}" agregado`);
       })
       .catch((err) => {
-        if (isApiError(err)) toast.error(err.problem.detail ?? err.message);
+        if (isApiError(err)) toast.error(getApiErrorMessage(err));
         else toast.error('Error inesperado');
       });
   }

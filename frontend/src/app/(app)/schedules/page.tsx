@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { isApiError, isConflict, SCHEDULE_STATUS_LABELS } from '@/lib/api';
+import { getApiErrorMessage, isApiError, isConflict, SCHEDULE_STATUS_LABELS } from '@/lib/api';
 import type { ScheduleWithCounts, ScheduleBody, ScheduleStatus } from '@/lib/api';
 
 const STATUSES: ScheduleStatus[] = ['active', 'inProgress', 'finished', 'cancelled'];
@@ -119,7 +119,7 @@ export default function SchedulesPage() {
       .then(() => { setFormOpen(false); toast.success(editing ? 'Horario actualizado' : 'Horario creado'); })
       .catch((err) => {
         if (isConflict(err)) toast.error('Conflicto al guardar el horario');
-        else if (isApiError(err)) toast.error(err.problem.detail ?? err.message);
+        else if (isApiError(err)) toast.error(getApiErrorMessage(err));
         else toast.error('Error inesperado');
       });
   }

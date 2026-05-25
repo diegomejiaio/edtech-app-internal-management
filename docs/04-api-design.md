@@ -144,7 +144,7 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
 | POST | `/schedules` | — | Validates `teacherId`, course/level/weekday catalogs, and generates sessions from course duration metadata |
 | PUT | `/schedules/{id}` | — | Regenerates only when safe; 409 if existing attendance/finalized sessions would be overwritten |
 | DELETE | `/schedules/{id}` | — | 409 if active enrollments |
-| GET | `/schedules/{id}/enrollments` | `?status=active` | |
+| GET | `/schedules/{id}/enrollments` | `?status=active` | Includes derived `amount`, `paidAmount`, `pendingAmount` |
 | GET | `/schedules/{id}/sessions` | `?limit=25&offset=0&from=YYYY-MM-DD&to=YYYY-MM-DD&status=scheduled` | Embedded generated sessions; load-more pagination |
 | GET | `/schedules/{scheduleId}/sessions/{sessionId}` | — | Single generated session |
 | PUT | `/schedules/{scheduleId}/sessions/{sessionId}` | `If-Match` | ETag-protected status/attendance update; returns updated session plus schedule ETag |
@@ -254,7 +254,11 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
        AND c.enrollmentId IN (@e1, @e2, ...) AND c.active=true
        AND c.date >= @monthStart AND c.date <= @monthEnd
        GROUP BY c.enrollmentId                                              [single-partition, ~5-10 RU]
-4. In-memory: join enrollments + payment dates → response shape
+4. Q4: SELECT c.enrollmentId, SUM(c.amount) as totalAmount
+       FROM operations c WHERE c.type='studentPayment'
+       AND c.enrollmentId IN (@e1, @e2, ...) AND c.active=true
+       GROUP BY c.enrollmentId                                              [single-partition, ~5-10 RU]
+5. In-memory: join enrollments + payment dates + payment totals → response shape
 ```
 
 **Response shape**:
@@ -268,6 +272,9 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
       "studentId": "...",
       "studentName": "Diego Mejia",
       "studentDoc": "DNI 12345678",
+      "amount": 250.00,
+      "paidAmount": 150.00,
+      "pendingAmount": 100.00,
       "paidThisMonth": true,
       "lastPaymentDate": "2026-05-03"
     },
@@ -280,12 +287,15 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
     "occupancyPct": 0.80,
     "sessions": 8,
     "completedSessions": 2,
-    "pendingSessions": 6
+    "pendingSessions": 6,
+    "expectedAmount": 3000.00,
+    "paidAmount": 2400.00,
+    "pendingAmount": 600.00
   }
 }
 ```
 
-> Total ~10-15 RU per dashboard load. Cosmos serverless = ~$0 at this scale.
+> Total ~15-25 RU per dashboard load. Cosmos serverless = ~$0 at this scale.
 
 ### 6.2 Debtors (`GET /student-payments/debtors?scheduleId=X&month=YYYY-MM`)
 
