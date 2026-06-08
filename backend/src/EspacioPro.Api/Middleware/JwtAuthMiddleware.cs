@@ -65,9 +65,9 @@ public sealed class JwtAuthMiddleware : IFunctionsWorkerMiddleware
                 "⚠️ DEV_AUTH_BYPASS active: synthetic admin principal injected for {Function}. " +
                 "This must NEVER be enabled in production.",
                 context.FunctionDefinition.Name);
-            var principal = BuildDevPrincipal(roleAttr.Role);
-            httpContext.User = principal;
-            await InvokeWithCurrentUserAsync(context, principal, next);
+            var devPrincipal = BuildDevPrincipal(roleAttr.Role);
+            httpContext.User = devPrincipal;
+            await InvokeWithCurrentUserAsync(context, devPrincipal, next);
             return;
         }
 
