@@ -39,18 +39,18 @@ internal sealed class StudentPaymentSeeder
 
             var entity = new StudentPayment
             {
-                EnrollmentId      = enrollment.Id,
-                StudentId         = enrollment.StudentId,
-                StudentName       = enrollment.StudentName,
-                ScheduleId        = enrollment.ScheduleId,
-                ScheduleName      = enrollment.ScheduleName,
-                Date              = row.Date,
-                Amount            = row.Amount,
+                EnrollmentId = enrollment.Id,
+                StudentId = enrollment.StudentId,
+                StudentName = enrollment.StudentName,
+                ScheduleId = enrollment.ScheduleId,
+                ScheduleName = enrollment.ScheduleName,
+                Date = row.Date,
+                Amount = row.Amount,
                 InstallmentNumber = row.InstallmentNumber,
-                PaymentMethod     = row.PaymentMethod,
-                HasReceipt        = row.HasReceipt,
-                ReceiptNumber     = row.ReceiptNumber,
-                Notes             = row.Notes,
+                PaymentMethod = row.PaymentMethod,
+                HasReceipt = row.HasReceipt,
+                ReceiptNumber = row.ReceiptNumber,
+                Notes = row.Notes,
             };
             await _repo.CreateAsync(entity, ct);
             created++;
