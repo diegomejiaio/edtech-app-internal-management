@@ -10,9 +10,9 @@ namespace EspacioPro.Seed;
 /// </summary>
 internal sealed class SeedContext
 {
-    public Dictionary<string, Teacher>    Teachers    { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public Dictionary<string, Student>    Students    { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public Dictionary<string, Schedule>   Schedules   { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, Teacher> Teachers { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, Student> Students { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, Schedule> Schedules { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, Enrollment> Enrollments { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public Teacher Teacher(string excelId) =>

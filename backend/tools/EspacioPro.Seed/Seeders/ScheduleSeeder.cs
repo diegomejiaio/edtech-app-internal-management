@@ -40,27 +40,27 @@ internal sealed class ScheduleSeeder
     /// </summary>
     private static string MapDays(string label) => label switch
     {
-        "Lunes"                     => "L",
-        "Martes"                    => "Ma",
-        "Miércoles"                 => "Mi",
-        "Jueves"                    => "J",
-        "Viernes"                   => "V",
+        "Lunes" => "L",
+        "Martes" => "Ma",
+        "Miércoles" => "Mi",
+        "Jueves" => "J",
+        "Viernes" => "V",
         "Lunes, Miércoles, Viernes" => "LMiV",
-        "Martes, Jueves"            => "MaJ",
-        "Sábado"                    => "S",
-        "Domingo"                   => "D",
-        "Sábado, Domingo"           => "SD",
-        "Lunes a Viernes"           => "L-V",
-        _                           => label,
+        "Martes, Jueves" => "MaJ",
+        "Sábado" => "S",
+        "Domingo" => "D",
+        "Sábado, Domingo" => "SD",
+        "Lunes a Viernes" => "L-V",
+        _ => label,
     };
 
     private static ScheduleStatus MapStatus(string label) => label switch
     {
-        "Activo"      => ScheduleStatus.Active,
+        "Activo" => ScheduleStatus.Active,
         "En progreso" => ScheduleStatus.InProgress,
-        "Finalizado"  => ScheduleStatus.Finished,
-        "Cancelado"   => ScheduleStatus.Cancelled,
-        _             => throw new InvalidDataException($"Unknown schedule status: '{label}'"),
+        "Finalizado" => ScheduleStatus.Finished,
+        "Cancelado" => ScheduleStatus.Cancelled,
+        _ => throw new InvalidDataException($"Unknown schedule status: '{label}'"),
     };
 
     public async Task<int> RunAsync(CancellationToken ct = default)

@@ -7,13 +7,13 @@ namespace EspacioPro.Seed.Excel;
 /// </summary>
 internal static class ExcelSheets
 {
-    public const string MasterData    = "Datos Maestros";
-    public const string Teachers      = "Profesores";
-    public const string Students      = "Alumnos";
-    public const string Schedules     = "Horarios";
-    public const string Enrollments   = "Inscripciones";
-    public const string Payments      = "Pagos";
-    public const string Expenses      = "Gastos";
+    public const string MasterData = "Datos Maestros";
+    public const string Teachers = "Profesores";
+    public const string Students = "Alumnos";
+    public const string Schedules = "Horarios";
+    public const string Enrollments = "Inscripciones";
+    public const string Payments = "Pagos";
+    public const string Expenses = "Gastos";
 }
 
 internal sealed record ExcelTeacher(

@@ -7,14 +7,14 @@ namespace EspacioPro.Domain.Common;
 /// </summary>
 public static class EntityTypes
 {
-    public const string Catalog        = "catalog";
-    public const string Student        = "student";
-    public const string Teacher        = "teacher";
-    public const string Schedule       = "schedule";
-    public const string Enrollment     = "enrollment";
+    public const string Catalog = "catalog";
+    public const string Student = "student";
+    public const string Teacher = "teacher";
+    public const string Schedule = "schedule";
+    public const string Enrollment = "enrollment";
     public const string StudentPayment = "studentPayment";
     public const string TeacherPayment = "teacherPayment";
-    public const string Expense        = "expense";
+    public const string Expense = "expense";
 }
 
 /// <summary>
@@ -22,6 +22,6 @@ public static class EntityTypes
 /// </summary>
 public static class ContainerNames
 {
-    public const string Master     = "master";
+    public const string Master = "master";
     public const string Operations = "operations";
 }

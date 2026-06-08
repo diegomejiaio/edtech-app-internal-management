@@ -21,16 +21,16 @@ public static partial class DocumentValidation
     public static bool IsValid(DocType docType, string? docNumber) =>
         !string.IsNullOrWhiteSpace(docNumber) && docType switch
         {
-            DocType.Dni      => DniRegex().IsMatch(docNumber),
-            DocType.Ce       => CeRegex().IsMatch(docNumber),
+            DocType.Dni => DniRegex().IsMatch(docNumber),
+            DocType.Ce => CeRegex().IsMatch(docNumber),
             DocType.Passport => PassportRegex().IsMatch(docNumber),
             _ => false
         };
 
     public static string ErrorMessage(DocType docType) => docType switch
     {
-        DocType.Dni      => "DNI must be exactly 8 digits.",
-        DocType.Ce       => "CE must be 9–20 alphanumeric characters.",
+        DocType.Dni => "DNI must be exactly 8 digits.",
+        DocType.Ce => "CE must be 9–20 alphanumeric characters.",
         DocType.Passport => "Passport must be 6–20 alphanumeric characters.",
         _ => "Invalid document type."
     };

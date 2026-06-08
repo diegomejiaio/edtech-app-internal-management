@@ -23,11 +23,11 @@ internal sealed class EnrollmentSeeder
 
     private static EnrollmentStatus MapStatus(string label) => label switch
     {
-        "Activo"     => EnrollmentStatus.Active,
+        "Activo" => EnrollmentStatus.Active,
         "Completado" => EnrollmentStatus.Completed,
-        "Cancelado"  => EnrollmentStatus.Cancelled,
-        "Pendiente"  => EnrollmentStatus.Pending,
-        _            => throw new InvalidDataException($"Unknown enrollment status: '{label}'"),
+        "Cancelado" => EnrollmentStatus.Cancelled,
+        "Pendiente" => EnrollmentStatus.Pending,
+        _ => throw new InvalidDataException($"Unknown enrollment status: '{label}'"),
     };
 
     private static string DocLabel(Student s) => $"{s.DocType.ToString().ToUpperInvariant()} {s.DocNumber}";

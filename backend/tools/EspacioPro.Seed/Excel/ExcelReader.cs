@@ -83,12 +83,12 @@ internal sealed class ExcelReader : IDisposable
         // enums, not stored catalogs).
         var headerMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["Cursos"]              = "courses",
-            ["Niveles"]             = "levels",
-            ["Medios de Pago"]      = "paymentMethods",
-            ["Categorias Gasto"]    = "expenseCategories",
-            ["Dias Horario"]        = "weekdays",
-            ["Fuente"]              = "studentSources",
+            ["Cursos"] = "courses",
+            ["Niveles"] = "levels",
+            ["Medios de Pago"] = "paymentMethods",
+            ["Categorias Gasto"] = "expenseCategories",
+            ["Dias Horario"] = "weekdays",
+            ["Fuente"] = "studentSources",
         };
 
         var catalogs = new List<ExcelCatalog>();
@@ -120,12 +120,12 @@ internal sealed class ExcelReader : IDisposable
         foreach (var row in DataRows(ws, idColumn: 1))
         {
             rows.Add(new ExcelTeacher(
-                ExcelId:      Str(row.Cell(1))!,
-                FullName:     Str(row.Cell(2))!,
-                DocNumber:    NumericId(row.Cell(3))!,
-                Phone:        NumericId(row.Cell(4)),
-                Email:        Str(row.Cell(5)),
-                Specialty:    Str(row.Cell(6)),
+                ExcelId: Str(row.Cell(1))!,
+                FullName: Str(row.Cell(2))!,
+                DocNumber: NumericId(row.Cell(3))!,
+                Phone: NumericId(row.Cell(4)),
+                Email: Str(row.Cell(5)),
+                Specialty: Str(row.Cell(6)),
                 RegisteredAt: Date(row.Cell(7))));
         }
         return rows;
@@ -138,14 +138,14 @@ internal sealed class ExcelReader : IDisposable
         foreach (var row in DataRows(ws, idColumn: 1))
         {
             rows.Add(new ExcelStudent(
-                ExcelId:      Str(row.Cell(1))!,
-                FullName:     Str(row.Cell(2))!,
-                DocNumber:    NumericId(row.Cell(3))!,
-                Phone:        NumericId(row.Cell(4)),
-                Email:        Str(row.Cell(5)),
+                ExcelId: Str(row.Cell(1))!,
+                FullName: Str(row.Cell(2))!,
+                DocNumber: NumericId(row.Cell(3))!,
+                Phone: NumericId(row.Cell(4)),
+                Email: Str(row.Cell(5)),
                 RegisteredAt: Date(row.Cell(6)),
-                Source:       Str(row.Cell(7)),
-                Notes:        Str(row.Cell(8))));
+                Source: Str(row.Cell(7)),
+                Notes: Str(row.Cell(8))));
         }
         return rows;
     }
@@ -157,18 +157,18 @@ internal sealed class ExcelReader : IDisposable
         foreach (var row in DataRows(ws, idColumn: 1))
         {
             rows.Add(new ExcelSchedule(
-                ExcelId:        Str(row.Cell(1))!,
-                Course:         Str(row.Cell(2))!,
-                Level:          Str(row.Cell(3))!,
+                ExcelId: Str(row.Cell(1))!,
+                Course: Str(row.Cell(2))!,
+                Level: Str(row.Cell(3))!,
                 TeacherExcelId: Str(row.Cell(4))!,
-                TeacherName:    Str(row.Cell(5))!,
-                DaysLabel:      Str(row.Cell(6))!,
-                StartTime:      Time(row.Cell(7)),
-                EndTime:        Time(row.Cell(8)),
-                Price:          Decimal(row.Cell(9)),
-                Capacity:       IntOrDefault(row.Cell(10), 10, $"schedule {row.Cell(1).GetString()} capacity"),
-                Status:         Str(row.Cell(11))!,
-                StartDate:      DateOnlyValue(row.Cell(12))));
+                TeacherName: Str(row.Cell(5))!,
+                DaysLabel: Str(row.Cell(6))!,
+                StartTime: Time(row.Cell(7)),
+                EndTime: Time(row.Cell(8)),
+                Price: Decimal(row.Cell(9)),
+                Capacity: IntOrDefault(row.Cell(10), 10, $"schedule {row.Cell(1).GetString()} capacity"),
+                Status: Str(row.Cell(11))!,
+                StartDate: DateOnlyValue(row.Cell(12))));
         }
         return rows;
     }
@@ -180,13 +180,13 @@ internal sealed class ExcelReader : IDisposable
         foreach (var row in DataRows(ws, idColumn: 1))
         {
             rows.Add(new ExcelEnrollment(
-                ExcelId:         Str(row.Cell(1))!,
-                StudentExcelId:  Str(row.Cell(2))!,
-                StudentName:     Str(row.Cell(3))!,
+                ExcelId: Str(row.Cell(1))!,
+                StudentExcelId: Str(row.Cell(2))!,
+                StudentName: Str(row.Cell(3))!,
                 ScheduleExcelId: Str(row.Cell(4))!,
-                ScheduleLabel:   Str(row.Cell(5))!,
-                EnrollmentDate:  DateOnlyValue(row.Cell(6)),
-                Status:          Str(row.Cell(7))!));
+                ScheduleLabel: Str(row.Cell(5))!,
+                EnrollmentDate: DateOnlyValue(row.Cell(6)),
+                Status: Str(row.Cell(7))!));
         }
         return rows;
     }
@@ -199,17 +199,17 @@ internal sealed class ExcelReader : IDisposable
         {
             var hasReceipt = (Str(row.Cell(9)) ?? "").Equals("Sí", StringComparison.OrdinalIgnoreCase);
             rows.Add(new ExcelPayment(
-                ExcelId:           Str(row.Cell(1))!,
+                ExcelId: Str(row.Cell(1))!,
                 EnrollmentExcelId: Str(row.Cell(2))!,
-                StudentName:       Str(row.Cell(3))!,
-                ScheduleLabel:     Str(row.Cell(4))!,
-                Date:              DateOnlyValue(row.Cell(5)),
-                Amount:            Decimal(row.Cell(6)),
+                StudentName: Str(row.Cell(3))!,
+                ScheduleLabel: Str(row.Cell(4))!,
+                Date: DateOnlyValue(row.Cell(5)),
+                Amount: Decimal(row.Cell(6)),
                 InstallmentNumber: Int(row.Cell(7)),
-                PaymentMethod:     StrOrDefault(row.Cell(8), "Efectivo", $"payment {row.Cell(1).GetString()} method"),
-                HasReceipt:        hasReceipt,
-                ReceiptNumber:     Str(row.Cell(10)),
-                Notes:             Str(row.Cell(11))));
+                PaymentMethod: StrOrDefault(row.Cell(8), "Efectivo", $"payment {row.Cell(1).GetString()} method"),
+                HasReceipt: hasReceipt,
+                ReceiptNumber: Str(row.Cell(10)),
+                Notes: Str(row.Cell(11))));
         }
         return rows;
     }
@@ -221,13 +221,13 @@ internal sealed class ExcelReader : IDisposable
         foreach (var row in DataRows(ws, idColumn: 1))
         {
             rows.Add(new ExcelExpense(
-                ExcelId:         Str(row.Cell(1))!,
-                Date:            DateOnlyValue(row.Cell(2)),
-                Category:        Str(row.Cell(3))!,
-                Description:     Str(row.Cell(4))!,
-                Amount:          Decimal(row.Cell(5)),
-                PaymentMethod:   Str(row.Cell(6))!,
-                Notes:           Str(row.Cell(7)),
+                ExcelId: Str(row.Cell(1))!,
+                Date: DateOnlyValue(row.Cell(2)),
+                Category: Str(row.Cell(3))!,
+                Description: Str(row.Cell(4))!,
+                Amount: Decimal(row.Cell(5)),
+                PaymentMethod: Str(row.Cell(6))!,
+                Notes: Str(row.Cell(7)),
                 ScheduleExcelId: Str(row.Cell(8))));
         }
         return rows;

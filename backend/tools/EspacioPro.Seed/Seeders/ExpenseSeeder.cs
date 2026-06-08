@@ -37,14 +37,14 @@ internal sealed class ExpenseSeeder
 
             var entity = new Expense
             {
-                Date          = row.Date,
-                Category      = row.Category,
-                Description   = row.Description,
-                Amount        = row.Amount,
+                Date = row.Date,
+                Category = row.Category,
+                Description = row.Description,
+                Amount = row.Amount,
                 PaymentMethod = row.PaymentMethod,
-                ScheduleId    = scheduleId,
-                ScheduleName  = scheduleName,
-                Notes         = row.Notes,
+                ScheduleId = scheduleId,
+                ScheduleName = scheduleName,
+                Notes = row.Notes,
             };
             await _repo.CreateAsync(entity, ct);
             created++;
