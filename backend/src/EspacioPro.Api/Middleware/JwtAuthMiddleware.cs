@@ -5,9 +5,11 @@ using System.Text.Json;
 using EspacioPro.Api.Attributes;
 using EspacioPro.Application.Abstractions;
 using EspacioPro.Application.Common;
+using EspacioPro.Infrastructure.Auth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Middleware;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace EspacioPro.Api.Middleware;
@@ -63,8 +65,9 @@ public sealed class JwtAuthMiddleware : IFunctionsWorkerMiddleware
                 "⚠️ DEV_AUTH_BYPASS active: synthetic admin principal injected for {Function}. " +
                 "This must NEVER be enabled in production.",
                 context.FunctionDefinition.Name);
-            httpContext.User = BuildDevPrincipal(roleAttr.Role);
-            await next(context);
+            var principal = BuildDevPrincipal(roleAttr.Role);
+            httpContext.User = principal;
+            await InvokeWithCurrentUserAsync(context, principal, next);
             return;
         }
 
@@ -115,7 +118,7 @@ public sealed class JwtAuthMiddleware : IFunctionsWorkerMiddleware
         // Set principal on HttpContext so downstream code (ICurrentUser) can read it.
         httpContext.User = principal;
 
-        await next(context);
+        await InvokeWithCurrentUserAsync(context, principal, next);
     }
 
     /// <summary>
@@ -192,6 +195,23 @@ public sealed class JwtAuthMiddleware : IFunctionsWorkerMiddleware
         httpContext.Response.StatusCode = statusCode;
         httpContext.Response.ContentType = "application/problem+json";
         await httpContext.Response.WriteAsJsonAsync(problem);
+    }
+
+    private static async Task InvokeWithCurrentUserAsync(
+        FunctionContext context,
+        ClaimsPrincipal principal,
+        FunctionExecutionDelegate next)
+    {
+        var currentUser = context.InstanceServices.GetRequiredService<ICurrentUserContext>();
+        currentUser.SetAuditUser(CurrentUserAccessor.FromPrincipal(principal));
+        try
+        {
+            await next(context);
+        }
+        finally
+        {
+            currentUser.Clear();
+        }
     }
 
     /// <summary>

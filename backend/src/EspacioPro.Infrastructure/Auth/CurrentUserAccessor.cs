@@ -19,12 +19,13 @@ namespace EspacioPro.Infrastructure.Auth;
 /// <see cref="IHttpContextAccessor"/> during function execution.
 /// Must NEVER be enabled in production.
 /// </remarks>
-public sealed class CurrentUserAccessor : ICurrentUser
+public sealed class CurrentUserAccessor : ICurrentUser, ICurrentUserContext
 {
     private static readonly AuditUser DevFallbackUser =
         new("user_dev", "dev@espaciopro.local", "Dev User");
 
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private AuditUser? _auditUser;
 
     public CurrentUserAccessor(IHttpContextAccessor httpContextAccessor)
     {
@@ -33,12 +34,26 @@ public sealed class CurrentUserAccessor : ICurrentUser
 
     public AuditUser? GetAuditUser()
     {
+        if (_auditUser is not null)
+            return _auditUser;
+
         var principal = _httpContextAccessor.HttpContext?.User;
         if (principal?.Identity?.IsAuthenticated != true)
         {
             return IsDevBypassEnabled() ? DevFallbackUser : null;
         }
 
+        return FromPrincipal(principal);
+    }
+
+    public void SetAuditUser(AuditUser user) =>
+        _auditUser = user;
+
+    public void Clear() =>
+        _auditUser = null;
+
+    public static AuditUser FromPrincipal(ClaimsPrincipal principal)
+    {
         var clerkUserId = principal.FindFirstValue("sub") ?? string.Empty;
         var email = principal.FindFirstValue("email")
                     ?? principal.FindFirstValue(ClaimTypes.Email)

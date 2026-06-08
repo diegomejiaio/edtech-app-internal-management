@@ -54,7 +54,9 @@ var host = new HostBuilder()
 
         // 4. Auth services
         services.AddSingleton<IClerkJwtValidator, ClerkJwtValidator>();
-        services.AddScoped<ICurrentUser, CurrentUserAccessor>();
+        services.AddScoped<CurrentUserAccessor>();
+        services.AddScoped<ICurrentUser>(sp => sp.GetRequiredService<CurrentUserAccessor>());
+        services.AddScoped<ICurrentUserContext>(sp => sp.GetRequiredService<CurrentUserAccessor>());
 
         // 5. Application services
         services.AddScoped<HealthService>();

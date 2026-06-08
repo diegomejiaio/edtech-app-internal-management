@@ -14,3 +14,14 @@ public interface ICurrentUser
     /// </summary>
     AuditUser? GetAuditUser();
 }
+
+/// <summary>
+/// Stores the authenticated user snapshot for the current request scope.
+/// Only authentication middleware should set this value.
+/// </summary>
+public interface ICurrentUserContext
+{
+    void SetAuditUser(AuditUser user);
+
+    void Clear();
+}
