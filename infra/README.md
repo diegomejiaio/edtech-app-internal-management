@@ -179,6 +179,33 @@ The backend deploy uses Azure Functions Flex Consumption OneDeploy via
 `az functionapp deployment source config-zip`. The frontend deploy injects
 `NEXT_PUBLIC_API_URL` from the deployed Function App hostname.
 
+### 3.1 GitHub Actions CI/CD
+
+`.github/workflows/deploy-app.yml` deploys backend and frontend on every push to
+`main` and can also be run manually with `workflow_dispatch`. It reuses
+`infra/deploy-app.sh --apply`, so GitHub Actions follows the same deploy path as
+local deploys.
+
+Required GitHub repository secrets for Azure OIDC login:
+
+| Secret | Purpose |
+|---|---|
+| `AZURE_CLIENT_ID` | App registration / managed identity client ID used by `azure/login`. |
+| `AZURE_TENANT_ID` | Microsoft Entra tenant ID. |
+| `AZURE_SUBSCRIPTION_ID` | Azure subscription that owns `rg-espaciopro-prod`. |
+
+Required GitHub repository variables for the static frontend build:
+
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk public browser key embedded in the static export. |
+| `NEXT_PUBLIC_CLERK_ORG_ID` | Clerk organization ID auto-selected by the frontend (optional if org auto-selection is not needed). |
+
+The Azure identity must have permission to read the Static Web App deployment
+token and deploy to the Function App. It also needs a federated credential for
+this repository/branch, for example subject
+`repo:diegomejiaio/edtech-app-internal-management:ref:refs/heads/main`.
+
 ---
 
 ## Post-deploy validation
