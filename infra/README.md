@@ -184,7 +184,9 @@ The backend deploy uses Azure Functions Flex Consumption OneDeploy via
 `.github/workflows/deploy-app.yml` deploys backend and frontend on every push to
 `main` and can also be run manually with `workflow_dispatch`. It reuses
 `infra/deploy-app.sh --apply`, so GitHub Actions follows the same deploy path as
-local deploys.
+local deploys. The workflow is sequential: the `ci` job validates backend
+format/build/tests plus frontend tests/build, and the `deploy` job only runs
+after `ci` succeeds.
 
 Required GitHub repository secrets for Azure OIDC login:
 

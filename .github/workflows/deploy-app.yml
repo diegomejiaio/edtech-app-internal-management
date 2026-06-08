@@ -19,9 +19,82 @@ env:
   NEXT_PUBLIC_CLERK_ORG_ID: ${{ vars.NEXT_PUBLIC_CLERK_ORG_ID }}
 
 jobs:
+  ci:
+    name: Validate backend and frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Validate frontend build config
+        run: |
+          if [ -z "${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}" ]; then
+            echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY repository variable is required." >&2
+            exit 1
+          fi
+
+      - name: Restore backend
+        working-directory: backend
+        run: dotnet restore EspacioPro.slnx
+
+      - name: Verify backend formatting
+        working-directory: backend
+        run: dotnet format EspacioPro.slnx --verify-no-changes --severity warn
+
+      - name: Build backend
+        working-directory: backend
+        run: dotnet build EspacioPro.slnx --configuration Release --no-restore
+
+      - name: Test backend
+        working-directory: backend
+        run: dotnet test EspacioPro.slnx --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile --silent
+
+      - name: Test frontend
+        working-directory: frontend
+        run: pnpm test
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: https://func-espaciopro-prod-eus2.azurewebsites.net
+          NEXT_PUBLIC_API_VERSION: v1
+          NEXT_PUBLIC_DEV_MODE: "false"
+        run: pnpm build
+
+      - name: Upload backend test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-backend-test-results
+          path: backend/**/TestResults/*.trx
+
   deploy:
     name: Deploy backend and frontend
     runs-on: ubuntu-latest
+    needs: ci
 
     steps:
       - name: Checkout

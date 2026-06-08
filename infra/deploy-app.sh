@@ -98,6 +98,11 @@ resolve_function_hostname() {
     return 0
   fi
 
+  if [[ -z "$hostname" ]]; then
+    hostname="${FUNC_NAME}.azurewebsites.net"
+    yellow "  ⚠ Falling back to conventional Function App hostname: $hostname" >&2
+  fi
+
   printf '%s\n' "$hostname"
 }
 
