@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using EspacioPro.Api.Attributes;
 using EspacioPro.Application.Abstractions;
@@ -22,6 +24,7 @@ namespace EspacioPro.Api.Middleware;
 public sealed class JwtAuthMiddleware : IFunctionsWorkerMiddleware
 {
     private const string BearerPrefix = "Bearer ";
+    private const string AgentKeyHeader = "X-Agent-Key";
 
     private readonly IClerkJwtValidator _jwtValidator;
     private readonly ILogger<JwtAuthMiddleware> _logger;
@@ -68,6 +71,18 @@ public sealed class JwtAuthMiddleware : IFunctionsWorkerMiddleware
             var devPrincipal = BuildDevPrincipal(roleAttr.Role);
             httpContext.User = devPrincipal;
             await InvokeWithCurrentUserAsync(context, devPrincipal, next);
+            return;
+        }
+
+        // Service-to-service key for trusted internal callers (e.g. the Telegram
+        // agent). When AGENT_API_KEY is configured AND the request carries a
+        // matching X-Agent-Key header, inject a synthetic admin principal. Unlike
+        // the dev bypass this IS safe in production: it is gated by a secret and
+        // compared in constant time.
+        if (TryServiceKeyPrincipal(httpContext, roleAttr.Role, out var servicePrincipal))
+        {
+            httpContext.User = servicePrincipal;
+            await InvokeWithCurrentUserAsync(context, servicePrincipal, next);
             return;
         }
 
@@ -246,6 +261,58 @@ public sealed class JwtAuthMiddleware : IFunctionsWorkerMiddleware
                 new Claim("o", orgClaim),
             },
             authenticationType: "DevBypass");
+        return new ClaimsPrincipal(identity);
+    }
+
+    /// <summary>
+    /// Attempts service-key authentication. Succeeds only when <c>AGENT_API_KEY</c>
+    /// is configured and the request's <c>X-Agent-Key</c> header matches it
+    /// (constant-time comparison). On success, emits a synthetic admin principal
+    /// for the trusted internal caller.
+    /// </summary>
+    private bool TryServiceKeyPrincipal(HttpContext httpContext, string role, out ClaimsPrincipal principal)
+    {
+        principal = default!;
+
+        var configured = Environment.GetEnvironmentVariable("AGENT_API_KEY");
+        if (string.IsNullOrEmpty(configured))
+            return false;
+
+        var provided = httpContext.Request.Headers[AgentKeyHeader].ToString();
+        if (string.IsNullOrEmpty(provided))
+            return false;
+
+        var match = CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(provided),
+            Encoding.UTF8.GetBytes(configured));
+        if (!match)
+        {
+            _logger.LogWarning("Rejected request with invalid X-Agent-Key on {Path}.", httpContext.Request.Path);
+            return false;
+        }
+
+        _logger.LogInformation("Service-key auth accepted on {Path}; injecting agent admin principal.", httpContext.Request.Path);
+        principal = BuildServicePrincipal(role);
+        return true;
+    }
+
+    /// <summary>
+    /// Builds a synthetic <see cref="ClaimsPrincipal"/> for the trusted internal
+    /// service caller. Mirrors <see cref="BuildDevPrincipal"/> so audit fields are
+    /// attributed to the agent rather than a human user.
+    /// </summary>
+    private static ClaimsPrincipal BuildServicePrincipal(string role)
+    {
+        var orgClaim = JsonSerializer.Serialize(new { id = "org_agent", rol = role });
+        var identity = new ClaimsIdentity(
+            new[]
+            {
+                new Claim("sub", "agent_telegram"),
+                new Claim("email", "agent@espaciopro.local"),
+                new Claim("name", "Telegram Agent"),
+                new Claim("o", orgClaim),
+            },
+            authenticationType: "ServiceKey");
         return new ClaimsPrincipal(identity);
     }
 }
