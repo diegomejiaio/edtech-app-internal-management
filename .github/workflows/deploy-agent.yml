@@ -1,0 +1,109 @@
+name: deploy-agent
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'agent/**'
+      - '.github/workflows/deploy-agent.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-agent-production
+  cancel-in-progress: false
+
+env:
+  AGENT_PROJECT: agent/EspacioPro.TelegramAgent/EspacioPro.TelegramAgent.csproj
+  AGENT_RG: ${{ vars.ESPACIOPRO_RG || 'rg-espaciopro-prod' }}
+  AGENT_FUNC_NAME: ${{ vars.ESPACIOPRO_AGENT_FUNC_NAME || 'func-espaciopro-agent-eus2' }}
+
+jobs:
+  agent-ci:
+    name: Build agent
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Restore agent
+        run: dotnet restore "${AGENT_PROJECT}"
+
+      - name: Build agent (Release)
+        run: dotnet build "${AGENT_PROJECT}" --configuration Release --no-restore
+
+  deploy-agent:
+    name: Deploy agent
+    runs-on: ubuntu-latest
+    needs: agent-ci
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Validate Azure deployment config
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          if [ -z "${AZURE_CLIENT_ID}" ]; then
+            echo "AZURE_CLIENT_ID repository secret is required." >&2
+            exit 1
+          fi
+          if [ -z "${AZURE_TENANT_ID}" ]; then
+            echo "AZURE_TENANT_ID repository secret is required." >&2
+            exit 1
+          fi
+          if [ -z "${AZURE_SUBSCRIPTION_ID}" ]; then
+            echo "AZURE_SUBSCRIPTION_ID repository secret is required." >&2
+            exit 1
+          fi
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Publish agent
+        run: |
+          rm -rf .agent-publish
+          dotnet publish "${AGENT_PROJECT}" \
+            --configuration Release \
+            --output .agent-publish \
+            --nologo \
+            -v quiet
+
+      - name: Package agent (zip)
+        run: |
+          rm -f agent.zip
+          (cd .agent-publish && zip -r -q "${GITHUB_WORKSPACE}/agent.zip" .)
+          ls -lh agent.zip
+
+      - name: Deploy agent Function App (OneDeploy zip)
+        run: |
+          az functionapp deployment source config-zip \
+            --resource-group "${AGENT_RG}" \
+            --name "${AGENT_FUNC_NAME}" \
+            --src agent.zip \
+            --timeout 600 \
+            --output none
+          echo "Agent deployed to ${AGENT_FUNC_NAME}."
