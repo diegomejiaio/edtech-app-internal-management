@@ -1,0 +1,13 @@
+diff --git a/dist/client/components/router-reducer/fetch-server-response.js b/dist/client/components/router-reducer/fetch-server-response.js
+index 5d7151c0a9d0616cef8f6195f0642d42ff35a52e..b35606d9e0f09b24758f7b2683e8f8daa267f292 100644
+--- a/dist/client/components/router-reducer/fetch-server-response.js
++++ b/dist/client/components/router-reducer/fetch-server-response.js
+@@ -197,7 +197,7 @@ async function fetchServerResponse(url, options) {
+         // If fetch fails handle it like a mpa navigation
+         // TODO-APP: Add a test for the case where a CORS request fails, e.g. external url redirect coming from the response.
+         // See https://github.com/vercel/next.js/issues/43605#issuecomment-1451617521 for a reproduction.
+-        return originalUrl.toString();
++        return doMpaNavigation(originalUrl.toString());
+     }
+ }
+ async function processFetch(response) {
