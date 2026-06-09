@@ -375,6 +375,9 @@ public sealed class EspacioProApiClient
         [JsonPropertyName("scheduleCode")]
         public string? ScheduleCode { get; set; }
 
+        [JsonPropertyName("scheduleStartDate")]
+        public string? ScheduleStartDate { get; set; }
+
         [JsonPropertyName("course")]
         public string? Course { get; set; }
 

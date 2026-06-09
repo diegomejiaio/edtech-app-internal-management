@@ -19,6 +19,10 @@ public sealed record DailySessionResponse
     [JsonPropertyName("scheduleCode")]
     public string? ScheduleCode { get; init; }
 
+    /// <summary>Start date of the parent schedule — the canonical way to identify a schedule.</summary>
+    [JsonPropertyName("scheduleStartDate")]
+    public DateOnly ScheduleStartDate { get; init; }
+
     [JsonPropertyName("course")]
     public string Course { get; init; } = default!;
 
@@ -61,6 +65,7 @@ public sealed record DailySessionResponse
     {
         ScheduleId = schedule.Id,
         ScheduleCode = schedule.Code,
+        ScheduleStartDate = schedule.StartDate,
         Course = schedule.Course,
         Level = schedule.Level,
         TeacherId = schedule.TeacherId,

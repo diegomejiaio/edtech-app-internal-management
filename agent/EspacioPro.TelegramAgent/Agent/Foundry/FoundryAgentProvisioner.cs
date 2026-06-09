@@ -16,7 +16,7 @@ namespace EspacioPro.TelegramAgent.Agent.Foundry;
 public sealed class FoundryAgentProvisioner
 {
     /// <summary>Bump the version suffix whenever instructions or tools change.</summary>
-    public const string AgentName = "espaciopro-telegram-agent-v2";
+    public const string AgentName = "espaciopro-telegram-agent-v3";
 
     private readonly PersistentAgentsClient _client;
     private readonly string _model;

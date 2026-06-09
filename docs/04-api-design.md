@@ -149,7 +149,7 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
 | GET | `/schedules/{scheduleId}/sessions/{sessionId}` | — | Single generated session |
 | PUT | `/schedules/{scheduleId}/sessions/{sessionId}` | `If-Match` | ETag-protected status/attendance update; returns updated session plus schedule ETag |
 | GET | `/schedules/{id}/dashboard` | `?month=YYYY-MM` (default current) | **BFF**: composite of schedule + enrollments + paid/debtor flag per enrollment for the month |
-| GET | `/sessions` | `?date=YYYY-MM-DD` (default today, America/Lima) | Cross-schedule: all active schedules' embedded sessions on a date, flattened with parent context (scheduleCode, course, level, teacherName, time, status). Includes every status. Powers the Telegram agent's "clases de hoy" |
+| GET | `/sessions` | `?date=YYYY-MM-DD` (default today, America/Lima) | Cross-schedule: all active schedules' embedded sessions on a date, flattened with parent context (scheduleCode, scheduleStartDate, course, level, teacherName, time, status). Includes every status. Powers the Telegram agent's "clases de hoy" |
 
 ### 5.5 `/api/v1/enrollments`
 
