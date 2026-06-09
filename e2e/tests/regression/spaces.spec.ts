@@ -11,7 +11,7 @@ test.describe('Spaces @regression', () => {
 
   test('should display spaces page', async ({ page }) => {
     await expect(page).toHaveURL(/spaces/);
-    await expect(page.getByText(/espacios/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Espacios', exact: true })).toBeVisible();
   });
 
   test('should show empty state when no spaces exist', async () => {

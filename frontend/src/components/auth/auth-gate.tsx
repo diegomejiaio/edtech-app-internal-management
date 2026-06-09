@@ -8,6 +8,13 @@
  * 2. Redirect unauthenticated users to /sign-in.
  * 3. Optionally enforce a specific role (defaults to 'admin' for v1).
  *
+ * **Debugging auth issues:**
+ * To inspect JWT token and role assignments in DevTools:
+ * 1. Enable DEBUG logging: set `NEXT_PUBLIC_DEBUG_AUTH=true` in `.env.local`
+ * 2. Open DevTools → Console and re-mount the page
+ * 3. Inspect logged orgId, orgRole, and JWT payload
+ * 4. For production issues, use Clerk Dashboard → Sessions to verify token claims
+ *
  * Usage:
  *   <AuthGate>
  *     <ProtectedContent />
@@ -19,6 +26,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth, useClerk } from '@clerk/clerk-react';
 import { env } from '@/lib/env';
 import type { AppRole } from '@/components/auth';
+
+const DEBUG_AUTH = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DEBUG_AUTH === 'true';
 
 interface AuthGateProps {
   children: ReactNode;
@@ -77,14 +86,14 @@ export function AuthGate({
   useEffect(() => {
     if (!isLoaded || !isSignedIn || orgId) return;
     if (env.clerkOrgId) {
-      console.log('[AuthGate] Auto-activating org:', env.clerkOrgId);
+      if (DEBUG_AUTH) console.log('[AuthGate] Auto-activating org:', env.clerkOrgId);
       setActive({ organization: env.clerkOrgId });
     }
   }, [isLoaded, isSignedIn, orgId, setActive]);
 
-  // Debug: log Clerk session + decoded JWT
+  // Debug: log Clerk session + decoded JWT (only when NEXT_PUBLIC_DEBUG_AUTH=true)
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
+    if (!isLoaded || !isSignedIn || !DEBUG_AUTH) return;
     console.log('[AuthGate] orgId:', orgId);
     console.log('[AuthGate] orgRole:', orgRole);
 

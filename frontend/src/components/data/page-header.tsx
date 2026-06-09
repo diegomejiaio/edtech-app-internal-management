@@ -32,7 +32,7 @@ export function PageHeader({ title, description, backHref, action }: PageHeaderP
       <div className="flex items-center gap-3">
         {backHref && (
           <Link href={backHref}>
-            <Button variant="ghost" size="icon" className="h-9 w-9">
+            <Button variant="ghost" size="icon" aria-label="Volver" className="h-9 w-9">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>

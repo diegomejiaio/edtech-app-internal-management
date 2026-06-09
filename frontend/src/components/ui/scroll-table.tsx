@@ -83,6 +83,10 @@ export function ScrollTable({
   }, [updateScrollState]);
 
   // Use layout effect to measure DOM before paint
+  // Intentional: setState in layout effect for pre-paint DOM measurement
+  // (avoids layout thrashing on scroll indicator visibility).
+  // This pattern is safe because updateScrollState must sync scroll state
+  // before the browser paints, preventing jank on initial render.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useLayoutEffect(() => {
     updateScrollState();
