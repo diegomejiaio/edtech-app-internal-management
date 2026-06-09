@@ -74,6 +74,36 @@ public sealed class TelegramClient
     /// <summary>A single entry of the Telegram "/" command menu. Command must be lowercase, 1-32 chars.</summary>
     public sealed record BotCommand(string Command, string Description);
 
+    /// <summary>
+    /// Sends a chat action (e.g. <c>typing</c>) so the user sees a "typing…" hint while the bot works.
+    /// Best-effort: the indicator auto-clears after ~5s, so callers re-send it periodically. No-op when
+    /// the token is unset; non-cancellation failures are swallowed since the action is non-essential.
+    /// </summary>
+    public async Task SendChatActionAsync(long chatId, string action, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(_token))
+            return;
+
+        var url = $"https://api.telegram.org/bot{_token}/sendChatAction";
+        try
+        {
+            using var resp = await _http.PostAsJsonAsync(url, new { chat_id = chatId, action }, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                _logger.LogDebug("Telegram sendChatAction failed: {Status} {Body}", (int)resp.StatusCode, body);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Telegram sendChatAction error for chat {ChatId}.", chatId);
+        }
+    }
+
     /// <summary>Resolves a Telegram <c>file_id</c> to a downloadable <c>file_path</c> via getFile.</summary>
     public async Task<string?> GetFilePathAsync(string fileId, CancellationToken ct)
     {

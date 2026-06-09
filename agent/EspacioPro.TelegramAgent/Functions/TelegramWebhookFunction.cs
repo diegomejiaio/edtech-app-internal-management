@@ -63,10 +63,48 @@ public sealed class TelegramWebhookFunction
             return new OkResult();
         }
 
-        var reply = await _router.RouteAsync(message, ct);
+        var reply = await RouteWithTypingAsync(message, ct);
         if (!string.IsNullOrWhiteSpace(reply))
             await _telegram.SendMessageAsync(message.Chat.Id, reply, ct);
 
         return new OkResult();
+    }
+
+    /// <summary>
+    /// Runs the router while keeping Telegram's "typing…" indicator alive. The indicator auto-clears
+    /// after ~5s, so a background pulse re-sends <c>sendChatAction("typing")</c> every few seconds
+    /// until the turn completes. The pulse is best-effort and never affects the reply.
+    /// </summary>
+    private async Task<string> RouteWithTypingAsync(TelegramMessage message, CancellationToken ct)
+    {
+        using var typingCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var pulse = PulseTypingAsync(message.Chat!.Id, typingCts.Token);
+        try
+        {
+            return await _router.RouteAsync(message, ct);
+        }
+        finally
+        {
+            typingCts.Cancel();
+            try { await pulse; }
+            catch (OperationCanceledException) { /* expected on completion */ }
+        }
+    }
+
+    /// <summary>Re-sends the "typing…" action every few seconds until cancelled.</summary>
+    private async Task PulseTypingAsync(long chatId, CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                await _telegram.SendChatActionAsync(chatId, "typing", ct);
+                await Task.Delay(TimeSpan.FromSeconds(4), ct);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when the turn finishes; stop quietly.
+        }
     }
 }
