@@ -12,10 +12,13 @@ public static class AgentToolset
 {
     public const string GetCatalog = "get_catalog";
     public const string QuerySchedules = "query_schedules";
+    public const string QuerySessions = "query_sessions";
     public const string ListTeachers = "list_teachers";
     public const string ListStudents = "list_students";
     public const string FindEnrollments = "find_enrollments";
     public const string CreateSchedule = "create_schedule";
+    public const string CreateStudent = "create_student";
+    public const string CreateEnrollment = "create_enrollment";
     public const string RegisterStudentPayment = "register_student_payment";
 
     private static readonly JsonSerializerOptions SchemaOptions = new()
@@ -49,6 +52,26 @@ public static class AgentToolset
         new FunctionToolDefinition(
             name: QuerySchedules,
             description: "Lists the active schedules (course, level, teacher, weekdays, time, seats)."),
+
+        new FunctionToolDefinition(
+            name: QuerySessions,
+            description: "Lists the class sessions on a specific date (default: today) across all active "
+                + "schedules, including course, level, teacher, time and session status "
+                + "(scheduled/completed/cancelled). Use this to answer about \"clases de hoy\" or the "
+                + "sessions of any given day — sessions are the source of truth, not the schedule weekdays.",
+            parameters: Schema(new
+            {
+                Type = "object",
+                Properties = new
+                {
+                    Date = new
+                    {
+                        Type = "string",
+                        Description = "Day to list, \"yyyy-MM-dd\". Optional; defaults to today (America/Lima).",
+                    },
+                },
+                Required = Array.Empty<string>(),
+            })),
 
         new FunctionToolDefinition(
             name: ListTeachers,
@@ -133,6 +156,51 @@ public static class AgentToolset
                     StartDate = new { Type = "string", Description = "Start date \"yyyy-MM-dd\"." },
                 },
                 Required = new[] { "course", "level", "teacherId", "weekdays", "startTime", "endTime", "price", "capacity", "startDate" },
+            })),
+
+        new FunctionToolDefinition(
+            name: CreateStudent,
+            description: "Creates a new student record. Before calling, check with list_students that the "
+                + "student does not already exist (search by name or document). Confirm the data with the "
+                + "user before calling. Returns the created student including its id and code (EST-XXXXX).",
+            parameters: Schema(new
+            {
+                Type = "object",
+                Properties = new
+                {
+                    FirstName = new { Type = "string", Description = "Student first name(s)." },
+                    LastName = new { Type = "string", Description = "Student last name(s)." },
+                    DocType = new
+                    {
+                        Type = "string",
+                        Enum = new[] { "dni", "ce", "passport" },
+                        Description = "Document type. \"dni\" for Peruvian ID (8 digits).",
+                    },
+                    DocNumber = new { Type = "string", Description = "Document number. DNI = 8 digits." },
+                    Phone = new { Type = "string", Description = "Contact phone. Optional." },
+                    Email = new { Type = "string", Description = "Email. Optional." },
+                    Source = new { Type = "string", Description = "How the student arrived (catalog 'studentSources'). Optional." },
+                    Notes = new { Type = "string", Description = "Free-text notes. Optional." },
+                },
+                Required = new[] { "firstName", "lastName", "docType", "docNumber" },
+            })),
+
+        new FunctionToolDefinition(
+            name: CreateEnrollment,
+            description: "Enrolls a student into a schedule (matrícula). Resolve studentId via list_students "
+                + "(or create_student for a new student) and scheduleId via query_schedules first. The server "
+                + "rejects duplicates and full schedules. Confirm with the user before calling. Returns the "
+                + "enrollment including its id (needed to register a payment) and code (INS-XXXXX).",
+            parameters: Schema(new
+            {
+                Type = "object",
+                Properties = new
+                {
+                    StudentId = new { Type = "string", Description = "Student id resolved via list_students/create_student." },
+                    ScheduleId = new { Type = "string", Description = "Schedule id resolved via query_schedules." },
+                    EnrollmentDate = new { Type = "string", Description = "Enrollment date \"yyyy-MM-dd\". Use today unless told otherwise." },
+                },
+                Required = new[] { "studentId", "scheduleId", "enrollmentDate" },
             })),
 
         new FunctionToolDefinition(

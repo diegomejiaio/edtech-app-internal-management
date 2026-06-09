@@ -42,10 +42,13 @@ public sealed class AgentToolDispatcher
             {
                 AgentToolset.GetCatalog => await GetCatalogAsync(args, ct),
                 AgentToolset.QuerySchedules => await QuerySchedulesAsync(ct),
+                AgentToolset.QuerySessions => await QuerySessionsAsync(args, ct),
                 AgentToolset.ListTeachers => await ListTeachersAsync(args, ct),
                 AgentToolset.ListStudents => await ListStudentsAsync(args, ct),
                 AgentToolset.FindEnrollments => await FindEnrollmentsAsync(args, ct),
                 AgentToolset.CreateSchedule => await CreateScheduleAsync(args, ct),
+                AgentToolset.CreateStudent => await CreateStudentAsync(args, ct),
+                AgentToolset.CreateEnrollment => await CreateEnrollmentAsync(args, ct),
                 AgentToolset.RegisterStudentPayment => await RegisterStudentPaymentAsync(args, ct),
                 _ => Error($"Unknown tool '{name}'."),
             };
@@ -71,6 +74,13 @@ public sealed class AgentToolDispatcher
     {
         var schedules = await _api.GetSchedulesAsync(DefaultLimit, ct);
         return Ok(new { count = schedules.Count, schedules });
+    }
+
+    private async Task<string> QuerySessionsAsync(JsonElement args, CancellationToken ct)
+    {
+        var date = GetString(args, "date");
+        var sessions = await _api.GetSessionsByDateAsync(date, ct);
+        return Ok(new { date, count = sessions.Count, sessions });
     }
 
     private async Task<string> ListTeachersAsync(JsonElement args, CancellationToken ct)
@@ -111,6 +121,34 @@ public sealed class AgentToolDispatcher
             StartDate: GetString(args, "startDate") ?? string.Empty);
 
         var result = await _api.CreateScheduleAsync(request, ct);
+        return FromApiResult(result);
+    }
+
+    private async Task<string> CreateStudentAsync(JsonElement args, CancellationToken ct)
+    {
+        var request = new EspacioProApiClient.CreateStudentRequest(
+            FirstName: GetString(args, "firstName") ?? string.Empty,
+            LastName: GetString(args, "lastName") ?? string.Empty,
+            DocType: GetString(args, "docType") ?? "dni",
+            DocNumber: GetString(args, "docNumber") ?? string.Empty,
+            Phone: GetString(args, "phone"),
+            Email: GetString(args, "email"),
+            Source: GetString(args, "source"),
+            Notes: GetString(args, "notes"));
+
+        var result = await _api.CreateStudentAsync(request, ct);
+        return FromApiResult(result);
+    }
+
+    private async Task<string> CreateEnrollmentAsync(JsonElement args, CancellationToken ct)
+    {
+        var request = new EspacioProApiClient.CreateEnrollmentRequest(
+            StudentId: GetString(args, "studentId") ?? string.Empty,
+            ScheduleId: GetString(args, "scheduleId") ?? string.Empty,
+            EnrollmentDate: GetString(args, "enrollmentDate") ?? string.Empty,
+            Status: "active");
+
+        var result = await _api.CreateEnrollmentAsync(request, ct);
         return FromApiResult(result);
     }
 

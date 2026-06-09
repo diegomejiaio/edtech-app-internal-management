@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using Azure.AI.Agents.Persistent;
 using EspacioPro.TelegramAgent.Agent.Foundry;
 using EspacioPro.TelegramAgent.Speech;
@@ -21,6 +22,9 @@ public sealed class FoundryAgentRouter : IAgentRouter
 {
     private const int MaxToolIterations = 8;
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(600);
+
+    private static readonly TimeZoneInfo LimaTimeZone = ResolveLimaTimeZone();
+    private static readonly CultureInfo SpanishCulture = CultureInfo.GetCultureInfo("es-PE");
 
     private readonly FoundryAgentProvisioner _provisioner;
     private readonly AgentToolDispatcher _dispatcher;
@@ -52,6 +56,12 @@ public sealed class FoundryAgentRouter : IAgentRouter
         await gate.WaitAsync(ct);
         try
         {
+            if (IsResetCommand(message))
+            {
+                await ResetThreadAsync(chatId, ct);
+                return "🔄 Listo, empezamos una conversación nueva. Olvidé el contexto anterior.";
+            }
+
             var turn = await BuildTurnInputAsync(message, ct);
             if (turn is null)
                 return "No pude entender tu mensaje. Envía texto, una nota de voz o una imagen de comprobante.";
@@ -202,21 +212,54 @@ public sealed class FoundryAgentRouter : IAgentRouter
     private async Task AddUserMessageAsync(string threadId, TurnInput turn, CancellationToken ct)
     {
         var client = _provisioner.Client;
+        var messageText = PrependDateContext(turn.Text);
 
         if (turn.ImageFileIds.Count == 0)
         {
-            await client.Messages.CreateMessageAsync(threadId, MessageRole.User, turn.Text, cancellationToken: ct);
+            await client.Messages.CreateMessageAsync(threadId, MessageRole.User, messageText, cancellationToken: ct);
             return;
         }
 
         var blocks = new List<MessageInputContentBlock>();
-        if (!string.IsNullOrEmpty(turn.Text))
-            blocks.Add(new MessageInputTextBlock(turn.Text));
+        if (!string.IsNullOrEmpty(messageText))
+            blocks.Add(new MessageInputTextBlock(messageText));
 
         foreach (var fileId in turn.ImageFileIds)
             blocks.Add(new MessageInputImageFileBlock(new MessageImageFileParam(fileId)));
 
         await client.Messages.CreateMessageAsync(threadId, MessageRole.User, blocks, cancellationToken: ct);
+    }
+
+    /// <summary>
+    /// Prepends a system-context line with the current date/time in Lima so the agent can
+    /// resolve relative references like "hoy". The agent's static instructions cannot hold a
+    /// live date, so it is injected into every user turn instead.
+    /// </summary>
+    private static string PrependDateContext(string text)
+    {
+        var nowLima = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, LimaTimeZone);
+        var formatted = nowLima.ToString("dddd d 'de' MMMM 'de' yyyy, HH:mm", SpanishCulture);
+        var context = $"[Contexto del sistema] Fecha y hora actual en Lima (America/Lima, UTC-5): {formatted}.";
+        return string.IsNullOrEmpty(text) ? context : $"{context}\n\n{text}";
+    }
+
+    private static TimeZoneInfo ResolveLimaTimeZone()
+    {
+        foreach (var id in new[] { "America/Lima", "SA Pacific Standard Time" })
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(id);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+            }
+            catch (InvalidTimeZoneException)
+            {
+            }
+        }
+
+        return TimeZoneInfo.CreateCustomTimeZone("Lima-UTC-5", TimeSpan.FromHours(-5), "Lima (UTC-5)", "Lima (UTC-5)");
     }
 
     private async Task<ThreadRun> PollUntilSettledAsync(string threadId, ThreadRun run, CancellationToken ct)
@@ -274,6 +317,41 @@ public sealed class FoundryAgentRouter : IAgentRouter
 
         PersistentAgentThread thread = await _provisioner.Client.Threads.CreateThreadAsync(cancellationToken: ct);
         return _threadsByChat.GetOrAdd(chatId, thread.Id);
+    }
+
+    /// <summary>
+    /// True when the message is a conversation-reset command (<c>/nuevo</c>, <c>/new</c> or
+    /// <c>/reset</c>), tolerating a bot mention suffix (e.g. <c>/nuevo@MyBot</c>).
+    /// </summary>
+    private static bool IsResetCommand(TelegramMessage message)
+    {
+        var text = message.Text?.Trim();
+        if (string.IsNullOrEmpty(text) || text[0] != '/')
+            return false;
+
+        var token = text.Split([' ', '\n', '\t', '\r'], 2)[0];
+        var command = token.Split('@', 2)[0].ToLowerInvariant();
+        return command is "/nuevo" or "/new" or "/reset";
+    }
+
+    /// <summary>
+    /// Forgets the cached thread for a chat so the next message starts a fresh conversation.
+    /// Best-effort deletes the server-side Foundry thread to avoid orphan accumulation; failures
+    /// are non-fatal since dropping the cache reference already resets the context.
+    /// </summary>
+    private async Task ResetThreadAsync(long chatId, CancellationToken ct)
+    {
+        if (!_threadsByChat.TryRemove(chatId, out var threadId))
+            return;
+
+        try
+        {
+            await _provisioner.Client.Threads.DeleteThreadAsync(threadId, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not delete Foundry thread {ThreadId} on reset for chat {ChatId}.", threadId, chatId);
+        }
     }
 
     /// <summary>Normalized input for a single thread turn: text plus uploaded image file ids.</summary>

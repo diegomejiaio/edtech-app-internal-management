@@ -70,6 +70,20 @@ public sealed class EspacioProApiClient
     }
 
     /// <summary>
+    /// GET /api/v1/sessions?date=YYYY-MM-DD — class sessions on a date across active schedules,
+    /// flattened with parent-schedule context. When <paramref name="date"/> is null the backend
+    /// defaults to today (America/Lima). Used to answer "clases de hoy".
+    /// </summary>
+    public async Task<IReadOnlyList<SessionSummary>> GetSessionsByDateAsync(string? date, CancellationToken ct)
+    {
+        var url = "/api/v1/sessions";
+        if (!string.IsNullOrWhiteSpace(date))
+            url += $"?date={Uri.EscapeDataString(date)}";
+        var page = await GetAsync<SessionListResponse>(url, ct);
+        return page?.Items ?? new List<SessionSummary>();
+    }
+
+    /// <summary>
     /// GET /api/v1/enrollments — filter by student and/or schedule. Defaults to active
     /// enrollments, which is what payment registration needs to resolve an enrollmentId.
     /// </summary>
@@ -111,6 +125,14 @@ public sealed class EspacioProApiClient
     /// <summary>POST /api/v1/student-payments. EnrollmentId must be an active enrollment.</summary>
     public Task<ApiResult> CreateStudentPaymentAsync(CreateStudentPaymentRequest request, CancellationToken ct)
         => PostJsonAsync("/api/v1/student-payments", request, ct);
+
+    /// <summary>POST /api/v1/students. 409 if a student with the same (docType, docNumber) is active.</summary>
+    public Task<ApiResult> CreateStudentAsync(CreateStudentRequest request, CancellationToken ct)
+        => PostJsonAsync("/api/v1/students", request, ct);
+
+    /// <summary>POST /api/v1/enrollments. Enrolls a student into a schedule (validates capacity).</summary>
+    public Task<ApiResult> CreateEnrollmentAsync(CreateEnrollmentRequest request, CancellationToken ct)
+        => PostJsonAsync("/api/v1/enrollments", request, ct);
 
     // --------------------------------------------------------------- helpers
 
@@ -273,6 +295,55 @@ public sealed class EspacioProApiClient
         public string? DocNumber { get; set; }
     }
 
+    /// <summary>Wrapper for GET /api/v1/sessions ({ date, count, items }).</summary>
+    public sealed class SessionListResponse
+    {
+        [JsonPropertyName("date")]
+        public string? Date { get; set; }
+
+        [JsonPropertyName("count")]
+        public int Count { get; set; }
+
+        [JsonPropertyName("items")]
+        public List<SessionSummary> Items { get; set; } = new();
+    }
+
+    public sealed class SessionSummary
+    {
+        [JsonPropertyName("scheduleId")]
+        public string? ScheduleId { get; set; }
+
+        [JsonPropertyName("scheduleCode")]
+        public string? ScheduleCode { get; set; }
+
+        [JsonPropertyName("course")]
+        public string? Course { get; set; }
+
+        [JsonPropertyName("level")]
+        public string? Level { get; set; }
+
+        [JsonPropertyName("teacherName")]
+        public string? TeacherName { get; set; }
+
+        [JsonPropertyName("weekdays")]
+        public string? Weekdays { get; set; }
+
+        [JsonPropertyName("sequenceNumber")]
+        public int SequenceNumber { get; set; }
+
+        [JsonPropertyName("date")]
+        public string? Date { get; set; }
+
+        [JsonPropertyName("startTime")]
+        public string? StartTime { get; set; }
+
+        [JsonPropertyName("endTime")]
+        public string? EndTime { get; set; }
+
+        [JsonPropertyName("status")]
+        public string? Status { get; set; }
+    }
+
     public sealed class EnrollmentSummary
     {
         [JsonPropertyName("id")]
@@ -323,4 +394,28 @@ public sealed class EspacioProApiClient
         bool HasReceipt,
         string? ReceiptNumber,
         string? Notes);
+
+    /// <summary>
+    /// Mirrors the backend StudentWriteRequest. <see cref="DocType"/> is a camelCase enum
+    /// string ("dni" | "ce" | "passport"). Null optional fields are omitted on the wire.
+    /// </summary>
+    public sealed record CreateStudentRequest(
+        string FirstName,
+        string LastName,
+        string DocType,
+        string DocNumber,
+        string? Phone,
+        string? Email,
+        string? Source,
+        string? Notes);
+
+    /// <summary>
+    /// Mirrors the backend EnrollmentWriteRequest. <see cref="EnrollmentDate"/> is "yyyy-MM-dd"
+    /// and <see cref="Status"/> a camelCase enum string ("active" | "completed" | "cancelled" | "pending").
+    /// </summary>
+    public sealed record CreateEnrollmentRequest(
+        string StudentId,
+        string ScheduleId,
+        string EnrollmentDate,
+        string Status);
 }
