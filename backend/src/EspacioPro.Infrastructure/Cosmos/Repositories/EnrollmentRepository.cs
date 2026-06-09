@@ -28,8 +28,29 @@ public sealed class EnrollmentRepository : CosmosRepository<Enrollment>
         ILogger<EnrollmentRepository> logger)
         : base(cosmosClient, options, currentUser, logger) { }
 
-    /// <summary>
-    /// Lists enrollments with optional <paramref name="studentId"/>, <paramref name="scheduleId"/>,
+    /// <summary>Finds an <see cref="Enrollment"/> by its short business <c>code</c>.</summary>
+    public async Task<Enrollment?> GetByCodeAsync(string code, bool includeInactive = false, CancellationToken ct = default)
+    {
+        var where = "c.type = @type AND c.code = @code" + (includeInactive ? "" : " AND c.active = true");
+        var query = new QueryDefinition($"SELECT * FROM c WHERE {where}")
+            .WithParameter("@type", TypeDiscriminator)
+            .WithParameter("@code", code);
+
+        using var iterator = Container.GetItemQueryIterator<Enrollment>(
+            query,
+            requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) });
+
+        while (iterator.HasMoreResults)
+        {
+            var page = await iterator.ReadNextAsync(ct);
+            var item = page.FirstOrDefault();
+            if (item is not null)
+                return item;
+        }
+
+        return null;
+    }
+
     /// and <paramref name="status"/> filters, plus pagination. Per <c>docs/04-api-design.md</c> §5.5.
     /// </summary>
     public async Task<(IReadOnlyList<Enrollment> Items, int Total)> SearchAsync(

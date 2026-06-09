@@ -31,6 +31,7 @@ const statusColors: Record<EnrollmentStatus, 'default' | 'secondary' | 'destruct
 };
 
 const columns: Column<Enrollment>[] = [
+  { key: 'code', header: 'Código', cell: (e) => e.code ? <span className="font-mono text-xs font-medium">{e.code}</span> : '—' },
   { key: 'student', header: 'Alumno', cell: (e) => e.studentName },
   { key: 'doc', header: 'Documento', cell: (e) => e.studentDoc },
   { key: 'schedule', header: 'Horario', cell: (e) => e.scheduleName },

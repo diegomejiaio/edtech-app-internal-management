@@ -18,6 +18,9 @@ public sealed record ScheduleResponse
     [JsonPropertyName("type")]
     public string Type { get; init; } = EntityTypes.Schedule;
 
+    [JsonPropertyName("code")]
+    public string? Code { get; init; }
+
     [JsonPropertyName("course")]
     public string Course { get; init; } = default!;
 
@@ -95,6 +98,7 @@ public sealed record ScheduleResponse
     {
         Id = s.Id,
         Type = s.Type,
+        Code = s.Code,
         Course = s.Course,
         Level = s.Level,
         TeacherId = s.TeacherId,

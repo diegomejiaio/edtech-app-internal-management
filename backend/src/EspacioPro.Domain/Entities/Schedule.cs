@@ -17,6 +17,14 @@ public sealed class Schedule : BaseEntity
 {
     public override string Type => EntityTypes.Schedule;
 
+    /// <summary>
+    /// Short, human-friendly unique identifier (e.g. <c>HOR-7Q3K9</c>), generated on create.
+    /// Distinct from the GUID <see cref="BaseEntity.Id"/>; used in the UI and by the agent to
+    /// refer to a schedule unambiguously. Crockford Base32 (see <c>ShortCodeGenerator</c>).
+    /// </summary>
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
+
     /// <summary>Catalog code from <c>courses</c>. Stored verbatim (Spanish, user-editable).</summary>
     [JsonPropertyName("course")]
     public string Course { get; set; } = default!;
@@ -73,6 +81,16 @@ public sealed class Schedule : BaseEntity
     /// </summary>
     [JsonPropertyName("searchText")]
     public string? SearchText { get; set; }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Uses the human-friendly <see cref="Code"/> as the natural business key so the
+    /// <c>master</c> container's unique-key constraint on <c>/dedupKey</c> enforces code
+    /// uniqueness atomically. Falls back to <see cref="BaseEntity.Id"/> for legacy documents
+    /// created before <see cref="Code"/> existed (backfilled by the seed tool).
+    /// </remarks>
+    [JsonPropertyName("dedupKey")]
+    public override string DedupKey => string.IsNullOrEmpty(Code) ? Id : Code;
 }
 
 /// <summary>Generated class session embedded in a schedule document.</summary>

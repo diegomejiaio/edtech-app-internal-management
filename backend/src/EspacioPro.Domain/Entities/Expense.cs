@@ -15,6 +15,13 @@ public sealed class Expense : BaseEntity
 {
     public override string Type => EntityTypes.Expense;
 
+    /// <summary>
+    /// Short, human-friendly unique identifier (e.g. <c>GAS-7Q3K9</c>), generated on create.
+    /// Distinct from the GUID <see cref="BaseEntity.Id"/>. Crockford Base32 (see <c>ShortCodeGenerator</c>).
+    /// </summary>
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
+
     [JsonPropertyName("date")]
     public DateOnly Date { get; set; }
 

@@ -26,9 +26,33 @@ public sealed class ExpenseRepository : CosmosRepository<Expense>
     /// <inheritdoc />
     protected override void OnBeforeWrite(Expense entity) =>
         entity.SearchText = TextNormalizer.Compose(
+            entity.Code,
             entity.Description,
             entity.Category,
             entity.ScheduleName);
+
+    /// <summary>Finds an <see cref="Expense"/> by its short business <c>code</c>.</summary>
+    public async Task<Expense?> GetByCodeAsync(string code, bool includeInactive = false, CancellationToken ct = default)
+    {
+        var where = "c.type = @type AND c.code = @code" + (includeInactive ? "" : " AND c.active = true");
+        var query = new QueryDefinition($"SELECT * FROM c WHERE {where}")
+            .WithParameter("@type", TypeDiscriminator)
+            .WithParameter("@code", code);
+
+        using var iterator = Container.GetItemQueryIterator<Expense>(
+            query,
+            requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) });
+
+        while (iterator.HasMoreResults)
+        {
+            var page = await iterator.ReadNextAsync(ct);
+            var item = page.FirstOrDefault();
+            if (item is not null)
+                return item;
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Lists expenses with optional free-text <paramref name="search"/> (accent-insensitive

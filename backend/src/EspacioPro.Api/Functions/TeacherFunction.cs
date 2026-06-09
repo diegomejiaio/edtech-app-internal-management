@@ -92,6 +92,11 @@ public sealed class TeacherFunction
                 $"A teacher with {body.DocType.ToString().ToLowerInvariant()} {body.DocNumber} already exists.");
 
         var teacher = MapToEntity(body, new Teacher());
+        teacher.Code = await ShortCodeGenerator.GenerateUniqueAsync(
+            async (candidate, token) => await _repo.GetByCodeAsync(candidate, includeInactive: true, token) is not null,
+            "PRO-",
+            5,
+            ct: ct);
         var created = await _repo.CreateAsync(teacher, ct);
 
         return req.Created(created, $"v1/teachers/{created.Id}");

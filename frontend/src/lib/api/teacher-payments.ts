@@ -8,6 +8,7 @@ import type { ApiClient } from './client';
 /** TeacherPayment document shape as stored in Cosmos (container `operations`). */
 export interface TeacherPayment extends BaseEntity {
   type: 'teacherPayment';
+  code?: string | null;
   teacherId: string;
   teacherName: string;
   teacherDoc: string;

@@ -90,6 +90,11 @@ internal sealed class ScheduleSeeder
                 throw new InvalidDataException($"Missing duration metadata for '{entity.Course}' / '{entity.Level}'.");
 
             entity.CourseDurationHours = durationHours;
+            entity.Code = await ShortCodeGenerator.GenerateUniqueAsync(
+                async (candidate, token) => await _repo.GetByCodeAsync(candidate, includeInactive: true, token) is not null,
+                "HOR-",
+                5,
+                ct: ct);
             entity.Sessions = [.. ScheduleSessionGenerator.Generate(entity, durationHours, _currentUser.GetAuditUser())];
             ScheduleSessionGenerator.ApplyProjection(entity);
 

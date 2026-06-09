@@ -28,8 +28,29 @@ public sealed class StudentPaymentRepository : CosmosRepository<StudentPayment>
         ILogger<StudentPaymentRepository> logger)
         : base(cosmosClient, options, currentUser, logger) { }
 
-    /// <summary>
-    /// Lists payments with optional <paramref name="enrollmentId"/>, <paramref name="studentId"/>,
+    /// <summary>Finds a <see cref="StudentPayment"/> by its short business <c>code</c>.</summary>
+    public async Task<StudentPayment?> GetByCodeAsync(string code, bool includeInactive = false, CancellationToken ct = default)
+    {
+        var where = "c.type = @type AND c.code = @code" + (includeInactive ? "" : " AND c.active = true");
+        var query = new QueryDefinition($"SELECT * FROM c WHERE {where}")
+            .WithParameter("@type", TypeDiscriminator)
+            .WithParameter("@code", code);
+
+        using var iterator = Container.GetItemQueryIterator<StudentPayment>(
+            query,
+            requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) });
+
+        while (iterator.HasMoreResults)
+        {
+            var page = await iterator.ReadNextAsync(ct);
+            var item = page.FirstOrDefault();
+            if (item is not null)
+                return item;
+        }
+
+        return null;
+    }
+
     /// and date-range filters, plus pagination. Per <c>docs/04-api-design.md</c> §5.6.
     /// </summary>
     public async Task<(IReadOnlyList<StudentPayment> Items, int Total)> SearchAsync(

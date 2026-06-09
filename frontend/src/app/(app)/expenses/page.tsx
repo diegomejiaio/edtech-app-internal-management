@@ -20,6 +20,7 @@ import { getApiErrorMessage, isApiError } from '@/lib/api';
 import type { Expense, ExpenseBody } from '@/lib/api';
 
 const columns: Column<Expense>[] = [
+  { key: 'code', header: 'Código', cell: (e) => e.code ? <span className="font-mono text-xs font-medium">{e.code}</span> : '—' },
   { key: 'date', header: 'Fecha', cell: (e) => formatTableDate(e.date) },
   { key: 'category', header: 'Categoría', cell: (e) => e.category },
   { key: 'description', header: 'Descripción', cell: (e) => e.description },

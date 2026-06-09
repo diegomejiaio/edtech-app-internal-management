@@ -23,6 +23,7 @@ import type { StudentPayment, StudentPaymentBody } from '@/lib/api';
 const formatMoney = (value: number) => `S/ ${value.toFixed(2)}`;
 
 const columns: Column<StudentPayment>[] = [
+  { key: 'code', header: 'Código', cell: (p) => p.code ? <span className="font-mono text-xs font-medium">{p.code}</span> : '—' },
   { key: 'student', header: 'Alumno', cell: (p) => p.studentName },
   { key: 'schedule', header: 'Horario', cell: (p) => p.scheduleName },
   { key: 'date', header: 'Fecha', cell: (p) => formatTableDate(p.date) },

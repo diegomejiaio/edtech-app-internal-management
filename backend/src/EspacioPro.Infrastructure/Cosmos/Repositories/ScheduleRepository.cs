@@ -27,10 +27,44 @@ public sealed class ScheduleRepository : CosmosRepository<Schedule>
     /// <inheritdoc />
     protected override void OnBeforeWrite(Schedule entity) =>
         entity.SearchText = TextNormalizer.Compose(
+            entity.Code,
             entity.Course,
             entity.Level,
             entity.TeacherName,
             entity.Weekdays);
+
+    /// <summary>
+    /// Finds a schedule by its short business <c>code</c> (e.g. <c>HOR-7Q3K9</c>).
+    /// </summary>
+    /// <param name="code">The exact code to match.</param>
+    /// <param name="includeInactive">
+    /// When <c>true</c>, soft-deleted schedules are also matched. Use <c>true</c> for
+    /// uniqueness probing (a deleted document still occupies its <c>dedupKey</c>).
+    /// </param>
+    public async Task<Schedule?> GetByCodeAsync(
+        string code,
+        bool includeInactive = false,
+        CancellationToken ct = default)
+    {
+        var where = "c.type = @type AND c.code = @code" + (includeInactive ? "" : " AND c.active = true");
+        var query = new QueryDefinition($"SELECT * FROM c WHERE {where}")
+            .WithParameter("@type", TypeDiscriminator)
+            .WithParameter("@code", code);
+
+        using var iterator = Container.GetItemQueryIterator<Schedule>(
+            query,
+            requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) });
+
+        while (iterator.HasMoreResults)
+        {
+            var page = await iterator.ReadNextAsync(ct);
+            var schedule = page.FirstOrDefault();
+            if (schedule is not null)
+                return schedule;
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Lists schedules with optional free-text <paramref name="search"/> (accent-insensitive

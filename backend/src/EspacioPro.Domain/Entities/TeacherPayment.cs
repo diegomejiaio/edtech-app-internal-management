@@ -16,6 +16,13 @@ public sealed class TeacherPayment : BaseEntity
 {
     public override string Type => EntityTypes.TeacherPayment;
 
+    /// <summary>
+    /// Short, human-friendly unique identifier (e.g. <c>PTP-7Q3K9</c>), generated on create.
+    /// Distinct from the GUID <see cref="BaseEntity.Id"/>. Crockford Base32 (see <c>ShortCodeGenerator</c>).
+    /// </summary>
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
+
     [JsonPropertyName("teacherId")]
     public string TeacherId { get; set; } = default!;
 

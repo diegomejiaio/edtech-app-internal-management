@@ -17,6 +17,13 @@ public sealed class StudentPayment : BaseEntity
 {
     public override string Type => EntityTypes.StudentPayment;
 
+    /// <summary>
+    /// Short, human-friendly unique identifier (e.g. <c>PAG-7Q3K9</c>), generated on create.
+    /// Distinct from the GUID <see cref="BaseEntity.Id"/>. Crockford Base32 (see <c>ShortCodeGenerator</c>).
+    /// </summary>
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
+
     [JsonPropertyName("enrollmentId")]
     public string EnrollmentId { get; set; } = default!;
 

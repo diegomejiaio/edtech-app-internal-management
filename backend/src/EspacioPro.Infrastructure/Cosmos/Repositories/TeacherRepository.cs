@@ -26,11 +26,35 @@ public sealed class TeacherRepository : CosmosRepository<Teacher>
     /// <inheritdoc />
     protected override void OnBeforeWrite(Teacher entity) =>
         entity.SearchText = TextNormalizer.Compose(
+            entity.Code,
             entity.FirstName,
             entity.LastName,
             entity.DocNumber,
             entity.Phone,
             TextNormalizer.DigitsOnly(entity.Phone));
+
+    /// <summary>Finds a <see cref="Teacher"/> by its short business <c>code</c>.</summary>
+    public async Task<Teacher?> GetByCodeAsync(string code, bool includeInactive = false, CancellationToken ct = default)
+    {
+        var where = "c.type = @type AND c.code = @code" + (includeInactive ? "" : " AND c.active = true");
+        var query = new QueryDefinition($"SELECT * FROM c WHERE {where}")
+            .WithParameter("@type", TypeDiscriminator)
+            .WithParameter("@code", code);
+
+        using var iterator = Container.GetItemQueryIterator<Teacher>(
+            query,
+            requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) });
+
+        while (iterator.HasMoreResults)
+        {
+            var page = await iterator.ReadNextAsync(ct);
+            var item = page.FirstOrDefault();
+            if (item is not null)
+                return item;
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Finds an active teacher by <c>docType + docNumber</c>. Used for dedup on POST.

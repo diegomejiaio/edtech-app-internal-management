@@ -11,6 +11,13 @@ public sealed class Teacher : BaseEntity
 {
     public override string Type => EntityTypes.Teacher;
 
+    /// <summary>
+    /// Short, human-friendly unique identifier (e.g. <c>PRO-7Q3K9</c>), generated on create.
+    /// Distinct from the GUID <see cref="BaseEntity.Id"/>. Crockford Base32 (see <c>ShortCodeGenerator</c>).
+    /// </summary>
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
+
     [JsonPropertyName("firstName")]
     public string FirstName { get; set; } = default!;
 

@@ -17,6 +17,7 @@ import type { ApiClient } from './client';
 /** Schedule document shape as stored in Cosmos (container `master`). */
 export interface Schedule extends BaseEntity {
   type: 'schedule';
+  code?: string | null;
   course: string;
   level: string;
   teacherId: string;

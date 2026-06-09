@@ -216,6 +216,7 @@ export function ScheduleDetailView() {
               <CardDescription>Fechas, cupos y estado operativo</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-3">
+              <Info label="Código" value={schedule?.code ?? '—'} />
               <Info label="Fecha inicio" value={schedule ? formatTableDate(schedule.startDate) : '—'} />
               <Info label="Fecha fin proyectada" value={schedule?.projectedEndDate ? formatTableDate(schedule.projectedEndDate) : '—'} />
               <Info label="Duración total" value={schedule?.courseDurationHours ? `${schedule.courseDurationHours} h` : '—'} />

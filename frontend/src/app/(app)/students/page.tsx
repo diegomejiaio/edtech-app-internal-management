@@ -24,6 +24,7 @@ import type { Student, StudentBody, DocType } from '@/lib/api';
 const DOC_TYPES: DocType[] = ['dni', 'ce', 'passport'];
 
 const columns: Column<Student>[] = [
+  { key: 'code', header: 'Código', cell: (s) => s.code ? <span className="font-mono text-xs font-medium">{s.code}</span> : '—' },
   { key: 'name', header: 'Nombre', cell: (s) => `${s.firstName} ${s.lastName}` },
   { key: 'doc', header: 'Documento', cell: (s) => `${DOC_TYPE_LABELS[s.docType]} ${s.docNumber}` },
   { key: 'phone', header: 'Teléfono', cell: (s) => s.phone ?? '—' },

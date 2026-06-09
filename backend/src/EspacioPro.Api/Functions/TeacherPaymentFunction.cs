@@ -1,6 +1,7 @@
 using EspacioPro.Api.Attributes;
 using EspacioPro.Api.Common;
 using EspacioPro.Application.Common;
+using EspacioPro.Domain.Common;
 using EspacioPro.Domain.Entities;
 using EspacioPro.Infrastructure.Cosmos.Repositories;
 using Microsoft.AspNetCore.Http;
@@ -102,6 +103,11 @@ public sealed class TeacherPaymentFunction
         };
         ApplyMutableFields(body, payment);
 
+        payment.Code = await ShortCodeGenerator.GenerateUniqueAsync(
+            async (candidate, token) => await _repo.GetByCodeAsync(candidate, includeInactive: true, token) is not null,
+            "PTP-",
+            5,
+            ct: ct);
         var created = await _repo.CreateAsync(payment, ct);
         return req.Created(created, $"v1/teacher-payments/{created.Id}");
     }

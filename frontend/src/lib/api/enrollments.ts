@@ -8,6 +8,7 @@ import type { ApiClient } from './client';
 /** Enrollment document shape as stored in Cosmos (container `operations`). */
 export interface Enrollment extends BaseEntity {
   type: 'enrollment';
+  code?: string | null;
   studentId: string;
   studentName: string;
   studentDoc: string;

@@ -117,6 +117,11 @@ public sealed class EnrollmentFunction
                 $"Schedule '{schedule.Id}' is at full capacity ({schedule.Capacity}).");
 
         var enrollment = MapToEntity(body, new Enrollment(), student, schedule);
+        enrollment.Code = await ShortCodeGenerator.GenerateUniqueAsync(
+            async (candidate, token) => await _repo.GetByCodeAsync(candidate, includeInactive: true, token) is not null,
+            "INS-",
+            5,
+            ct: ct);
         var created = await _repo.CreateAsync(enrollment, ct);
 
         return req.Created(created, $"v1/enrollments/{created.Id}");

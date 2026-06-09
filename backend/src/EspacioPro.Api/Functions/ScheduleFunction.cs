@@ -142,6 +142,11 @@ public sealed class ScheduleFunction
 
         var schedule = MapToEntity(body, new Schedule(), context.Teacher!);
         schedule.CourseDurationHours = context.CourseDurationHours;
+        schedule.Code = await ShortCodeGenerator.GenerateUniqueAsync(
+            async (candidate, token) => await _repo.GetByCodeAsync(candidate, includeInactive: true, token) is not null,
+            prefix: "HOR-",
+            length: 5,
+            ct: ct);
         schedule.Sessions = [.. ScheduleSessionGenerator.Generate(
             schedule,
             context.CourseDurationHours,

@@ -13,13 +13,14 @@ using Microsoft.Extensions.Options;
 
 // -------- Argument parsing --------
 // Supports: --excel <path>  --reset  --yes
-//           --migrate-enums  --backfill-sessions  --apply
+//           --migrate-enums  --backfill-sessions  --backfill-codes  --apply
 //           --COSMOS_ACCOUNT_ENDPOINT=<url>  --COSMOS_DATABASE_NAME=<db>
 var argList = args.ToList();
 var reset = argList.Remove("--reset");
 var yes = argList.Remove("--yes") | argList.Remove("-y");
 var migrateEnums = argList.Remove("--migrate-enums");
 var backfillSessions = argList.Remove("--backfill-sessions");
+var backfillCodes = argList.Remove("--backfill-codes");
 var apply = argList.Remove("--apply");
 
 string? excelPath = null;
@@ -72,7 +73,7 @@ if (string.IsNullOrWhiteSpace(database))
 }
 
 excelPath = Path.GetFullPath(excelPath);
-if (!migrateEnums && !backfillSessions && !File.Exists(excelPath))
+if (!migrateEnums && !backfillSessions && !backfillCodes && !File.Exists(excelPath))
 {
     Console.Error.WriteLine($"ERROR: Excel file not found: {excelPath}");
     Console.Error.WriteLine("Pass --excel <path> or set EXCEL_PATH.");
@@ -108,6 +109,13 @@ services.AddSingleton<SeedContext>();
 services.AddSingleton<SeedResetter>();
 services.AddSingleton<EnumWireFormatMigrator>();
 services.AddSingleton<ScheduleSessionBackfiller>();
+services.AddSingleton<ScheduleCodeBackfiller>();
+services.AddSingleton<StudentCodeBackfiller>();
+services.AddSingleton<TeacherCodeBackfiller>();
+services.AddSingleton<EnrollmentCodeBackfiller>();
+services.AddSingleton<StudentPaymentCodeBackfiller>();
+services.AddSingleton<TeacherPaymentCodeBackfiller>();
+services.AddSingleton<ExpenseCodeBackfiller>();
 
 // Repositories (one per entity).
 services.AddScoped<CatalogRepository>();
@@ -116,6 +124,7 @@ services.AddScoped<StudentRepository>();
 services.AddScoped<ScheduleRepository>();
 services.AddScoped<EnrollmentRepository>();
 services.AddScoped<StudentPaymentRepository>();
+services.AddScoped<TeacherPaymentRepository>();
 services.AddScoped<ExpenseRepository>();
 
 // Seeders (one per entity).
@@ -136,10 +145,10 @@ logger.LogInformation("  auth     : {Mode}", hasConnectionString ? "connection s
 logger.LogInformation("  endpoint : {Endpoint}", hasEndpoint ? endpoint : "(via connection string)");
 logger.LogInformation("  database : {Db}", database);
 logger.LogInformation("  connection: {Mode}", string.IsNullOrWhiteSpace(connectionMode) ? "Direct" : connectionMode);
-if (!migrateEnums && !backfillSessions)
+if (!migrateEnums && !backfillSessions && !backfillCodes)
     logger.LogInformation("  excel    : {Path}", excelPath);
 logger.LogInformation("  reset    : {Reset}", reset);
-logger.LogInformation("  mode     : {Mode}", migrateEnums ? "enum migration" : backfillSessions ? "session backfill" : "seed");
+logger.LogInformation("  mode     : {Mode}", migrateEnums ? "enum migration" : backfillSessions ? "session backfill" : backfillCodes ? "code backfill" : "seed");
 
 try
 {
@@ -163,6 +172,39 @@ try
         logger.LogInformation("Session backfill complete. Scanned={Scanned} Updated={Updated}",
             result.Scanned,
             result.Updated);
+        return 0;
+    }
+
+    if (backfillCodes)
+    {
+        var schedule = await provider.GetRequiredService<ScheduleCodeBackfiller>().RunAsync();
+        logger.LogInformation("Schedule code backfill complete. Scanned={Scanned} Updated={Updated}",
+            schedule.Scanned, schedule.Updated);
+
+        var student = await provider.GetRequiredService<StudentCodeBackfiller>().RunAsync();
+        logger.LogInformation("Student code backfill complete. Scanned={Scanned} Updated={Updated}",
+            student.Scanned, student.Updated);
+
+        var teacher = await provider.GetRequiredService<TeacherCodeBackfiller>().RunAsync();
+        logger.LogInformation("Teacher code backfill complete. Scanned={Scanned} Updated={Updated}",
+            teacher.Scanned, teacher.Updated);
+
+        var enrollment = await provider.GetRequiredService<EnrollmentCodeBackfiller>().RunAsync();
+        logger.LogInformation("Enrollment code backfill complete. Scanned={Scanned} Updated={Updated}",
+            enrollment.Scanned, enrollment.Updated);
+
+        var studentPayment = await provider.GetRequiredService<StudentPaymentCodeBackfiller>().RunAsync();
+        logger.LogInformation("StudentPayment code backfill complete. Scanned={Scanned} Updated={Updated}",
+            studentPayment.Scanned, studentPayment.Updated);
+
+        var teacherPayment = await provider.GetRequiredService<TeacherPaymentCodeBackfiller>().RunAsync();
+        logger.LogInformation("TeacherPayment code backfill complete. Scanned={Scanned} Updated={Updated}",
+            teacherPayment.Scanned, teacherPayment.Updated);
+
+        var expense = await provider.GetRequiredService<ExpenseCodeBackfiller>().RunAsync();
+        logger.LogInformation("Expense code backfill complete. Scanned={Scanned} Updated={Updated}",
+            expense.Scanned, expense.Updated);
+
         return 0;
     }
 

@@ -8,6 +8,7 @@ import type { ApiClient } from './client';
 /** Expense document shape as stored in Cosmos (container `operations`). */
 export interface Expense extends BaseEntity {
   type: 'expense';
+  code?: string | null;
   date: string;
   category: string;
   description: string;

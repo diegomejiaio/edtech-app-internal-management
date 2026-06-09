@@ -105,6 +105,11 @@ public sealed class StudentFunction
                 $"A student with {body.DocType.ToString().ToLowerInvariant()} {body.DocNumber} already exists.");
 
         var student = MapToEntity(body, new Student());
+        student.Code = await ShortCodeGenerator.GenerateUniqueAsync(
+            async (candidate, token) => await _repo.GetByCodeAsync(candidate, includeInactive: true, token) is not null,
+            "EST-",
+            5,
+            ct: ct);
         var created = await _repo.CreateAsync(student, ct);
 
         return req.Created(created, $"v1/students/{created.Id}");

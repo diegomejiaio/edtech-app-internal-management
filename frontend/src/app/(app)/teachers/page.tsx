@@ -23,6 +23,7 @@ import type { Teacher, TeacherBody, DocType } from '@/lib/api';
 const DOC_TYPES: DocType[] = ['dni', 'ce', 'passport'];
 
 const columns: Column<Teacher>[] = [
+  { key: 'code', header: 'Código', cell: (t) => t.code ? <span className="font-mono text-xs font-medium">{t.code}</span> : '—' },
   { key: 'name', header: 'Nombre', cell: (t) => `${t.firstName} ${t.lastName}` },
   { key: 'doc', header: 'Documento', cell: (t) => `${DOC_TYPE_LABELS[t.docType]} ${t.docNumber}` },
   { key: 'specialty', header: 'Especialidad', cell: (t) => t.specialty ?? '—' },

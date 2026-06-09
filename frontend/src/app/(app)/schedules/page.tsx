@@ -34,6 +34,7 @@ const statusColors: Record<ScheduleStatus, 'default' | 'secondary' | 'destructiv
 };
 
 const columns: Column<ScheduleWithCounts>[] = [
+  { key: 'code', header: 'Código', cell: (s) => s.code ? <span className="font-mono text-xs font-medium">{s.code}</span> : '—' },
   { key: 'course', header: 'Curso', cell: (s) => `${s.course} · ${s.level}` },
   { key: 'startDate', header: 'Fecha Inicio', cell: (s) => formatTableDate(s.startDate) },
   { key: 'teacher', header: 'Profesor', cell: (s) => s.teacherName || '—' },

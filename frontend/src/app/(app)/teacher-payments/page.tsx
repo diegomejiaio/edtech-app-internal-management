@@ -19,6 +19,7 @@ import { getApiErrorMessage, isApiError } from '@/lib/api';
 import type { TeacherPayment, TeacherPaymentBody } from '@/lib/api';
 
 const columns: Column<TeacherPayment>[] = [
+  { key: 'code', header: 'Código', cell: (p) => p.code ? <span className="font-mono text-xs font-medium">{p.code}</span> : '—' },
   { key: 'teacher', header: 'Profesor', cell: (p) => p.teacherName },
   { key: 'doc', header: 'Documento', cell: (p) => p.teacherDoc },
   { key: 'date', header: 'Fecha', cell: (p) => formatTableDate(p.date) },
