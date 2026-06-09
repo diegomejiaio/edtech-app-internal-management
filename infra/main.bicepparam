@@ -36,6 +36,19 @@ param clerkIssuer  = 'https://legible-sunfish-48.clerk.accounts.dev'
 // Localhost is included for dev tooling against the deployed API.
 param corsOrigins = 'https://calm-ground-055fb250f.7.azurestaticapps.net,http://localhost:3000'
 
+// Telegram agent (non-secret only — secret VALUES live in Key Vault)
+param keyVaultName               = 'kv-shared-services-00001'
+param agentStorageAccountName    = 'sasharedservices00001'
+param agentDeploymentContainerName = 'app-package-agent'
+param telegramAllowedChatId      = ''
+param telegramAllowedUserIds     = '1329509527'
+param agentRouter                = 'foundry'
+param foundryAccountName         = 'aifoundrysharedservices00001'
+param agentProjectEndpoint       = 'https://aifoundrysharedservices00001.services.ai.azure.com/api/projects/proj-shared'
+param agentModel                 = 'gpt-4.1'
+param agentCognitiveEndpoint     = 'https://aifoundrysharedservices00001.cognitiveservices.azure.com'
+param agentPlanName              = 'ASP-rgespacioproprod-652a'
+
 // Tags (minimal per Q5)
 param tags = {
   workload:  'espaciopro'

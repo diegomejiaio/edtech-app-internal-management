@@ -71,6 +71,9 @@ param clerkIssuer string
 @description('CORS allowlist (comma-separated). Wired as CORS_ORIGINS and Functions runtime CORS.')
 param corsOrigins string
 
+@description('Optional Key Vault SecretUri for the agent service key. When set, wired as AGENT_API_KEY via a Key Vault reference. Leave empty to omit the setting.')
+param agentApiKeySecretUri string = ''
+
 @description('Maximum instance count for Flex Consumption. Default 40 (max 1000).')
 @minValue(40)
 @maxValue(1000)
@@ -86,6 +89,15 @@ param instanceMemoryMB int = 2048
 
 var planName = 'asp-${workload}-${env}-${regionCode}'
 var functionAppName = 'func-${workload}-${env}-${regionCode}'
+
+// Optional AGENT_API_KEY as a Key Vault reference (service-to-service auth for
+// the Telegram agent). Appended only when a SecretUri is supplied.
+var agentApiKeySettings = empty(agentApiKeySecretUri) ? [] : [
+  {
+    name: 'AGENT_API_KEY'
+    value: '@Microsoft.KeyVault(SecretUri=${agentApiKeySecretUri})'
+  }
+]
 
 // Built-in role: Storage Blob Data Owner (data plane on storage account)
 // Required by Functions runtime when AzureWebJobsStorage uses identity.
@@ -152,7 +164,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
         allowedOrigins: split(corsOrigins, ',')
         supportCredentials: false
       }
-      appSettings: [
+      appSettings: concat([
         {
           name: 'AzureWebJobsFeatureFlags'
           value: 'EnableWorkerIndexing'
@@ -189,7 +201,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
           name: 'CORS_ORIGINS'
           value: corsOrigins
         }
-      ]
+      ], agentApiKeySettings)
     }
   }
 }

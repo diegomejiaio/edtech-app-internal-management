@@ -85,11 +85,69 @@ param clerkIssuer string
 param corsOrigins string
 
 // -----------------------------------------------------------------------------
+// Telegram agent params (non-secret only — secret VALUES live in Key Vault)
+// -----------------------------------------------------------------------------
+
+@description('Name of the pre-existing shared Key Vault (RBAC-enabled) holding agent secrets.')
+param keyVaultName string
+
+@description('Name of the pre-existing shared Storage Account reused for the agent deployment package.')
+param agentStorageAccountName string
+
+@description('Name of the agent deployment package container (created on the shared storage account).')
+param agentDeploymentContainerName string = 'app-package-agent'
+
+@description('Key Vault secret name for the Telegram bot token.')
+param telegramBotTokenSecretName string = 'telegram-bot-token'
+
+@description('Key Vault secret name for the Telegram webhook secret.')
+param telegramWebhookSecretName string = 'telegram-webhook-secret'
+
+@description('Key Vault secret name for the agent service key (X-Agent-Key).')
+param agentApiKeySecretName string = 'agent-api-key'
+
+@description('Telegram allowed group chat id (comma-separated). Not a secret.')
+param telegramAllowedChatId string
+
+@description('Telegram allowed user ids (comma-separated). Not a secret.')
+param telegramAllowedUserIds string
+
+@description('Base URL of the backend API the agent calls. Defaults to the prod Function App.')
+param agentEspacioProApiUrl string = 'https://func-${workload}-${env}-${regionCode}.azurewebsites.net'
+
+@description('Agent router implementation selector.')
+param agentRouter string = 'deterministic'
+
+@description('Foundry project endpoint for the agent (PROJECT_ENDPOINT).')
+param agentProjectEndpoint string = ''
+
+@description('Foundry model deployment name for the agent (AGENT_MODEL). Vision-capable.')
+param agentModel string = 'gpt-4.1'
+
+@description('Cognitive Services endpoint for Speech fast-transcription (COGNITIVE_ENDPOINT).')
+param agentCognitiveEndpoint string = ''
+
+@description('Name of the shared Foundry / AIServices account (in sharedServicesResourceGroupName) the agent MI is granted access to. Empty disables the Foundry role assignments.')
+param foundryAccountName string = ''
+
+@description('App Service Plan name for the agent. Set to the pre-existing plan to avoid Flex move conflicts; leave empty to use the default clean name.')
+param agentPlanName string = ''
+
+// -----------------------------------------------------------------------------
 // Tags
 // -----------------------------------------------------------------------------
 
 @description('Tags applied to RG and propagated to all resources.')
 param tags object
+
+// -----------------------------------------------------------------------------
+// Key Vault secret references (constructed; values created out-of-band via CLI)
+// -----------------------------------------------------------------------------
+
+var keyVaultBaseUri = 'https://${keyVaultName}${environment().suffixes.keyvaultDns}/'
+var telegramBotTokenSecretUri = '${keyVaultBaseUri}secrets/${telegramBotTokenSecretName}'
+var telegramWebhookSecretUri = '${keyVaultBaseUri}secrets/${telegramWebhookSecretName}'
+var agentApiKeySecretUri = '${keyVaultBaseUri}secrets/${agentApiKeySecretName}'
 
 // -----------------------------------------------------------------------------
 // Resource Group (app resources)
@@ -199,6 +257,7 @@ module functionApp 'modules/function-app.bicep' = {
     clerkJwksUrl: clerkJwksUrl
     clerkIssuer: clerkIssuer
     corsOrigins: corsOrigins
+    agentApiKeySecretUri: agentApiKeySecretUri
   }
 }
 
@@ -214,6 +273,55 @@ module roleAssignmentCosmos 'modules/role-assignment-cosmos.bicep' = {
     cosmosAccountName: cosmosAccountName
     principalId: functionApp.outputs.functionAppPrincipalId
     principalIdLabel: functionApp.name
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Telegram agent Function App (separate Flex app; secrets via Key Vault refs)
+// -----------------------------------------------------------------------------
+
+module agentFunctionApp 'modules/agent-function-app.bicep' = {
+  scope: appRg
+  name: 'agent-function-app'
+  params: {
+    workload: workload
+    regionCode: regionCode
+    location: location
+    tags: tags
+    workspaceResourceId: monitoring.outputs.workspaceResourceId
+    appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
+    storageAccountName: agentStorageAccountName
+    storageResourceGroupName: sharedServicesResourceGroupName
+    deploymentContainerName: agentDeploymentContainerName
+    botTokenSecretUri: telegramBotTokenSecretUri
+    webhookSecretUri: telegramWebhookSecretUri
+    agentApiKeySecretUri: agentApiKeySecretUri
+    telegramAllowedChatId: telegramAllowedChatId
+    telegramAllowedUserIds: telegramAllowedUserIds
+    espacioProApiUrl: agentEspacioProApiUrl
+    agentRouter: agentRouter
+    projectEndpoint: agentProjectEndpoint
+    agentModel: agentModel
+    cognitiveEndpoint: agentCognitiveEndpoint
+    planName: empty(agentPlanName) ? 'asp-${workload}-agent-${regionCode}' : agentPlanName
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Cross-RG: agent deployment container + Blob/Key Vault role assignments
+// (deploys to rg-shared-services; deployer needs User Access Administrator)
+// -----------------------------------------------------------------------------
+
+module agentSharedAccess 'modules/agent-shared-access.bicep' = {
+  scope: resourceGroup(sharedServicesResourceGroupName)
+  name: 'agent-shared-access'
+  params: {
+    storageAccountName: agentStorageAccountName
+    deploymentContainerName: agentDeploymentContainerName
+    keyVaultName: keyVaultName
+    foundryAccountName: foundryAccountName
+    agentPrincipalId: agentFunctionApp.outputs.functionAppPrincipalId
+    backendPrincipalId: functionApp.outputs.functionAppPrincipalId
   }
 }
 
@@ -253,3 +361,9 @@ output appInsightsConnectionString string = monitoring.outputs.appInsightsConnec
 
 @description('Storage account name (used by Functions runtime).')
 output storageAccountName string = storage.outputs.storageAccountName
+
+@description('Telegram agent Function App default hostname.')
+output agentFunctionAppHostname string = agentFunctionApp.outputs.functionAppHostname
+
+@description('Telegram agent Function App MI principal ID (object ID).')
+output agentFunctionAppPrincipalId string = agentFunctionApp.outputs.functionAppPrincipalId
