@@ -39,7 +39,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Detect backend/frontend changes
         id: detect
@@ -56,7 +56,7 @@ jobs:
             exit 0
           fi
 
-          if [ -z "${BEFORE_SHA}" ] || [[ "${BEFORE_SHA}" =~ ^0+$ ]]; then
+          if [ -z "${BEFORE_SHA}" ] || [[ "${BEFORE_SHA}" =~ ^0+$ ]] || ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
             git diff-tree --no-commit-id --name-only -r "${CURRENT_SHA}" > changed-files.txt
           else
             git diff --name-only "${BEFORE_SHA}" "${CURRENT_SHA}" > changed-files.txt
