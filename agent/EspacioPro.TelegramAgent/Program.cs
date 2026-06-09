@@ -18,6 +18,9 @@ var host = new HostBuilder()
         services.AddSingleton<TelegramClient>();
         services.AddSingleton<EspacioProApiClient>();
 
+        // Register the bot's "/" command menu once per worker startup (idempotent).
+        services.AddHostedService<TelegramCommandSetup>();
+
         // Router selection: AGENT_ROUTER=foundry delegates turns to the Foundry
         // Persistent Agent; any other value keeps the deterministic v0 router.
         var router = context.Configuration["AGENT_ROUTER"];

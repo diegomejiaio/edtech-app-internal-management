@@ -46,6 +46,34 @@ public sealed class TelegramClient
         }
     }
 
+    /// <summary>
+    /// Registers the bot's "/" command menu via <c>setMyCommands</c>. Idempotent: the call replaces
+    /// the full list, so it is safe to invoke on every startup. No-op when the token is unset.
+    /// </summary>
+    public async Task SetMyCommandsAsync(IReadOnlyList<BotCommand> commands, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(_token))
+        {
+            _logger.LogWarning("TELEGRAM_BOT_TOKEN not configured; skipping setMyCommands.");
+            return;
+        }
+
+        var url = $"https://api.telegram.org/bot{_token}/setMyCommands";
+        using var resp = await _http.PostAsJsonAsync(url, new { commands }, ct);
+        if (resp.IsSuccessStatusCode)
+        {
+            _logger.LogInformation("Registered {Count} Telegram bot command(s).", commands.Count);
+        }
+        else
+        {
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Telegram setMyCommands failed: {Status} {Body}", (int)resp.StatusCode, body);
+        }
+    }
+
+    /// <summary>A single entry of the Telegram "/" command menu. Command must be lowercase, 1-32 chars.</summary>
+    public sealed record BotCommand(string Command, string Description);
+
     /// <summary>Resolves a Telegram <c>file_id</c> to a downloadable <c>file_path</c> via getFile.</summary>
     public async Task<string?> GetFilePathAsync(string fileId, CancellationToken ct)
     {
