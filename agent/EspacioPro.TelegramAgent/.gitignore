@@ -1,0 +1,7 @@
+## Build output
+bin/
+obj/
+out/
+
+## Functions local settings (contains the bot token — never commit)
+local.settings.json

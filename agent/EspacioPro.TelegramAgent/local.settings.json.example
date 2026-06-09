@@ -1,0 +1,25 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+
+    "// Telegram": "From BotFather. The webhook secret is an arbitrary string you choose; you pass it to setWebhook and Telegram echoes it back in the X-Telegram-Bot-Api-Secret-Token header on every call.",
+    "TELEGRAM_BOT_TOKEN": "123456:ABC-DEF...",
+    "TELEGRAM_WEBHOOK_SECRET": "choose-a-long-random-string",
+
+    "// Allowlist": "chat id of your private group (negative number) and comma-separated user ids allowed to issue commands. Get them from https://api.telegram.org/bot<TOKEN>/getUpdates after posting in the group.",
+    "TELEGRAM_ALLOWED_CHAT_ID": "-1001234567890",
+    "TELEGRAM_ALLOWED_USER_IDS": "11111111,22222222",
+
+    "// Espacio Pro API": "Point to the LOCAL backend running with DEV_AUTH_BYPASS=true for the PoC, so /horarios works without a Clerk machine token. In production this becomes the real Function App URL + a service token.",
+    "ESPACIOPRO_API_URL": "http://localhost:7071",
+
+    "// Foundry (day 1 plug, not used by v0 /ping and /horarios)": "When wiring the hosted agent, set these and switch AGENT_ROUTER=foundry.",
+    "AGENT_ROUTER": "deterministic",
+    "FOUNDRY_AGENT_ENDPOINT": "",
+    "FOUNDRY_AGENT_ID": "",
+
+    "// Service-to-service key": "Sent as the X-Agent-Key header on calls to the Espacio Pro API. Must match the AGENT_API_KEY app setting on the backend Function App. Required when the target API is production (no DEV_AUTH_BYPASS).",
+    "AGENT_API_KEY": ""
+  }
+}
