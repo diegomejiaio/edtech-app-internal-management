@@ -239,6 +239,31 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
 
 ---
 
+### 5.10 `/api/v1/agent/threads` (internal — Telegram agent)
+
+Persists the Telegram `chatId → Foundry threadId` mapping so the agent's conversation survives
+Function worker recycles (the in-memory cache on Flex Consumption is volatile). Called only by the
+Telegram agent via its `X-Agent-Key` admin bypass; all endpoints are `[RequireRole("admin")]`.
+
+| Method | URI | Notes |
+|---|---|---|
+| GET | `/agent/threads/{chatId}` | Returns the persisted mapping or 404 (a missing mapping is expected for a new chat). |
+| PUT | `/agent/threads/{chatId}` | Upserts the mapping; resets the native Cosmos TTL (sliding 7-day window). Body: `{ "threadId": "thread_..." }`. |
+| DELETE | `/agent/threads/{chatId}` | Hard-deletes the mapping (idempotent). Triggered by the `/nuevo` reset command. |
+
+**Storage**: `operations` container, `type = "agentThread"`, `id = chatId` (point-readable by key).
+
+**Rules**
+- Ephemeral state: stored with a native Cosmos `ttl` (604800s = 7 days) so idle mappings auto-expire.
+  The `operations` container has `defaultTtl: -1` (TTL enabled, infinite default), so only documents
+  that set their own `ttl` expire — existing business documents are unaffected.
+- **Hard delete** (not soft delete): the mapping carries no audit value once the conversation is reset,
+  so `/nuevo` removes the document instead of flagging `active = false`. This is the single intentional
+  deviation from the soft-delete-only rule, justified by the document being ephemeral session state.
+- Response shape (200): `{ "chatId": 123, "threadId": "thread_...", "updatedAt": "ISO-8601" }`.
+
+---
+
 ## 6. Critical query designs
 
 ### 6.1 Schedule dashboard (`GET /schedules/{id}/dashboard?month=YYYY-MM`)

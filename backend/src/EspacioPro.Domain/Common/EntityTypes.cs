@@ -15,6 +15,7 @@ public static class EntityTypes
     public const string StudentPayment = "studentPayment";
     public const string TeacherPayment = "teacherPayment";
     public const string Expense = "expense";
+    public const string AgentThread = "agentThread";
 }
 
 /// <summary>

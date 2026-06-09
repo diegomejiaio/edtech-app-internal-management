@@ -70,6 +70,7 @@ var host = new HostBuilder()
         services.AddScoped<StudentPaymentRepository>();
         services.AddScoped<TeacherPaymentRepository>();
         services.AddScoped<ExpenseRepository>();
+        services.AddScoped<AgentThreadRepository>();
 
         // 7. JSON serialization defaults — per docs/07-api-contract-cheatsheet.md §2 + §4
         // AddMvc().AddJsonOptions() configures OkObjectResult / IActionResult serialization.
