@@ -422,7 +422,86 @@ public sealed class ScheduleFunction
         return new OkObjectResult(dashboard);
     }
 
+    /// <summary>
+    /// GET /api/v1/sessions?date=YYYY-MM-DD — every class session scheduled on a date across
+    /// active schedules, flattened with parent-schedule context (code, course, level, teacher,
+    /// time). Defaults to today in America/Lima when <c>date</c> is omitted. Includes all
+    /// statuses (scheduled/completed/cancelled) so callers can show the real state of the day.
+    /// Used by the Telegram agent to answer "clases de hoy".
+    /// </summary>
+    /// <remarks>
+    /// Sessions are embedded in the <c>master</c> schedule documents, so this fetches the active
+    /// schedules that started on/before the date (a session can only exist on/after its schedule's
+    /// start) and flattens the matching embedded sessions in memory. Single-partition query.
+    /// </remarks>
+    [Function("SessionsByDate")]
+    [RequireRole("admin")]
+    public async Task<IActionResult> SessionsByDate(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "v1/sessions")] HttpRequest req,
+        CancellationToken ct)
+    {
+        var dateRaw = req.Query["date"].FirstOrDefault();
+        DateOnly date;
+        if (string.IsNullOrWhiteSpace(dateRaw))
+        {
+            date = TodayInLima();
+        }
+        else if (!DateOnly.TryParseExact(dateRaw, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
+        {
+            return req.ValidationError("date", "date must be ISO date YYYY-MM-DD.");
+        }
+
+        var (schedules, _) = await _repo.SearchAsync(
+            search: null,
+            status: null,
+            teacherId: null,
+            course: null,
+            startDateFrom: null,
+            startDateTo: date,
+            includeInactive: false,
+            limit: 1000,
+            offset: 0,
+            ct);
+
+        var sessions = schedules
+            .SelectMany(s => s.Sessions
+                .Where(ss => ss.Active && ss.Date == date)
+                .Select(ss => DailySessionResponse.From(s, ss)))
+            .OrderBy(x => x.StartTime)
+            .ThenBy(x => x.Course, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.TeacherName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return new OkObjectResult(new
+        {
+            date = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            count = sessions.Length,
+            items = sessions,
+        });
+    }
+
     // --- Helpers ---
+
+    /// <summary>Current date in America/Lima (UTC-5), with a robust fallback chain.</summary>
+    private static DateOnly TodayInLima()
+    {
+        foreach (var id in new[] { "America/Lima", "SA Pacific Standard Time" })
+        {
+            try
+            {
+                var tz = TimeZoneInfo.FindSystemTimeZoneById(id);
+                return DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, tz).DateTime);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+            }
+            catch (InvalidTimeZoneException)
+            {
+            }
+        }
+
+        return DateOnly.FromDateTime(DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-5)).DateTime);
+    }
 
     private static bool TryParseMonth(string raw, out DateOnly start, out DateOnly end)
     {
