@@ -46,6 +46,45 @@ public sealed class TelegramClient
         }
     }
 
+    /// <summary>Resolves a Telegram <c>file_id</c> to a downloadable <c>file_path</c> via getFile.</summary>
+    public async Task<string?> GetFilePathAsync(string fileId, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(_token))
+        {
+            _logger.LogWarning("TELEGRAM_BOT_TOKEN not configured; cannot resolve file.");
+            return null;
+        }
+
+        var url = $"https://api.telegram.org/bot{_token}/getFile?file_id={Uri.EscapeDataString(fileId)}";
+        using var resp = await _http.GetAsync(url, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            _logger.LogError("Telegram getFile failed: {Status}", (int)resp.StatusCode);
+            return null;
+        }
+
+        var stream = await resp.Content.ReadAsStreamAsync(ct);
+        var envelope = await JsonSerializer.DeserializeAsync<FileResponse>(stream, SerializerOptions, ct);
+        return envelope?.Ok == true ? envelope.Result?.FilePath : null;
+    }
+
+    /// <summary>Downloads the bytes of a resolved <c>file_path</c>.</summary>
+    public async Task<byte[]?> DownloadFileAsync(string filePath, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(_token))
+            return null;
+
+        var url = $"https://api.telegram.org/file/bot{_token}/{filePath}";
+        using var resp = await _http.GetAsync(url, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            _logger.LogError("Telegram file download failed: {Status}", (int)resp.StatusCode);
+            return null;
+        }
+
+        return await resp.Content.ReadAsByteArrayAsync(ct);
+    }
+
     /// <summary>Reads the snake_case JSON body into a <see cref="TelegramUpdate"/>.</summary>
     public static TelegramUpdate? ParseUpdate(string json)
     {
@@ -53,6 +92,15 @@ public sealed class TelegramClient
             return null;
 
         return JsonSerializer.Deserialize<TelegramUpdate>(json, SerializerOptions);
+    }
+
+    private sealed class FileResponse
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("ok")]
+        public bool Ok { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("result")]
+        public TelegramFile? Result { get; set; }
     }
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
