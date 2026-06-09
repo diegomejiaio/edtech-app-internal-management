@@ -134,6 +134,62 @@ public sealed class EspacioProApiClient
     public Task<ApiResult> CreateEnrollmentAsync(CreateEnrollmentRequest request, CancellationToken ct)
         => PostJsonAsync("/api/v1/enrollments", request, ct);
 
+    // ---------------------------------------------------- thread persistence
+
+    /// <summary>
+    /// GET /api/v1/agent/threads/{chatId}. Returns the persisted Foundry thread id for a chat,
+    /// or <c>null</c> when no mapping exists (a missing mapping is expected, not an error).
+    /// </summary>
+    public async Task<string?> GetThreadIdAsync(long chatId, CancellationToken ct)
+    {
+        var url = $"{_baseUrl}/api/v1/agent/threads/{chatId}";
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            AddAgentKey(request);
+
+            using var resp = await _http.SendAsync(request, ct);
+            if (resp.StatusCode == HttpStatusCode.NotFound)
+                return null;
+            if (!resp.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("GET agent thread for chat {ChatId} failed: {Status}", chatId, (int)resp.StatusCode);
+                return null;
+            }
+
+            var stream = await resp.Content.ReadAsStreamAsync(ct);
+            var dto = await JsonSerializer.DeserializeAsync<AgentThreadDto>(stream, ReadOptions, ct);
+            return string.IsNullOrWhiteSpace(dto?.ThreadId) ? null : dto.ThreadId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading agent thread for chat {ChatId}.", chatId);
+            return null;
+        }
+    }
+
+    /// <summary>PUT /api/v1/agent/threads/{chatId}. Persists the mapping and resets its 7-day TTL.</summary>
+    public Task<ApiResult> UpsertThreadAsync(long chatId, string threadId, CancellationToken ct)
+        => SendJsonAsync(HttpMethod.Put, $"/api/v1/agent/threads/{chatId}", new AgentThreadWriteDto(threadId), ct);
+
+    /// <summary>DELETE /api/v1/agent/threads/{chatId}. Hard-deletes the mapping (idempotent).</summary>
+    public async Task DeleteThreadAsync(long chatId, CancellationToken ct)
+    {
+        var url = $"{_baseUrl}/api/v1/agent/threads/{chatId}";
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Delete, url);
+            AddAgentKey(request);
+            using var resp = await _http.SendAsync(request, ct);
+            if (!resp.IsSuccessStatusCode && resp.StatusCode != HttpStatusCode.NotFound)
+                _logger.LogWarning("DELETE agent thread for chat {ChatId} failed: {Status}", chatId, (int)resp.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting agent thread for chat {ChatId}.", chatId);
+        }
+    }
+
     // --------------------------------------------------------------- helpers
 
     private async Task<T?> GetAsync<T>(string path, CancellationToken ct)
@@ -161,12 +217,15 @@ public sealed class EspacioProApiClient
         }
     }
 
-    private async Task<ApiResult> PostJsonAsync<TBody>(string path, TBody body, CancellationToken ct)
+    private Task<ApiResult> PostJsonAsync<TBody>(string path, TBody body, CancellationToken ct)
+        => SendJsonAsync(HttpMethod.Post, path, body, ct);
+
+    private async Task<ApiResult> SendJsonAsync<TBody>(HttpMethod method, string path, TBody body, CancellationToken ct)
     {
         var url = $"{_baseUrl}{path}";
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, url);
+            using var request = new HttpRequestMessage(method, url);
             AddAgentKey(request);
             var json = JsonSerializer.Serialize(body, WriteOptions);
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -177,12 +236,12 @@ public sealed class EspacioProApiClient
             if (resp.IsSuccessStatusCode)
                 return ApiResult.Ok(payload);
 
-            _logger.LogWarning("POST {Path} failed: {Status} {Body}", path, (int)resp.StatusCode, payload);
+            _logger.LogWarning("{Method} {Path} failed: {Status} {Body}", method.Method, path, (int)resp.StatusCode, payload);
             return ApiResult.Fail((int)resp.StatusCode, payload);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calling POST {Path}.", path);
+            _logger.LogError(ex, "Error calling {Method} {Path}.", method.Method, path);
             return ApiResult.Fail((int)HttpStatusCode.ServiceUnavailable, ex.Message);
         }
     }
@@ -418,4 +477,10 @@ public sealed class EspacioProApiClient
         string ScheduleId,
         string EnrollmentDate,
         string Status);
+
+    /// <summary>Response shape for GET /api/v1/agent/threads/{chatId}.</summary>
+    private sealed record AgentThreadDto(long ChatId, string ThreadId, string UpdatedAt);
+
+    /// <summary>Request body for PUT /api/v1/agent/threads/{chatId}.</summary>
+    private sealed record AgentThreadWriteDto(string ThreadId);
 }

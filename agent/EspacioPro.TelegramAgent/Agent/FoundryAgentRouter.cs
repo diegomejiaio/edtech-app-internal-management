@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using Azure.AI.Agents.Persistent;
 using EspacioPro.TelegramAgent.Agent.Foundry;
+using EspacioPro.TelegramAgent.Api;
 using EspacioPro.TelegramAgent.Speech;
 using EspacioPro.TelegramAgent.Telegram;
 using Microsoft.Extensions.Logging;
@@ -30,6 +31,7 @@ public sealed class FoundryAgentRouter : IAgentRouter
     private readonly AgentToolDispatcher _dispatcher;
     private readonly TelegramClient _telegram;
     private readonly SpeechTranscriber _transcriber;
+    private readonly EspacioProApiClient _apiClient;
     private readonly ILogger<FoundryAgentRouter> _logger;
 
     private readonly ConcurrentDictionary<long, string> _threadsByChat = new();
@@ -40,12 +42,14 @@ public sealed class FoundryAgentRouter : IAgentRouter
         AgentToolDispatcher dispatcher,
         TelegramClient telegram,
         SpeechTranscriber transcriber,
+        EspacioProApiClient apiClient,
         ILogger<FoundryAgentRouter> logger)
     {
         _provisioner = provisioner;
         _dispatcher = dispatcher;
         _telegram = telegram;
         _transcriber = transcriber;
+        _apiClient = apiClient;
         _logger = logger;
     }
 
@@ -310,13 +314,34 @@ public sealed class FoundryAgentRouter : IAgentRouter
         return "Listo.";
     }
 
+    /// <summary>
+    /// Resolves the Foundry thread for a chat across two cache tiers so the conversation
+    /// survives Function worker restarts:
+    /// L1 = in-memory dictionary (volatile); L2 = Cosmos-persisted mapping via the EspacioPro API.
+    /// On a full miss, creates a fresh Foundry thread and persists the mapping (arming a 7-day TTL).
+    /// Loading from L2 re-arms the TTL so active conversations are not expired mid-flight.
+    /// </summary>
     private async Task<string> GetOrCreateThreadAsync(long chatId, CancellationToken ct)
     {
+        // L1: in-memory cache for the lifetime of this worker.
         if (_threadsByChat.TryGetValue(chatId, out var existing))
             return existing;
 
+        // L2: durable Cosmos mapping (survives recycles).
+        var persisted = await _apiClient.GetThreadIdAsync(chatId, ct);
+        if (!string.IsNullOrEmpty(persisted))
+        {
+            var resumed = _threadsByChat.GetOrAdd(chatId, persisted);
+            // Re-arm the sliding TTL now that the conversation is active again.
+            await _apiClient.UpsertThreadAsync(chatId, resumed, ct);
+            return resumed;
+        }
+
+        // Full miss: create a Foundry thread and persist the mapping.
         PersistentAgentThread thread = await _provisioner.Client.Threads.CreateThreadAsync(cancellationToken: ct);
-        return _threadsByChat.GetOrAdd(chatId, thread.Id);
+        var threadId = _threadsByChat.GetOrAdd(chatId, thread.Id);
+        await _apiClient.UpsertThreadAsync(chatId, threadId, ct);
+        return threadId;
     }
 
     /// <summary>
@@ -339,9 +364,23 @@ public sealed class FoundryAgentRouter : IAgentRouter
     /// Best-effort deletes the server-side Foundry thread to avoid orphan accumulation; failures
     /// are non-fatal since dropping the cache reference already resets the context.
     /// </summary>
+    /// <summary>
+    /// Forgets the thread for a chat so the next message starts a fresh conversation.
+    /// Removes both cache tiers (in-memory L1 and the durable Cosmos L2 mapping) and best-effort
+    /// deletes the server-side Foundry thread to avoid orphan accumulation. The Cosmos mapping is
+    /// hard-deleted because it holds no audit value once the conversation is reset. After a worker
+    /// restart the thread id may live only in L2, so it is resolved from there when L1 misses.
+    /// </summary>
     private async Task ResetThreadAsync(long chatId, CancellationToken ct)
     {
+        // L1: drop the in-memory reference; fall back to L2 to recover the thread id after a restart.
         if (!_threadsByChat.TryRemove(chatId, out var threadId))
+            threadId = await _apiClient.GetThreadIdAsync(chatId, ct);
+
+        // L2: hard-delete the durable mapping (idempotent).
+        await _apiClient.DeleteThreadAsync(chatId, ct);
+
+        if (string.IsNullOrEmpty(threadId))
             return;
 
         try
