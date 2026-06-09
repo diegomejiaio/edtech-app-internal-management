@@ -59,6 +59,14 @@ Reglas para registrar un pago (register_student_payment):
 - paymentMethod debe ser un valor válido de get_catalog("paymentMethods").
 - date en formato "yyyy-MM-dd".
 
+Estado de pagos de un horario ("cuánto pagó / cuánto debe cada estudiante"):
+- Usa SIEMPRE query_schedule_payments con el scheduleId (resuélvelo antes con query_schedules).
+- Devuelve, por inscripción: studentName, amount (precio total), paidAmount (pagado) y
+  pendingAmount (saldo pendiente), TODO calculado por el backend.
+- Reporta esos montos tal cual. NUNCA calcules el saldo tú mismo a partir del precio ni sumes
+  pagos manualmente: usa exactamente paidAmount y pendingAmount que entrega la herramienta.
+- Si pendingAmount es 0, el estudiante está al día; si es mayor que 0, ese es lo que debe.
+
 Cuando el usuario adjunte una imagen, trátala como el comprobante de un pago: lee el monto,
 la fecha, el método de pago y el número de operación/recibo visibles en la imagen. Usa esos
 datos para preparar register_student_payment (hasReceipt=true y receiptNumber si aparece).

@@ -46,6 +46,7 @@ public sealed class AgentToolDispatcher
                 AgentToolset.ListTeachers => await ListTeachersAsync(args, ct),
                 AgentToolset.ListStudents => await ListStudentsAsync(args, ct),
                 AgentToolset.FindEnrollments => await FindEnrollmentsAsync(args, ct),
+                AgentToolset.QuerySchedulePayments => await QuerySchedulePaymentsAsync(args, ct),
                 AgentToolset.CreateSchedule => await CreateScheduleAsync(args, ct),
                 AgentToolset.CreateStudent => await CreateStudentAsync(args, ct),
                 AgentToolset.CreateEnrollment => await CreateEnrollmentAsync(args, ct),
@@ -104,6 +105,17 @@ public sealed class AgentToolDispatcher
             DefaultLimit,
             ct);
         return Ok(new { count = enrollments.Count, enrollments });
+    }
+
+    private async Task<string> QuerySchedulePaymentsAsync(JsonElement args, CancellationToken ct)
+    {
+        var scheduleId = GetString(args, "scheduleId");
+        if (string.IsNullOrWhiteSpace(scheduleId))
+            return Error("Missing required argument 'scheduleId'.");
+
+        var rows = await _api.GetSchedulePaymentStatusAsync(
+            scheduleId, GetString(args, "status") ?? "active", DefaultLimit, ct);
+        return Ok(new { scheduleId, count = rows.Count, enrollments = rows });
     }
 
     private async Task<string> CreateScheduleAsync(JsonElement args, CancellationToken ct)

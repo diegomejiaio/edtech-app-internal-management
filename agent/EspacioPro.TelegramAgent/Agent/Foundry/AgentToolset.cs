@@ -16,6 +16,7 @@ public static class AgentToolset
     public const string ListTeachers = "list_teachers";
     public const string ListStudents = "list_students";
     public const string FindEnrollments = "find_enrollments";
+    public const string QuerySchedulePayments = "query_schedule_payments";
     public const string CreateSchedule = "create_schedule";
     public const string CreateStudent = "create_student";
     public const string CreateEnrollment = "create_enrollment";
@@ -130,6 +131,33 @@ public static class AgentToolset
                     },
                 },
                 Required = Array.Empty<string>(),
+            })),
+
+        new FunctionToolDefinition(
+            name: QuerySchedulePayments,
+            description: "Returns the per-student payment status of a schedule: each active enrollment with "
+                + "its total price (amount), how much the student has paid (paidAmount) and the outstanding "
+                + "balance (pendingAmount), all computed by the backend. ALWAYS use this tool to answer "
+                + "\"cuánto pagó / cuánto debe cada estudiante\" — never derive balances from the price yourself. "
+                + "Resolve the scheduleId first via query_schedules.",
+            parameters: Schema(new
+            {
+                Type = "object",
+                Properties = new
+                {
+                    ScheduleId = new
+                    {
+                        Type = "string",
+                        Description = "Id of the schedule to report payment status for. Required.",
+                    },
+                    Status = new
+                    {
+                        Type = "string",
+                        Enum = new[] { "active", "completed", "cancelled", "pending" },
+                        Description = "Optional enrollment status filter. Defaults to active.",
+                    },
+                },
+                Required = new[] { "scheduleId" },
             })),
 
         new FunctionToolDefinition(

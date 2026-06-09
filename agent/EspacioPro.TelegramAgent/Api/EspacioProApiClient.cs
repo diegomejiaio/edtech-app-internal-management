@@ -101,6 +101,22 @@ public sealed class EspacioProApiClient
         return page?.Items ?? new List<EnrollmentSummary>();
     }
 
+    /// <summary>
+    /// GET /api/v1/schedules/{scheduleId}/enrollments — per-student payment status for a schedule.
+    /// The backend computes <c>paidAmount</c> (sum of active payments) and <c>pendingAmount</c>
+    /// (schedule price − paid) deterministically, so the model must NOT compute balances itself.
+    /// Defaults to active enrollments; pass a status to filter.
+    /// </summary>
+    public async Task<IReadOnlyList<EnrollmentPaymentStatus>> GetSchedulePaymentStatusAsync(
+        string scheduleId, string? status, int limit, CancellationToken ct)
+    {
+        var url = $"/api/v1/schedules/{Uri.EscapeDataString(scheduleId)}/enrollments?limit={limit}";
+        if (!string.IsNullOrWhiteSpace(status))
+            url += $"&status={Uri.EscapeDataString(status)}";
+        var page = await GetAsync<Paginated<EnrollmentPaymentStatus>>(url, ct);
+        return page?.Items ?? new List<EnrollmentPaymentStatus>();
+    }
+
     /// <summary>GET /api/v1/catalogs/{code} — returns the active values of a catalog
     /// (e.g. "courses", "levels", "weekdays", "paymentMethods"). Used so the agent
     /// always proposes valid values without hardcoding them.</summary>
@@ -431,7 +447,34 @@ public sealed class EspacioProApiClient
     }
 
     /// <summary>
-    /// Mirrors the backend ScheduleWriteRequest. Time fields are "HH:mm:ss" and
+    /// Mirrors the backend ScheduleEnrollmentResponse. The backend derives the money fields:
+    /// <see cref="Amount"/> is the schedule price, <see cref="PaidAmount"/> is the sum of active
+    /// payments, and <see cref="PendingAmount"/> is the outstanding balance. The agent must read
+    /// these as-is and never recompute them.
+    /// </summary>
+    public sealed class EnrollmentPaymentStatus
+    {
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonPropertyName("studentId")]
+        public string? StudentId { get; set; }
+
+        [JsonPropertyName("studentName")]
+        public string? StudentName { get; set; }
+
+        [JsonPropertyName("status")]
+        public string? Status { get; set; }
+
+        [JsonPropertyName("amount")]
+        public decimal Amount { get; set; }
+
+        [JsonPropertyName("paidAmount")]
+        public decimal PaidAmount { get; set; }
+
+        [JsonPropertyName("pendingAmount")]
+        public decimal PendingAmount { get; set; }
+    }
     /// startDate is "yyyy-MM-dd"; status/weekdays use the backend's camelCase enums.
     /// </summary>
     public sealed record CreateScheduleRequest(
