@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { formatTableDate } from '@/lib/dates';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteEnrollments, useUpdateEnrollment, useDeleteEnrollment } from '@/hooks';
-import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, ReadOnlyField, type Column } from '@/components/data';
 import { EnrollmentWizard } from '@/components/enrollments/enrollment-wizard';
 import { EnrollmentPaymentsBlock } from '@/components/enrollments/enrollment-payments-block';
 import { Button } from '@/components/ui/button';
@@ -134,19 +134,8 @@ export default function EnrollmentsPage() {
         isLoading={updateMutation.isPending}
         onSubmit={handleSubmit}
       >
-        <div className="space-y-2">
-          <Label>Alumno</Label>
-          <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-            <p className="font-medium">{editing?.studentName}</p>
-            <p className="text-xs text-muted-foreground">{editing?.studentDoc}</p>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Horario</Label>
-          <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-            {editing?.scheduleName}
-          </div>
-        </div>
+        <ReadOnlyField label="Alumno" value={editing?.studentName} hint={editing?.studentDoc} />
+        <ReadOnlyField label="Horario" value={editing?.scheduleName} />
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="enrollmentDate">Fecha inscripción</Label>

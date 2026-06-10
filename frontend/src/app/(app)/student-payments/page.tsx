@@ -10,7 +10,7 @@ import { useApiClient } from '@/hooks/use-api-client';
 import { formatTableDate } from '@/lib/dates';
 import { toIsoDate } from '@/lib/dashboard-period';
 import { flattenInfiniteItems, getInfiniteTotal, useEnrollment, useStudentPayments, useInfiniteStudentPayments, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from '@/hooks';
-import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, ReadOnlyField, type Column } from '@/components/data';
 import { EnrollmentPicker, CatalogSelect } from '@/components/pickers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -141,10 +141,14 @@ export default function StudentPaymentsPage() {
         isLoading={createMutation.isPending || updateMutation.isPending}
         onSubmit={handleSubmit}
       >
-        <div className="space-y-2">
-          <Label>Inscripción</Label>
-          <EnrollmentPicker client={client} value={pickedEnrollmentId} onChange={(id) => setPickedEnrollmentId(id)} name="enrollmentId" />
-        </div>
+        {editing ? (
+          <ReadOnlyField label="Inscripción" value={`${editing.studentName} → ${editing.scheduleName}`} />
+        ) : (
+          <div className="space-y-2">
+            <Label>Inscripción</Label>
+            <EnrollmentPicker client={client} value={pickedEnrollmentId} onChange={(id) => setPickedEnrollmentId(id)} name="enrollmentId" />
+          </div>
+        )}
         {pickedEnrollmentId && (
           <div className="space-y-3 rounded-md border p-3 bg-muted/30">
             <div className="flex items-center justify-between gap-3">
