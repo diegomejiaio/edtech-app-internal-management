@@ -245,14 +245,14 @@ Schedules use this metadata to generate bounded class sessions from course durat
   "studentDoc": "string",       // snapshot "DNI 12345678"
   "scheduleId": "<guid>",
   "scheduleName": "string",     // snapshot "Melamina · Intermedio · L-V 18:00"
-  "schedulePrice": number,      // snapshot
+  "schedulePrice": number,      // negotiated price (defaults to schedule price, editable; NOT auto-refreshed)
   "enrollmentDate": "YYYY-MM-DD",
   "status": "active" | "completed" | "cancelled" | "pending",
   "active": true
 }
 ```
 
-> Snapshots `studentName/studentDoc/scheduleName/schedulePrice` evitan joins en el dashboard. Se refrescan cuando se hace `PUT /enrollments/{id}`. Stale aceptable (mismo patrón que `AuditUser`). Detalle: `04-api-design.md` §4.
+> Snapshots `studentName/studentDoc/scheduleName` evitan joins en el dashboard. Se refrescan cuando se hace `PUT /enrollments/{id}`. Stale aceptable (mismo patrón que `AuditUser`). **`schedulePrice` es el precio negociado de la inscripción** (lo que el alumno debe): toma por defecto el precio del horario al crear, es **editable** (descuentos/packs) y **NO** se auto-refresca desde el horario. Detalle: `04-api-design.md` §4.
 
 **Computed at read time** (not stored):
 - `amount` = `schedulePrice` snapshot.

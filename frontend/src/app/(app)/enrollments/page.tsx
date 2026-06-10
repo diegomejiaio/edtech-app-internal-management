@@ -10,7 +10,6 @@ import { useApiClient } from '@/hooks/use-api-client';
 import { formatTableDate } from '@/lib/dates';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteEnrollments, useUpdateEnrollment, useDeleteEnrollment } from '@/hooks';
 import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
-import { StudentPicker, SchedulePicker } from '@/components/pickers';
 import { EnrollmentWizard } from '@/components/enrollments/enrollment-wizard';
 import { EnrollmentPaymentsBlock } from '@/components/enrollments/enrollment-payments-block';
 import { Button } from '@/components/ui/button';
@@ -62,21 +61,22 @@ export default function EnrollmentsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Enrollment | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Enrollment | null>(null);
-  const [pickedStudentId, setPickedStudentId] = useState<string | undefined>();
-  const [pickedScheduleId, setPickedScheduleId] = useState<string | undefined>();
+  const [editPrice, setEditPrice] = useState<string>('');
 
   function openCreate() { setWizardOpen(true); }
-  function openEdit(e: Enrollment) { setEditing(e); setPickedStudentId(e.studentId); setPickedScheduleId(e.scheduleId); setFormOpen(true); }
+  function openEdit(e: Enrollment) { setEditing(e); setEditPrice(e.schedulePrice.toString()); setFormOpen(true); }
 
   function handleSubmit(ev: FormEvent<HTMLFormElement>) {
     ev.preventDefault();
     if (!editing) return;
     const fd = new FormData(ev.currentTarget);
+    // Student and schedule are frozen on edit; reuse the existing snapshots' ids.
     const body: EnrollmentBody = {
-      studentId: pickedStudentId ?? (fd.get('studentId') as string),
-      scheduleId: pickedScheduleId ?? (fd.get('scheduleId') as string),
+      studentId: editing.studentId,
+      scheduleId: editing.scheduleId,
       enrollmentDate: fd.get('enrollmentDate') as string,
       status: fd.get('status') as EnrollmentStatus,
+      schedulePrice: editPrice.trim() ? Number.parseFloat(editPrice) : undefined,
     };
 
     updateMutation.mutateAsync({ id: editing.id, body, ifMatch: editing._etag })
@@ -136,11 +136,16 @@ export default function EnrollmentsPage() {
       >
         <div className="space-y-2">
           <Label>Alumno</Label>
-          <StudentPicker client={client} value={pickedStudentId} onChange={(id) => setPickedStudentId(id)} name="studentId" />
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+            <p className="font-medium">{editing?.studentName}</p>
+            <p className="text-xs text-muted-foreground">{editing?.studentDoc}</p>
+          </div>
         </div>
         <div className="space-y-2">
           <Label>Horario</Label>
-          <SchedulePicker client={client} value={pickedScheduleId} onChange={(id) => setPickedScheduleId(id)} name="scheduleId" />
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+            {editing?.scheduleName}
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -148,12 +153,24 @@ export default function EnrollmentsPage() {
             <Input id="enrollmentDate" name="enrollmentDate" type="date" defaultValue={editing?.enrollmentDate} required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="status">Estado</Label>
-            <Select name="status" defaultValue={editing?.status ?? 'active'}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{ENROLLMENT_STATUS_LABELS[s]}</SelectItem>)}</SelectContent>
-            </Select>
+            <Label htmlFor="editPrice">Precio (S/)</Label>
+            <Input
+              id="editPrice"
+              name="schedulePrice"
+              type="number"
+              min="0"
+              step="0.01"
+              value={editPrice}
+              onChange={(e) => setEditPrice(e.target.value)}
+            />
           </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="status">Estado</Label>
+          <Select name="status" defaultValue={editing?.status ?? 'active'}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{ENROLLMENT_STATUS_LABELS[s]}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
 
         {editing && <EnrollmentPaymentsBlock enrollmentId={editing.id} />}

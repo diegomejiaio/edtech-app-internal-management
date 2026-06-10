@@ -67,6 +67,8 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
   const [studentId, setStudentId] = useState<string | undefined>();
   const [scheduleId, setScheduleId] = useState<string | undefined>();
   const [enrollmentDate, setEnrollmentDate] = useState<string>(toIsoDate(new Date()));
+  // Negotiated price: defaults to the picked schedule's list price, editable for discounts/packs.
+  const [price, setPrice] = useState<string>('');
 
   // Inline "create student" form
   const [showNewStudent, setShowNewStudent] = useState(false);
@@ -101,6 +103,7 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
       setStudentId(undefined);
       setScheduleId(undefined);
       setEnrollmentDate(toIsoDate(new Date()));
+      setPrice("");
       setShowNewStudent(false);
       setNewDocType('dni');
       setNewDocNumber('');
@@ -179,6 +182,7 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
         scheduleId,
         enrollmentDate,
         status: 'active',
+        schedulePrice: price.trim() ? Number.parseFloat(price) : undefined,
       });
       enrollmentId = enrollment.id;
     } catch (err) {
@@ -344,9 +348,31 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
         <SchedulePicker
           client={client}
           value={scheduleId}
-          onChange={setScheduleId}
+          onChange={(id, schedule) => {
+            setScheduleId(id);
+            // Pre-fill the price with the schedule's list price; the operator can still edit it.
+            setPrice(schedule.price.toString());
+          }}
           name="scheduleId"
         />
+      </div>
+
+      {/* Precio (editable, default = precio del horario) */}
+      <div className="space-y-2">
+        <Label htmlFor="enrollmentPrice">Precio (S/)</Label>
+        <Input
+          id="enrollmentPrice"
+          name="schedulePrice"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="0.00"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">
+          Por defecto es el precio del horario. Edítalo si acordaste un descuento o pack.
+        </p>
       </div>
 
       {/* Fecha de inscripción */}

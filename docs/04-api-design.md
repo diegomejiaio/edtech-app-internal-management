@@ -75,7 +75,7 @@ Each "foreign key" is paired with snapshot fields when the FK is shown in lists/
 | Owner doc | FK | Embedded snapshot fields | Refresh strategy |
 |---|---|---|---|
 | `Enrollment` | `studentId` | `studentName` (full name), `studentDoc` (`docType+docNumber`) | Refreshed on enrollment PUT. Stale acceptable for v1. |
-| `Enrollment` | `scheduleId` | `scheduleName` (e.g. "Melamina · Intermedio · L-V 18:00"), `schedulePrice` | Refreshed on enrollment PUT. |
+| `Enrollment` | `scheduleId` | `scheduleName` (e.g. "Melamina · Intermedio · L-V 18:00"), `schedulePrice` | `scheduleName` refreshed on enrollment PUT. `schedulePrice` is the **negotiated price** (defaults to schedule price, editable, NOT auto-refreshed). |
 | `StudentPayment` | `enrollmentId` | `studentName`, `studentId`, `scheduleId`, `scheduleName` | Frozen forever (payment is historical fact). |
 | `TeacherPayment` | `teacherId` | `teacherName`, `teacherDoc` | Frozen forever. |
 | `Expense` | `scheduleId?` | `scheduleName?` | Frozen forever. |

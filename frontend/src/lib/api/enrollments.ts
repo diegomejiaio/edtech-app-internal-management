@@ -25,6 +25,8 @@ export interface EnrollmentBody {
   scheduleId: string;
   enrollmentDate: string;
   status: EnrollmentStatus;
+  /** Negotiated price for this enrollment. Defaults to the schedule price when omitted. */
+  schedulePrice?: number;
 }
 
 /** Filters for `GET /enrollments`. */

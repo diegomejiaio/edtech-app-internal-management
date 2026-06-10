@@ -296,6 +296,8 @@ public sealed class EnrollmentFunction
             errors["scheduleId"] = ["The scheduleId field is required."];
         if (req.EnrollmentDate == default)
             errors["enrollmentDate"] = ["The enrollmentDate field is required."];
+        if (req.SchedulePrice is { } price && price < 0)
+            errors["schedulePrice"] = ["schedulePrice must be zero or greater."];
 
         return errors;
     }
@@ -307,7 +309,9 @@ public sealed class EnrollmentFunction
         target.StudentDoc = $"{student.DocType.ToString().ToUpperInvariant()} {student.DocNumber}";
         target.ScheduleId = schedule.Id;
         target.ScheduleName = $"{schedule.Course} · {schedule.Level} · {schedule.Weekdays} {schedule.StartTime:HH\\:mm}";
-        target.SchedulePrice = schedule.Price;
+        // Negotiated price: default to the schedule list price on create; preserve (and allow
+        // override) on update. Never auto-refresh from the schedule once the enrollment exists.
+        target.SchedulePrice = req.SchedulePrice ?? (target.SchedulePrice > 0 ? target.SchedulePrice : schedule.Price);
         target.EnrollmentDate = req.EnrollmentDate;
         target.Status = req.Status;
         if (req.Active is { } active)
@@ -320,5 +324,6 @@ public sealed class EnrollmentFunction
         string? ScheduleId,
         DateOnly EnrollmentDate,
         EnrollmentStatus Status,
+        decimal? SchedulePrice,
         bool? Active);
 }

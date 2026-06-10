@@ -41,7 +41,12 @@ public sealed class Enrollment : BaseEntity
     [JsonPropertyName("scheduleName")]
     public string ScheduleName { get; set; } = default!;
 
-    /// <summary>Snapshot: schedule price at refresh time. Refreshed on PUT.</summary>
+    /// <summary>
+    /// Negotiated price for this enrollment (what the student actually owes). Defaults to the
+    /// schedule list price at creation, but the operator may override it for discounts or packs.
+    /// Preserved across updates and <b>not</b> auto-refreshed from the schedule. Drives the payment
+    /// balance in <see cref="EspacioPro.Application.Common.ScheduleEnrollmentResponse"/>.
+    /// </summary>
     [JsonPropertyName("schedulePrice")]
     public decimal SchedulePrice { get; set; }
 
