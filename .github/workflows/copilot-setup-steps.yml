@@ -65,11 +65,13 @@ jobs:
         working-directory: frontend
         run: pnpm install --frozen-lockfile
 
-      # ----- E2E: Playwright (Chromium only, keeps setup lean) -----
+      # ----- E2E: Playwright -----
+      # Suite uses Chromium (Desktop Chrome) + WebKit (iPhone 14 mobile project);
+      # Firefox is not used. Lets the agent run e2e, not just author tests.
       - name: Install e2e dependencies
         working-directory: e2e
         run: npm ci
 
-      - name: Install Playwright Chromium
+      - name: Install Playwright browsers (Chromium + WebKit)
         working-directory: e2e
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
