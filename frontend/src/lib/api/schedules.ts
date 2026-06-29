@@ -224,6 +224,9 @@ export interface UpdateScheduleAttendanceRequest {
 
 export interface UpdateScheduleSessionRequest {
   status?: ScheduleSessionStatus;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
   attendance?: UpdateScheduleAttendanceRequest[];
 }
 
@@ -264,5 +267,17 @@ export const updateScheduleSession = (
   client.put<ScheduleSessionUpdateResponse>(
     `/schedules/${encodeURIComponent(scheduleId)}/sessions/${encodeURIComponent(sessionId)}`,
     body,
+    ifMatch ? { ifMatch } : undefined,
+  );
+
+/** Soft-delete a generated session with schedule ETag concurrency. */
+export const deleteScheduleSession = (
+  client: ApiClient,
+  scheduleId: string,
+  sessionId: string,
+  ifMatch?: string,
+): Promise<void> =>
+  client.delete<void>(
+    `/schedules/${encodeURIComponent(scheduleId)}/sessions/${encodeURIComponent(sessionId)}`,
     ifMatch ? { ifMatch } : undefined,
   );

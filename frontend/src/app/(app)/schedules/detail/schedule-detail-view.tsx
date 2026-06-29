@@ -1,20 +1,21 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Calendar, CheckCircle2, CircleDollarSign, ClipboardList, Users } from 'lucide-react';
+import { Calendar, CheckCircle2, CircleDollarSign, ClipboardList, Trash2, Users } from 'lucide-react';
 import { useApiClient } from '@/hooks/use-api-client';
 import {
   flattenInfiniteItems,
   getInfiniteTotal,
+  useDeleteScheduleSession,
   useInfiniteScheduleEnrollments,
   useInfiniteScheduleSessions,
   useSchedule,
   useScheduleDashboard,
   useUpdateScheduleSession,
 } from '@/hooks';
-import { DataTable, type Column } from '@/components/data';
+import { ConfirmDeleteDialog, DataTable, type Column } from '@/components/data';
 import { PageBreadcrumb, PageHeader } from '@/components/layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -57,12 +58,25 @@ export function ScheduleDetailView() {
   const [month, setMonth] = useState(currentMonth);
   const [selectedSession, setSelectedSession] = useState<ScheduleSession | null>(null);
   const [scheduleEtag, setScheduleEtag] = useState<string | undefined>();
+  const [dateDraft, setDateDraft] = useState('');
+  const [startDraft, setStartDraft] = useState('');
+  const [endDraft, setEndDraft] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<ScheduleSession | null>(null);
 
   const scheduleQuery = useSchedule(client, id);
   const dashboardQuery = useScheduleDashboard(client, id, month);
   const sessionQuery = useInfiniteScheduleSessions(client, id, { limit: 20 });
   const enrollmentQuery = useInfiniteScheduleEnrollments(client, id, { limit: 20 });
   const updateSession = useUpdateScheduleSession(client);
+  const deleteSession = useDeleteScheduleSession(client);
+
+  useEffect(() => {
+    if (!selectedSession) return;
+    setDateDraft(selectedSession.date);
+    setStartDraft(selectedSession.startTime.slice(0, 5));
+    setEndDraft(selectedSession.endTime.slice(0, 5));
+  }, [selectedSession]);
 
   const sessions = useMemo(() => flattenInfiniteItems(sessionQuery.data, { sortBy: (s) => s.date }), [sessionQuery.data]);
   const schedule = scheduleQuery.data;
@@ -164,6 +178,61 @@ export function ScheduleDetailView() {
     );
   }
 
+  function handleReschedule() {
+    if (!selectedSession) return;
+    if (!dateDraft || !startDraft || !endDraft) {
+      toast.error('Completa fecha, hora inicio y hora fin');
+      return;
+    }
+    if (endDraft <= startDraft) {
+      toast.error('La hora fin debe ser mayor que la hora inicio');
+      return;
+    }
+    updateSession.mutate(
+      {
+        scheduleId: id,
+        sessionId: selectedSession.id,
+        body: { date: dateDraft, startTime: startDraft, endTime: endDraft },
+        ifMatch: scheduleEtag ?? schedule?._etag,
+      },
+      {
+        onSuccess: (updated) => {
+          setSelectedSession(updated.session);
+          setScheduleEtag(updated.scheduleEtag ?? undefined);
+          toast.success('Sesión reprogramada');
+        },
+        onError: (err) => toast.error(isApiError(err) ? getApiErrorMessage(err) : 'No se pudo reprogramar la sesión'),
+      },
+    );
+  }
+
+  function requestDeleteSession(session: ScheduleSession) {
+    setSessionToDelete(session);
+    setConfirmDelete(true);
+  }
+
+  function handleDeleteSession() {
+    const target = sessionToDelete ?? selectedSession;
+    if (!target) return;
+    deleteSession.mutate(
+      {
+        scheduleId: id,
+        sessionId: target.id,
+        ifMatch: scheduleEtag ?? schedule?._etag,
+      },
+      {
+        onSuccess: () => {
+          setConfirmDelete(false);
+          setSessionToDelete(null);
+          if (selectedSession?.id === target.id) setSelectedSession(null);
+          setScheduleEtag(undefined);
+          toast.success('Sesión eliminada');
+        },
+        onError: (err) => toast.error(isApiError(err) ? getApiErrorMessage(err) : 'No se pudo eliminar la sesión'),
+      },
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageBreadcrumb
@@ -250,7 +319,21 @@ export function ScheduleDetailView() {
                 isFetchingNextPage={sessionQuery.isFetchingNextPage}
                 autoLoadMore
                 emptyMessage="Aún no hay sesiones generadas"
-                actions={(s) => <Button variant="ghost" size="sm" onClick={() => setSelectedSession(s)}>Ver</Button>}
+                actions={(s) => (
+                  <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedSession(s)}>Ver</Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Eliminar sesión ${s.sequenceNumber}`}
+                      title="Eliminar"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => requestDeleteSession(s)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                )}
               />
             </TabsContent>
 
@@ -294,6 +377,31 @@ export function ScheduleDetailView() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label>Reprogramar</Label>
+                  <Input type="date" value={dateDraft} onChange={(ev) => setDateDraft(ev.target.value)} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input type="time" value={startDraft} onChange={(ev) => setStartDraft(ev.target.value)} aria-label="Hora inicio" />
+                    <Input type="time" value={endDraft} onChange={(ev) => setEndDraft(ev.target.value)} aria-label="Hora fin" />
+                  </div>
+                  <Button
+                    type="button"
+                    className="w-full"
+                    disabled={updateSession.isPending}
+                    onClick={handleReschedule}
+                  >
+                    Guardar cambios
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full text-destructive hover:text-destructive"
+                    disabled={deleteSession.isPending}
+                    onClick={() => requestDeleteSession(selectedSession)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Eliminar sesión
+                  </Button>
+                </div>
                 <div className="space-y-3">
                   {selectedSession.attendance.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No hay alumnos activos para tomar asistencia.</p>
@@ -321,6 +429,17 @@ export function ScheduleDetailView() {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDeleteDialog
+        open={confirmDelete}
+        onOpenChange={(next) => {
+          setConfirmDelete(next);
+          if (!next) setSessionToDelete(null);
+        }}
+        onConfirm={handleDeleteSession}
+        entityName={sessionToDelete ? `la sesión ${sessionToDelete.sequenceNumber}` : 'esta sesión'}
+        isLoading={deleteSession.isPending}
+      />
     </div>
   );
 }

@@ -283,7 +283,7 @@ public sealed class ScheduleFunction
         return new OkObjectResult(session);
     }
 
-    /// <summary>PUT /api/v1/schedules/{scheduleId}/sessions/{sessionId} — update status/attendance with If-Match.</summary>
+    /// <summary>PUT /api/v1/schedules/{scheduleId}/sessions/{sessionId} — reschedule (date/time), status, attendance with If-Match.</summary>
     [Function("ScheduleSessionUpdate")]
     [RequireRole("admin")]
     public async Task<IActionResult> UpdateSession(
@@ -305,10 +305,22 @@ public sealed class ScheduleFunction
             return req.NotFound($"Session '{sessionId}' not found.");
         await EnsureAttendanceForActiveEnrollmentsAsync(schedule, ct);
 
+        var newStart = body.StartTime ?? session.StartTime;
+        var newEnd = body.EndTime ?? session.EndTime;
+        if (newEnd <= newStart)
+            return req.ValidationError("endTime", "endTime must be later than startTime.");
+
         var auditUser = _currentUser.GetAuditUser();
         var now = DateTime.UtcNow.ToString("o");
         if (body.Status is { } status)
             session.Status = status;
+        if (body.Date is { } date)
+            session.Date = date;
+        if (body.StartTime is not null || body.EndTime is not null)
+        {
+            session.StartTime = newStart;
+            session.EndTime = newEnd;
+        }
         session.UpdatedAt = now;
         session.UpdatedBy = auditUser;
         if (body.Attendance is not null)
@@ -325,6 +337,8 @@ public sealed class ScheduleFunction
             }
         }
 
+        ScheduleSessionGenerator.ApplyProjection(schedule);
+
         var ifMatch = req.Headers.IfMatch.FirstOrDefault();
         if (!string.IsNullOrEmpty(ifMatch))
             schedule.ETag = ifMatch;
@@ -338,6 +352,47 @@ public sealed class ScheduleFunction
                 Session = updatedSession,
                 ScheduleETag = updated.ETag,
             });
+        }
+        catch (Microsoft.Azure.Cosmos.CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
+        {
+            return req.PreconditionFailed($"Schedule '{scheduleId}' was modified by another request.");
+        }
+    }
+
+    /// <summary>DELETE /api/v1/schedules/{scheduleId}/sessions/{sessionId} — soft delete one embedded session.</summary>
+    [Function("ScheduleSessionDelete")]
+    [RequireRole("admin")]
+    public async Task<IActionResult> DeleteSession(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "v1/schedules/{scheduleId}/sessions/{sessionId}")] HttpRequest req,
+        string scheduleId,
+        string sessionId,
+        CancellationToken ct)
+    {
+        var schedule = await _repo.GetByIdAsync(scheduleId, ct);
+        if (schedule is null)
+            return req.NotFound($"Schedule '{scheduleId}' not found.");
+
+        var session = schedule.Sessions.FirstOrDefault(s => s.Id == sessionId && s.Active);
+        if (session is null)
+            return req.NotFound($"Session '{sessionId}' not found.");
+
+        var auditUser = _currentUser.GetAuditUser();
+        var now = DateTime.UtcNow.ToString("o");
+        session.Active = false;
+        session.DeletedAt = now;
+        session.DeletedBy = auditUser;
+        session.UpdatedAt = now;
+        session.UpdatedBy = auditUser;
+        ScheduleSessionGenerator.ApplyProjection(schedule);
+
+        var ifMatch = req.Headers.IfMatch.FirstOrDefault();
+        if (!string.IsNullOrEmpty(ifMatch))
+            schedule.ETag = ifMatch;
+
+        try
+        {
+            await _repo.UpdateAsync(schedule, ct);
+            return new StatusCodeResult(StatusCodes.Status204NoContent);
         }
         catch (Microsoft.Azure.Cosmos.CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
         {
@@ -693,6 +748,9 @@ public sealed class ScheduleFunction
 
     private sealed record ScheduleSessionWriteRequest(
         ScheduleSessionStatus? Status,
+        DateOnly? Date,
+        TimeOnly? StartTime,
+        TimeOnly? EndTime,
         List<ScheduleAttendanceWriteRequest>? Attendance);
 
     private sealed record ScheduleAttendanceWriteRequest(

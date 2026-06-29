@@ -26,7 +26,7 @@ export { getTeachers, getTeacher, createTeacher, updateTeacher, deleteTeacher, g
 export type { Teacher, TeacherBody, TeacherListParams, TeacherPaymentListParams, TeacherScheduleListParams } from './teachers';
 
 // Schedules
-export { getSchedules, getSchedule, createSchedule, updateSchedule, deleteSchedule, getScheduleEnrollments, getScheduleDashboard, getScheduleSessions, getScheduleSession, updateScheduleSession } from './schedules';
+export { getSchedules, getSchedule, createSchedule, updateSchedule, deleteSchedule, getScheduleEnrollments, getScheduleDashboard, getScheduleSessions, getScheduleSession, updateScheduleSession, deleteScheduleSession } from './schedules';
 export type { Schedule, ScheduleWithCounts, ScheduleBody, ScheduleListParams, ScheduleEnrollmentParams, ScheduleEnrollment, ScheduleSessionParams, ScheduleSession, ScheduleSessionUpdateResponse, ScheduleAttendance, UpdateScheduleAttendanceRequest, UpdateScheduleSessionRequest, DashboardEnrollment, DashboardSummary, ScheduleDashboard } from './schedules';
 
 // Enrollments
