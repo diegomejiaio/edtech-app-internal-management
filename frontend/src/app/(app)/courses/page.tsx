@@ -28,11 +28,18 @@ const CATALOG_CODE = 'courses';
 export default function CoursesPage() {
   const client = useApiClient();
   const { data: catalog, isLoading } = useCatalog(client, CATALOG_CODE);
+  const { data: levelsCatalog } = useCatalog(client, 'levels');
   const addMutation = useAddCatalogItem(client, CATALOG_CODE);
   const replaceMutation = useReplaceCatalogItems(client, CATALOG_CODE);
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<CatalogItem | null>(null);
+
+  const levels = (levelsCatalog?.items ?? [])
+    .filter((item) => item.active)
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map((item) => item.value);
 
   function openCreate() {
     setEditing(null);
@@ -63,14 +70,27 @@ export default function CoursesPage() {
       return;
     }
 
+    const durationHoursByLevel: Record<string, number> = {};
+    for (const level of levels) {
+      const raw = (fd.get(`hours-${level}`) as string)?.trim();
+      if (!raw) continue;
+      const hours = Number(raw);
+      if (!Number.isFinite(hours) || hours <= 0) {
+        toast.error(`Horas inválidas para ${level}`);
+        return;
+      }
+      durationHoursByLevel[level] = hours;
+    }
+    const metadata = Object.keys(durationHoursByLevel).length > 0 ? { durationHoursByLevel } : undefined;
+
     const mutation = editing
       ? replaceMutation.mutateAsync({
           items: (catalog?.items ?? []).map((item) =>
-            item.value === editing.value ? { ...item, value } : item,
+            item.value === editing.value ? { ...item, value, metadata } : item,
           ),
           ifMatch: catalog?._etag,
         })
-      : addMutation.mutateAsync({ value });
+      : addMutation.mutateAsync({ value, metadata });
 
     mutation
       .then(() => {
@@ -188,7 +208,7 @@ export default function CoursesPage() {
           if (!nextOpen) setEditing(null);
         }}
         title={editing ? 'Editar curso' : 'Nuevo curso'}
-        description={editing ? 'Actualiza el nombre del curso. Los horarios existentes conservan su información histórica.' : undefined}
+        description={editing ? 'Actualiza el nombre y las horas por nivel. Los horarios existentes conservan su información histórica.' : 'Define el nombre y las horas de duración por nivel.'}
         isLoading={addMutation.isPending || replaceMutation.isPending}
         onSubmit={handleAddSubmit}
       >
@@ -203,6 +223,29 @@ export default function CoursesPage() {
             placeholder="Ej. Melamina"
           />
         </div>
+
+        {levels.length > 0 && (
+          <div className="space-y-2">
+            <Label>Horas por nivel</Label>
+            <div className="space-y-2">
+              {levels.map((level) => (
+                <div key={`${editing?.value ?? 'new'}-${level}`} className="flex items-center gap-3">
+                  <span className="w-32 shrink-0 text-sm">{level}</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    name={`hours-${level}`}
+                    defaultValue={getHoursForLevel(editing?.metadata, level)}
+                    placeholder="Ej. 16"
+                    aria-label={`Horas ${level}`}
+                  />
+                  <span className="text-sm text-muted-foreground">h</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </FormSheetDialog>
     </div>
   );
@@ -215,4 +258,11 @@ function formatDurationMetadata(metadata: CatalogItem['metadata']) {
   return Object.entries(byLevel)
     .map(([level, hours]) => `${level}: ${String(hours)} h`)
     .join(' · ');
+}
+
+function getHoursForLevel(metadata: CatalogItem['metadata'], level: string): string {
+  const byLevel = metadata?.durationHoursByLevel;
+  if (!byLevel || typeof byLevel !== 'object' || Array.isArray(byLevel)) return '';
+  const hours = (byLevel as Record<string, unknown>)[level];
+  return hours == null ? '' : String(hours);
 }

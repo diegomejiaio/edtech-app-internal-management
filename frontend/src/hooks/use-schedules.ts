@@ -10,6 +10,7 @@ import {
   getScheduleEnrollments,
   getScheduleSessions,
   updateScheduleSession,
+  deleteScheduleSession,
   createSchedule,
   updateSchedule,
   deleteSchedule,
@@ -111,6 +112,22 @@ export function useUpdateScheduleSession(client: ApiClient) {
   >({
     mutationFn: (vars) =>
       updateScheduleSession(client, vars.scheduleId, vars.sessionId, vars.body, vars.ifMatch),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['schedules', vars.scheduleId] });
+      qc.invalidateQueries({ queryKey: ['schedules', vars.scheduleId, 'sessions'] });
+      qc.invalidateQueries({ queryKey: ['schedules', vars.scheduleId, 'dashboard'] });
+    },
+  });
+}
+
+export function useDeleteScheduleSession(client: ApiClient) {
+  const qc = useQueryClient();
+  return useMutation<
+    void,
+    Error,
+    { scheduleId: string; sessionId: string; ifMatch?: string }
+  >({
+    mutationFn: (vars) => deleteScheduleSession(client, vars.scheduleId, vars.sessionId, vars.ifMatch),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['schedules', vars.scheduleId] });
       qc.invalidateQueries({ queryKey: ['schedules', vars.scheduleId, 'sessions'] });

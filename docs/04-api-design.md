@@ -147,7 +147,8 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
 | GET | `/schedules/{id}/enrollments` | `?status=active` | Includes derived `amount`, `paidAmount`, `pendingAmount` |
 | GET | `/schedules/{id}/sessions` | `?limit=25&offset=0&from=YYYY-MM-DD&to=YYYY-MM-DD&status=scheduled` | Embedded generated sessions; load-more pagination |
 | GET | `/schedules/{scheduleId}/sessions/{sessionId}` | — | Single generated session |
-| PUT | `/schedules/{scheduleId}/sessions/{sessionId}` | `If-Match` | ETag-protected status/attendance update; returns updated session plus schedule ETag |
+| PUT | `/schedules/{scheduleId}/sessions/{sessionId}` | `If-Match` | ETag-protected reschedule (date/time), status, attendance update; returns updated session plus schedule ETag |
+| DELETE | `/schedules/{scheduleId}/sessions/{sessionId}` | `If-Match` | Soft-deletes one embedded session; reprojects `projectedEndDate`/`sessionCount` |
 | GET | `/schedules/{id}/dashboard` | `?month=YYYY-MM` (default current) | **BFF**: composite of schedule + enrollments + paid/debtor flag per enrollment for the month |
 | GET | `/sessions` | `?date=YYYY-MM-DD` (default today, America/Lima) | Cross-schedule: all active schedules' embedded sessions on a date, flattened with parent context (scheduleCode, scheduleStartDate, course, level, teacherName, time, status). Includes every status. Powers the Telegram agent's "clases de hoy" |
 

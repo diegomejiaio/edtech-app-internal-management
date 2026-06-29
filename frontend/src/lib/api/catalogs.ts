@@ -36,6 +36,7 @@ export interface Catalog extends BaseEntity {
 export interface CreateCatalogItemBody {
   value: string;
   order?: number;
+  metadata?: Record<string, unknown> | null;
 }
 
 /** Body for `PUT /catalogs/{code}` (bulk replace items array). */

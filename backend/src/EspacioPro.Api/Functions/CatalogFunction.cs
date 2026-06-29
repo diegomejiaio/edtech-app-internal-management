@@ -96,7 +96,8 @@ public sealed class CatalogFunction
         {
             Value = body.Value,
             Order = body.Order ?? maxOrder + 1,
-            Active = true
+            Active = true,
+            Metadata = body.Metadata,
         });
 
         var updated = await _repo.UpdateAsync(catalog, ct);
@@ -132,5 +133,5 @@ public sealed class CatalogFunction
     // --- Request DTOs (inline, simple enough for v1) ---
 
     private sealed record CatalogReplaceRequest(List<CatalogItem> Items);
-    private sealed record CatalogAddItemRequest(string Value, int? Order);
+    private sealed record CatalogAddItemRequest(string Value, int? Order, Dictionary<string, object?>? Metadata);
 }
