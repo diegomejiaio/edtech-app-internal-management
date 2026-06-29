@@ -376,6 +376,11 @@ public sealed class ScheduleFunction
         if (session is null)
             return req.NotFound($"Session '{sessionId}' not found.");
 
+        if (session.Status is ScheduleSessionStatus.Completed or ScheduleSessionStatus.Cancelled
+            || ScheduleSessionGenerator.HasRecordedAttendance(session))
+            return req.Conflict(
+                $"Cannot delete session {session.SequenceNumber}: it is finalized or has recorded attendance.");
+
         var auditUser = _currentUser.GetAuditUser();
         var now = DateTime.UtcNow.ToString("o");
         session.Active = false;

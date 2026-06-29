@@ -86,7 +86,8 @@ public static class ScheduleSessionGenerator
     {
         schedule.ProjectedEndDate = schedule.Sessions
             .Where(s => s.Active)
-            .OrderBy(s => s.SequenceNumber)
+            .OrderBy(s => s.Date)
+            .ThenBy(s => s.SequenceNumber)
             .LastOrDefault()
             ?.Date;
     }

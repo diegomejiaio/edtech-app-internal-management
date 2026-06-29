@@ -84,6 +84,20 @@ public class ScheduleSessionGeneratorTests
         act.Should().Throw<ScheduleSessionRegenerationException>();
     }
 
+    [Fact]
+    public void ApplyProjection_UsesMaxDate_WhenSessionRescheduledOutOfOrder()
+    {
+        var schedule = SampleSchedule("MaJ", new DateOnly(2026, 6, 2));
+        schedule.Sessions = [.. ScheduleSessionGenerator.Generate(schedule, 6m, null)];
+
+        // Reschedule the first session past the last one (later date, lower sequenceNumber).
+        schedule.Sessions[0].Date = new DateOnly(2026, 6, 30);
+
+        ScheduleSessionGenerator.ApplyProjection(schedule);
+
+        schedule.ProjectedEndDate.Should().Be(new DateOnly(2026, 6, 30));
+    }
+
     private static Schedule SampleSchedule(string weekdays, DateOnly startDate) => new()
     {
         Id = "sch-1",
