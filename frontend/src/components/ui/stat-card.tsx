@@ -25,6 +25,14 @@ interface StatCardProps {
   isLoading?: boolean;
   valueClassName?: string;
   className?: string;
+  /**
+   * Visual layout. `"default"` keeps the label/icon header row used across
+   * detail and listing pages. `"badge"` mirrors the CRM Métricas cards: a
+   * tinted icon badge on top, then the value, label and hint.
+   */
+  variant?: "default" | "badge";
+  /** Tone color for the icon (and its badge) in the `"badge"` variant. */
+  iconClassName?: string;
 }
 
 /**
@@ -45,7 +53,47 @@ export function StatCard({
   isLoading,
   valueClassName,
   className,
+  variant = "default",
+  iconClassName,
 }: StatCardProps) {
+  if (variant === "badge") {
+    return (
+      <div
+        className={cn(
+          "rounded-lg border bg-background p-3 shadow-sm",
+          className,
+        )}
+      >
+        {Icon && (
+          <div
+            className={cn(
+              "flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground",
+              iconClassName,
+            )}
+          >
+            <Icon className="size-4" />
+          </div>
+        )}
+        {isLoading ? (
+          <Skeleton className="mt-2 h-8 w-24" />
+        ) : (
+          <p
+            className={cn(
+              "mt-2 text-2xl font-semibold tabular-nums",
+              valueClassName,
+            )}
+          >
+            {typeof value === "number" ? <CountUp target={value} /> : value}
+          </p>
+        )}
+        <p className="text-xs font-medium">{label}</p>
+        {description && (
+          <p className="text-[11px] text-muted-foreground">{description}</p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -76,7 +124,27 @@ export function StatCard({
 // StatCardSkeleton - Loading skeleton for stat card
 // =============================================================================
 
-export function StatCardSkeleton({ className }: { className?: string }) {
+export function StatCardSkeleton({
+  className,
+  variant = "default",
+}: {
+  className?: string;
+  variant?: "default" | "badge";
+}) {
+  if (variant === "badge") {
+    return (
+      <div
+        className={cn(
+          "rounded-lg border bg-background p-3 shadow-sm",
+          className,
+        )}
+      >
+        <Skeleton className="size-8 rounded-lg" />
+        <Skeleton className="mt-2 h-8 w-24" />
+        <Skeleton className="mt-1 h-3 w-20" />
+      </div>
+    );
+  }
   return (
     <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">

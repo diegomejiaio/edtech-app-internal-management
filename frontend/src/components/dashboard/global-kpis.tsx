@@ -79,34 +79,42 @@ export function GlobalKpis({ client }: GlobalKpisProps) {
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <StatCardSkeleton key={i} />
+            <StatCardSkeleton key={i} variant="badge" />
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
+            variant="badge"
             label="Alumnos activos"
             value={activeStudents}
             icon={Users}
+            iconClassName="text-sky-500"
             description="Con matrícula vigente"
           />
           <StatCard
+            variant="badge"
             label="Horarios activos"
             value={activeSchedules}
             icon={CalendarRange}
+            iconClassName="text-violet-500"
             description="Clases en curso"
           />
           <StatCard
+            variant="badge"
             label="Ingresos"
             value={formatCurrency(income)}
             icon={TrendingUp}
+            iconClassName="text-emerald-500"
             valueClassName="text-success"
             description="Pagos de alumnos"
           />
           <StatCard
+            variant="badge"
             label="Balance"
             value={formatCurrency(balance)}
             icon={Wallet}
+            iconClassName="text-amber-500"
             valueClassName={balance >= 0 ? 'text-success' : 'text-destructive'}
             description={`Ingresos − gastos (${formatCurrency(expenses)})`}
           />
