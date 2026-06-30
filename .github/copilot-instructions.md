@@ -60,3 +60,28 @@ The `.codegraph/` index is local-only (do not commit). Rebuild with `codegraph i
 ```
 
 Topic key for architecture: `architecture/espacio-pro-v1`. Project name: `edtech-app-internal-management`.
+
+## Run Locally
+
+- **Backend** (Functions host on `:7071`): `cd backend && ./run.sh` (`--no-restore` to skip restore). Requires `backend/src/EspacioPro.Api/local.settings.json` with `COSMOS_*` filled in — copy from the example and complete it before first run.
+- **Frontend** (Next dev on `:3000`): `cd frontend && ./run.sh` (`--no-clean` to keep `.next`). Lightweight alternative: `./run.local.sh`.
+- **Deploy / infra**: `infra/deploy.sh`, `infra/deploy-app.sh`, `infra/deploy-cosmos.sh` (all `--apply` to execute). Remote/cloud writes require explicit approval.
+
+## Frontend Build (hard rule — static export)
+
+Next.js runs with `output: 'export'` (SPA, **no SSR/Server Components**):
+
+- Every page is `'use client'`.
+- A `'use client'` page **cannot** also export `generateStaticParams()` — the build fails. For dynamic routes (`[id]/page.tsx`), put `generateStaticParams` in a **separate server file** (or `generateStaticParams.ts`), keeping the page client-only. Runtime routing is handled by SWA `navigationFallback` + client hydration.
+- A static export build (`pnpm build`) must pass before considering frontend work done — don't claim completion on an unverified build.
+
+## Testing (E2E)
+
+Before touching e2e tests, read `docs/09-testing-strategy.md` and `e2e/TEST_INVENTORY.md`.
+
+- When a test fails, first decide **bad test vs. real bug** — fix or discard mis-stated tests; only "fix the code" when there's a genuine bug.
+- Keep `e2e/TEST_INVENTORY.md` in sync when adding, removing, or restructuring tests.
+
+## Change Scope
+
+Prefer **minimal, scoped changes**: install/configure only what this project needs, not full generic setups. When in doubt about scope, ask before expanding.
