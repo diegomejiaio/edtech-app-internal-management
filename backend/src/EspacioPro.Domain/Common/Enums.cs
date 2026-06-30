@@ -53,3 +53,68 @@ public enum AttendanceStatus
     Absent,
     Late
 }
+
+/// <summary>
+/// WhatsApp conversation lifecycle. Wire format = camelCase string ("open", "pending", "closed").
+/// Per <c>docs/10-whatsapp-crm-mvp.md</c> §1.
+/// </summary>
+public enum WaConversationStatus
+{
+    Open,
+    Pending,
+    Closed
+}
+
+/// <summary>
+/// AI assistance mode for a WhatsApp conversation. Wire: "off", "assist", "autopilot".
+/// </summary>
+public enum WaAiMode
+{
+    Off,
+    Assist,
+    Autopilot
+}
+
+/// <summary>
+/// Lead funnel state. Wire: "new", "interested", "visit", "enrolled", "paid", "noreply", "support".
+/// </summary>
+public enum WaLeadState
+{
+    New,
+    Interested,
+    Visit,
+    Enrolled,
+    Paid,
+    Noreply,
+    Support
+}
+
+/// <summary>
+/// Origin of a WhatsApp message. Wire: "customer", "agent", "bot".
+/// </summary>
+public enum WaMessageSender
+{
+    Customer,
+    Agent,
+    Bot
+}
+
+/// <summary>
+/// WhatsApp message media kind. MVP supports text only.
+/// </summary>
+public enum WaMessageKind
+{
+    Text
+}
+
+/// <summary>
+/// Delivery status of a WhatsApp message. Wire: "sending", "sent", "delivered", "read", "failed".
+/// </summary>
+public enum WaMessageStatus
+{
+    Sending,
+    Sent,
+    Delivered,
+    Read,
+    Failed
+}

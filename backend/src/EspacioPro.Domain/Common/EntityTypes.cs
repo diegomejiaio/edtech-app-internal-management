@@ -16,6 +16,12 @@ public static class EntityTypes
     public const string TeacherPayment = "teacherPayment";
     public const string Expense = "expense";
     public const string AgentThread = "agentThread";
+
+    // WhatsApp CRM (MVP) — container "whatsapp". See docs/10-whatsapp-crm-mvp.md §1.
+    public const string Conversation = "conversation";
+    public const string Message = "message";
+    public const string Lead = "lead";
+    public const string WaConfig = "waConfig";
 }
 
 /// <summary>
@@ -25,4 +31,7 @@ public static class ContainerNames
 {
     public const string Master = "master";
     public const string Operations = "operations";
+
+    /// <summary>WhatsApp CRM container (conversations, messages, leads, config). PK <c>/type</c>.</summary>
+    public const string WhatsApp = "whatsapp";
 }

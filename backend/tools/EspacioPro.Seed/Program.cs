@@ -21,6 +21,7 @@ var yes = argList.Remove("--yes") | argList.Remove("-y");
 var migrateEnums = argList.Remove("--migrate-enums");
 var backfillSessions = argList.Remove("--backfill-sessions");
 var backfillCodes = argList.Remove("--backfill-codes");
+var whatsapp = argList.Remove("--whatsapp");
 var apply = argList.Remove("--apply");
 
 string? excelPath = null;
@@ -73,7 +74,7 @@ if (string.IsNullOrWhiteSpace(database))
 }
 
 excelPath = Path.GetFullPath(excelPath);
-if (!migrateEnums && !backfillSessions && !backfillCodes && !File.Exists(excelPath))
+if (!migrateEnums && !backfillSessions && !backfillCodes && !whatsapp && !File.Exists(excelPath))
 {
     Console.Error.WriteLine($"ERROR: Excel file not found: {excelPath}");
     Console.Error.WriteLine("Pass --excel <path> or set EXCEL_PATH.");
@@ -126,6 +127,8 @@ services.AddScoped<EnrollmentRepository>();
 services.AddScoped<StudentPaymentRepository>();
 services.AddScoped<TeacherPaymentRepository>();
 services.AddScoped<ExpenseRepository>();
+services.AddScoped<WaConversationRepository>();
+services.AddScoped<WaMessageRepository>();
 
 // Seeders (one per entity).
 services.AddScoped<CatalogSeeder>();
@@ -135,6 +138,7 @@ services.AddScoped<ScheduleSeeder>();
 services.AddScoped<EnrollmentSeeder>();
 services.AddScoped<StudentPaymentSeeder>();
 services.AddScoped<ExpenseSeeder>();
+services.AddScoped<WhatsAppSeeder>();
 
 await using var provider = services.BuildServiceProvider();
 var logger = provider.GetRequiredService<ILogger<Program>>();
@@ -145,13 +149,22 @@ logger.LogInformation("  auth     : {Mode}", hasConnectionString ? "connection s
 logger.LogInformation("  endpoint : {Endpoint}", hasEndpoint ? endpoint : "(via connection string)");
 logger.LogInformation("  database : {Db}", database);
 logger.LogInformation("  connection: {Mode}", string.IsNullOrWhiteSpace(connectionMode) ? "Direct" : connectionMode);
-if (!migrateEnums && !backfillSessions && !backfillCodes)
+if (!migrateEnums && !backfillSessions && !backfillCodes && !whatsapp)
     logger.LogInformation("  excel    : {Path}", excelPath);
 logger.LogInformation("  reset    : {Reset}", reset);
-logger.LogInformation("  mode     : {Mode}", migrateEnums ? "enum migration" : backfillSessions ? "session backfill" : backfillCodes ? "code backfill" : "seed");
+logger.LogInformation("  mode     : {Mode}", migrateEnums ? "enum migration" : backfillSessions ? "session backfill" : backfillCodes ? "code backfill" : whatsapp ? "whatsapp seed" : "seed");
 
 try
 {
+    if (whatsapp)
+    {
+        using var waScope = provider.CreateScope();
+        logger.LogInformation("Seeding whatsapp conversations...");
+        var convos = await waScope.ServiceProvider.GetRequiredService<WhatsAppSeeder>().RunAsync();
+        logger.LogInformation("Done. Inserted whatsapp conversations={Count}", convos);
+        return 0;
+    }
+
     if (migrateEnums)
     {
         var migrator = provider.GetRequiredService<EnumWireFormatMigrator>();
