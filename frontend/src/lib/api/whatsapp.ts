@@ -258,18 +258,22 @@ export const improveMessage = (
   );
 
 // ---------------------------------------------------------------------------
-// Mock fallback
+// Mock data layer (hard-coded CRM data)
 //
-// Lets `pnpm dev` render a working inbox with no WhatsApp number/backend.
-// Forced via NEXT_PUBLIC_WA_MOCK, or automatic on network errors (backend
-// unreachable). HTTP errors (ApiError) propagate so real failures stay visible.
+// The WhatsApp CRM is a mockup: there is no live WhatsApp number yet and the
+// Cosmos `whatsapp` container is empty, so the inbox/explorer use hard-coded
+// data by DEFAULT in every environment. This is scoped to the CRM only — other
+// sections use their own data layers and hit the real backend.
+//
+// To connect the real backend later, set NEXT_PUBLIC_WA_MOCK="false" (or "0").
 // ---------------------------------------------------------------------------
 
-const WA_MOCK =
-  typeof process !== 'undefined' &&
-  Boolean(
-    (process.env as Record<string, string | undefined>)['NEXT_PUBLIC_WA_MOCK'],
-  );
+const WA_MOCK = (() => {
+  if (typeof process === 'undefined') return true;
+  const flag = (process.env as Record<string, string | undefined>)['NEXT_PUBLIC_WA_MOCK'];
+  // Default ON; only an explicit "false"/"0" opts out (to use the live backend).
+  return flag !== 'false' && flag !== '0';
+})();
 
 async function withMock<T>(
   real: () => Promise<T>,
