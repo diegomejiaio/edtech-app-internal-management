@@ -52,6 +52,7 @@ public sealed class StudentPaymentFunction
     {
         var enrollmentId = req.Query["enrollmentId"].FirstOrDefault();
         var studentId = req.Query["studentId"].FirstOrDefault();
+        var search = req.Query["search"].FirstOrDefault();
         var includeInactive = ParseBool(req.Query["includeInactive"].FirstOrDefault());
         var limit = ClampLimit(req.Query["limit"].FirstOrDefault());
         var offset = Math.Max(0, ParseInt(req.Query["offset"].FirstOrDefault(), 0));
@@ -61,7 +62,7 @@ public sealed class StudentPaymentFunction
         if (!TryParseDate(req.Query["to"].FirstOrDefault(), out var to))
             return req.ValidationError("to", "to must be ISO date YYYY-MM-DD.");
 
-        var (items, total) = await _repo.SearchAsync(enrollmentId, studentId, from, to, includeInactive, limit, offset, ct);
+        var (items, total) = await _repo.SearchAsync(enrollmentId, studentId, from, to, includeInactive, limit, offset, search, ct);
         return new OkObjectResult(new Paginated<StudentPayment>(items, total, limit, offset));
     }
 

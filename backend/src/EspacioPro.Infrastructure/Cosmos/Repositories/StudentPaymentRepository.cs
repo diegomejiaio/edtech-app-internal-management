@@ -28,6 +28,10 @@ public sealed class StudentPaymentRepository : CosmosRepository<StudentPayment>
         ILogger<StudentPaymentRepository> logger)
         : base(cosmosClient, options, currentUser, logger) { }
 
+    /// <inheritdoc />
+    protected override void OnBeforeWrite(StudentPayment entity) =>
+        entity.SearchText = TextNormalizer.Compose(entity.StudentName, entity.Code);
+
     /// <summary>Finds a <see cref="StudentPayment"/> by its short business <c>code</c>.</summary>
     public async Task<StudentPayment?> GetByCodeAsync(string code, bool includeInactive = false, CancellationToken ct = default)
     {
@@ -61,13 +65,20 @@ public sealed class StudentPaymentRepository : CosmosRepository<StudentPayment>
         bool includeInactive,
         int limit,
         int offset,
+        string? search = null,
         CancellationToken ct = default)
     {
+        // Normalize the free-text query the same way searchText is stored (accent/case-insensitive).
+        var q = string.IsNullOrWhiteSpace(search) ? null : TextNormalizer.Normalize(search);
+
         var where = "c.type = @type" + (includeInactive ? "" : " AND c.active = true");
         if (!string.IsNullOrWhiteSpace(enrollmentId)) where += " AND c.enrollmentId = @enrollmentId";
         if (!string.IsNullOrWhiteSpace(studentId)) where += " AND c.studentId = @studentId";
         if (from is not null) where += " AND c.date >= @from";
         if (to is not null) where += " AND c.date <= @to";
+        // Cost note: the date range (indexed) narrows the set first; CONTAINS then scans only
+        // that subset. Combined with the default current-month view this keeps RU low.
+        if (q is not null) where += " AND CONTAINS(c.searchText, @q)";
 
         var countDef = new QueryDefinition($"SELECT VALUE COUNT(1) FROM c WHERE {where}")
             .WithParameter("@type", TypeDiscriminator);
@@ -77,6 +88,11 @@ public sealed class StudentPaymentRepository : CosmosRepository<StudentPayment>
             .WithParameter("@offset", offset)
             .WithParameter("@limit", limit);
 
+        if (q is not null)
+        {
+            countDef.WithParameter("@q", q);
+            pageDef.WithParameter("@q", q);
+        }
         if (!string.IsNullOrWhiteSpace(enrollmentId))
         {
             countDef.WithParameter("@enrollmentId", enrollmentId);

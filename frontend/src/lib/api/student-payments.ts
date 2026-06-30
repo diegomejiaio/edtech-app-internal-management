@@ -41,6 +41,8 @@ export interface StudentPaymentListParams extends ListParams {
   studentId?: string;
   from?: string;
   to?: string;
+  /** Free-text search over the student's name (server-side, accent-insensitive). */
+  search?: string;
 }
 
 /** A debtor row returned by the debtors operational endpoint. */

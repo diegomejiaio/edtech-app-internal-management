@@ -4,14 +4,16 @@
  * Student Payments list page — M6.
  */
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, useEffect, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { formatTableDate } from '@/lib/dates';
-import { toIsoDate } from '@/lib/dashboard-period';
+import { toIsoDate, presetRange, rangeToIso, type DateRange } from '@/lib/dashboard-period';
 import { flattenInfiniteItems, getInfiniteTotal, useEnrollment, useStudentPayments, useInfiniteStudentPayments, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from '@/hooks';
 import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, ReadOnlyField, type Column } from '@/components/data';
 import { EnrollmentPicker, CatalogSelect } from '@/components/pickers';
+import { FilterBar, SearchInput } from '@/components/ui/filter-bar';
+import { PeriodFilter } from '@/components/dashboard/period-filter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,11 +45,30 @@ export default function StudentPaymentsPage() {
   const client = useApiClient();
   const limit = 25;
 
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteStudentPayments(client, {
-    limit,
-  });
+  // Filters: default to the current month; search by student name (server-side).
+  const [range, setRange] = useState<DateRange>(() => presetRange('last30Days')!);
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);
+    return () => clearTimeout(id);
+  }, [searchInput]);
+
+  const { from, to } = useMemo(() => rangeToIso(range), [range]);
+  const listParams = useMemo(
+    () => ({ limit, from, to, search: debouncedSearch || undefined }),
+    [from, to, debouncedSearch],
+  );
+
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteStudentPayments(
+    client,
+    listParams,
+  );
   const studentPayments = useMemo(() => flattenInfiniteItems(data, { sortBy: (p) => p.date }), [data]);
   const total = getInfiniteTotal(data);
+  const defaultIso = useMemo(() => rangeToIso(presetRange('last30Days')!), []);
+  const filtersActive = debouncedSearch.length > 0 || from !== defaultIso.from || to !== defaultIso.to;
   const createMutation = useCreateStudentPayment(client);
   const updateMutation = useUpdateStudentPayment(client);
   const deleteMutation = useDeleteStudentPayment(client);
@@ -115,6 +136,28 @@ export default function StudentPaymentsPage() {
         description="Registro de pagos por inscripción"
         action={<Button onClick={openCreate}>Nuevo pago</Button>}
       />
+
+      <FilterBar>
+        <SearchInput
+          value={searchInput}
+          onChange={setSearchInput}
+          placeholder="Buscar por nombre del alumno…"
+        />
+        <PeriodFilter
+          value={range}
+          onChange={setRange}
+          presets={['last30Days', 'thisMonth', 'last3Months', 'custom']}
+        />
+        {(filtersActive || searchInput) && (
+          <Button
+            variant="ghost"
+            onClick={() => { setSearchInput(''); setRange(presetRange('last30Days')!); }}
+            className="sm:ml-auto"
+          >
+            Limpiar
+          </Button>
+        )}
+      </FilterBar>
 
       <DataTable
         columns={columns}

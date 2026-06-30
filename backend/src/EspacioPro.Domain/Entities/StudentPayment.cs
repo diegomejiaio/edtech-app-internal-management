@@ -65,4 +65,11 @@ public sealed class StudentPayment : BaseEntity
 
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
+
+    /// <summary>
+    /// Precomputed accent- and case-insensitive index (studentName + code) used by
+    /// paginated search. Set by the repository on every write; do not assign from API code.
+    /// </summary>
+    [JsonPropertyName("searchText")]
+    public string? SearchText { get; set; }
 }
