@@ -263,6 +263,28 @@ Telegram agent via its `X-Agent-Key` admin bypass; all endpoints are `[RequireRo
   deviation from the soft-delete-only rule, justified by the document being ephemeral session state.
 - Response shape (200): `{ "chatId": 123, "threadId": "thread_...", "updatedAt": "ISO-8601" }`.
 
+### 5.11 `/api/v1/wa/*` (add-on — WhatsApp CRM MVP)
+
+Shared inbox for the WhatsApp CRM. Stored in the dedicated `whatsapp` container
+(`type = conversation|message|lead|waConfig`, PK `/type`). Audit + soft-delete apply.
+All endpoints are `[RequireRole("admin")]` except the Meta webhook (anonymous by design).
+In v1 the webhook, AI suggestion and outbound Meta send are **stubs** — full design,
+field-level contract and learnings live in `docs/10-whatsapp-crm-mvp.md`.
+
+| Method | URI | Notes |
+|---|---|---|
+| GET | `/wa/conversations?status=&search=&limit=&offset=` | Paginated inbox (`Paginated<T>`), ordered by `lastMessageAt`. |
+| GET | `/wa/conversations/{id}` | One conversation. |
+| PUT / PATCH | `/wa/conversations/{id}` | Partial update `{status?, assignedTo?, aiMode?, leadState?}`. PUT accepted because the SPA client has no PATCH. |
+| GET | `/wa/conversations/{id}/messages?limit=&offset=` | Thread, ordered by `ts`. |
+| POST | `/wa/conversations/{id}/messages` | Agent manual reply `{text}`. Stores agent `message` (`status=sent`), updates conversation `lastMessage*` + `unread=0`. Meta send is stubbed. |
+| POST | `/wa/conversations/{id}/ai-suggest` | Stub copilot: `{ "suggestion": "...", "confidence": 0.6 }`. |
+| GET / POST | `/wa/webhook` | Meta verify (GET echoes `hub.challenge`) + events (POST → 200). HMAC-ready stub. Anonymous. |
+
+**Storage**: `whatsapp` container. `aiMode` (off/assist/autopilot) and `leadState`
+(new/interested/enrolled/paid/noreply/support) drive the copilot; autopilot is restricted
+to safe intents (horarios/precios/ubicación/link). Tokens (`verifyToken`) are never persisted.
+
 ---
 
 ## 6. Critical query designs

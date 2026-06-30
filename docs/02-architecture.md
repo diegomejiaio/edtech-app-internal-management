@@ -40,9 +40,16 @@
 │   db: espaciopro       (prod)                │
 │   db: espaciopro-dev   (local dev)           │
 │   ├─ master      PK /type                    │
-│   └─ operations  PK /type                    │
+│   ├─ operations  PK /type                    │
+│   └─ whatsapp    PK /type  (WA CRM add-on)   │
 └──────────────────────────────────────────────┘
 ```
+
+> **WhatsApp CRM (add-on, MVP).** A third container `whatsapp` (PK `/type`) holds
+> `conversation`/`message`/`lead`/`waConfig`. It is an optional module on top of the
+> core 2-container design; full spec, API and learnings in `docs/10-whatsapp-crm-mvp.md`.
+> Latency-critical paths (webhook ACK, AI orchestrator) are planned on **Azure Container
+> Apps `minReplicas=1`** (no cold start), not Functions Consumption.
 
 > **No Key Vault in v1**. Every Clerk config (`CLERK_JWKS_URL`, `CLERK_ISSUER`) is a public URL/string and lives in plain App Settings. Clerk Secret Key is NOT required because backend never calls Clerk Backend API in v1. Cosmos en producción usa Managed Identity → sin connection string. Para dev local también se prefiere `az login` + `DefaultAzureCredential`; existe un fallback opcional vía `COSMOS_CONNECTION_STRING` (sólo en `local.settings.json`, gitignored) para desarrolladores que aún no tienen RBAC asignado — prohibido en producción.
 

@@ -469,7 +469,12 @@ export type ScheduleStatus = typeof ScheduleStatus[keyof typeof ScheduleStatus];
 
 ## 10. Type discriminators (canonical)
 
-Cosmos partition key is `/type`. Both containers (`master`, `operations`) share the same scheme. **Values are camelCase singular** — no underscores, no plurals.
+Cosmos partition key is `/type`. The core containers (`master`, `operations`) share the same scheme. **Values are camelCase singular** — no underscores, no plurals.
+
+> Add-on modules introduce their own `type` values outside this core table:
+> the Telegram agent uses `agentThread` (`operations`), and the WhatsApp CRM add-on
+> uses `conversation`/`message`/`lead`/`waConfig` in a dedicated `whatsapp` container
+> (see `04-api-design.md` §5.10–§5.11 and `10-whatsapp-crm-mvp.md`).
 
 | Entity | `type` value | Container |
 |---|---|---|

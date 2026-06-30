@@ -54,7 +54,7 @@ These keys are kept verbatim because they're external conventions:
 
 ## 3. Type discriminator values
 
-Cosmos partition key is `/type`. Both containers (`master`, `operations`) use the same discriminator scheme.
+Cosmos partition key is `/type`. The core containers (`master`, `operations`) use the same discriminator scheme. Add-on modules add their own: `agentThread` (`operations`) and the WhatsApp CRM types `conversation`/`message`/`lead`/`waConfig` in a dedicated `whatsapp` container — see `10-whatsapp-crm-mvp.md`.
 
 | Entity | `type` value | Container |
 |---|---|---|

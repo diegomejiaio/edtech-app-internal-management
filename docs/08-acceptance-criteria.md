@@ -115,3 +115,9 @@ v1 closes when every operation in the legacy spreadsheet is executable from the 
 - Electronic invoicing integration (only `receiptNumber` stored as text)
 - Staging environment
 - Student portal
+
+> **Add-ons outside the M0–M9 core plan** (each with its own doc, not gated by these
+> milestones): the Telegram agent (`04-api-design.md` §5.10) and the **WhatsApp CRM MVP**
+> (`10-whatsapp-crm-mvp.md`). The CRM is an operational inbox product — distinct from the
+> "WhatsApp notifications" listed above as out of v1 core scope. In its MVP, webhook/AI/Meta
+> send are stubs and it is validated locally at UI level only.
