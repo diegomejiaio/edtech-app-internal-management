@@ -10,12 +10,13 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Clock, Bot, UserCheck, TrendingUp, MessageSquare, CalendarClock, X, ChevronRight } from 'lucide-react';
+import { Clock, Bot, UserCheck, TrendingUp, MessageSquare, CalendarClock, X, ChevronRight, Table2, MousePointerClick } from 'lucide-react';
 import { useApiClient } from '@/hooks/use-api-client';
 import { useConversations } from '@/hooks';
 import { WA_LEAD_STATE_LABELS, type WaConversation, type WaLeadState } from '@/lib/api';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { StatCard } from '@/components/ui/stat-card';
 import { cn } from '@/lib/utils';
 
 const FUNNEL: WaLeadState[] = ['new', 'interested', 'visit', 'enrolled', 'paid'];
@@ -120,137 +121,148 @@ export default function MetricsPage() {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[1fr_320px]">
-        <div className="min-h-0 overflow-y-auto p-4">
-          {/* KPI cards */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-            {KPIS[period].map((k) => (
-              <div key={k.label} className="rounded-lg border bg-background p-3 shadow-sm">
-                <div className={cn('flex size-8 items-center justify-center rounded-lg bg-muted', k.tone)}>
-                  <k.icon className="size-4" />
-                </div>
-                <p className="mt-2 text-2xl font-semibold">{k.value}</p>
-                <p className="text-xs font-medium">{k.label}</p>
-                <p className="text-[11px] text-muted-foreground">{k.hint}</p>
-              </div>
-            ))}
-          </div>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+        {/* KPI cards */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+          {KPIS[period].map((k) => (
+            <StatCard
+              key={k.label}
+              variant="badge"
+              icon={k.icon}
+              iconClassName={k.tone}
+              value={k.value}
+              label={k.label}
+              description={k.hint}
+            />
+          ))}
+        </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
-            {/* Lead funnel */}
-            <div className="rounded-lg border bg-background p-4 shadow-sm xl:col-span-2">
-              <h2 className="text-sm font-semibold">Embudo de leads</h2>
-              <p className="text-xs text-muted-foreground">Clic en una etapa para ver los registros</p>
-              <div className="mt-4 space-y-2">
-                {FUNNEL.map((s) => {
-                  const n = counts[s];
-                  const widthPct = Math.round((n / maxCount) * 100);
-                  const convPct = Math.round((n / topCount) * 100);
-                  const active = drill?.type === 'stage' && drill.value === s;
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setDrill({ type: 'stage', value: s })}
-                      className={cn(
-                        'flex w-full items-center gap-3 rounded-md p-1 text-left transition-colors hover:bg-muted/50',
-                        active && 'bg-muted',
-                      )}
-                    >
-                      <span className="w-32 shrink-0 text-sm">{WA_LEAD_STATE_LABELS[s]}</span>
-                      <div className="h-7 flex-1 overflow-hidden rounded-md bg-muted">
-                        <div
-                          className="flex h-full items-center rounded-md bg-primary px-2 text-xs font-medium text-neutral-900 transition-all"
-                          style={{ width: `${Math.max(widthPct, n > 0 ? 8 : 0)}%` }}
-                        >
-                          {n > 0 ? n : ''}
-                        </div>
-                      </div>
-                      <span className="w-12 shrink-0 text-right text-xs text-muted-foreground">{convPct}%</span>
-                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Program split */}
-            <div className="rounded-lg border bg-background p-4 shadow-sm">
-              <h2 className="text-sm font-semibold">Por programa</h2>
-              <p className="text-xs text-muted-foreground">Clic para ver los registros</p>
-              <div className="mt-4 space-y-3">
-                {PROGRAM_SPLIT.map((p) => (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          {/* Lead funnel */}
+          <div className="rounded-lg border bg-background p-4 shadow-sm xl:col-span-2">
+            <h2 className="text-sm font-semibold">Embudo de leads</h2>
+            <p className="text-xs text-muted-foreground">Clic en una etapa para ver los registros</p>
+            <div className="mt-4 space-y-2">
+              {FUNNEL.map((st) => {
+                const n = counts[st];
+                const widthPct = Math.round((n / maxCount) * 100);
+                const convPct = Math.round((n / topCount) * 100);
+                const active = drill?.type === 'stage' && drill.value === st;
+                return (
                   <button
-                    key={p.key}
+                    key={st}
                     type="button"
-                    onClick={() => setDrill({ type: 'program', value: p.key })}
+                    onClick={() => setDrill({ type: 'stage', value: st })}
                     className={cn(
-                      'w-full rounded-md p-1 text-left transition-colors hover:bg-muted/50',
-                      drill?.type === 'program' && drill.value === p.key && 'bg-muted',
+                      'flex w-full items-center gap-3 rounded-md p-1 text-left transition-colors hover:bg-muted/50',
+                      active && 'bg-muted',
                     )}
                   >
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span>{p.label}</span>
-                      <span className="text-muted-foreground">{p.value}%</span>
+                    <span className="w-32 shrink-0 text-sm">{WA_LEAD_STATE_LABELS[st]}</span>
+                    <div className="h-7 flex-1 overflow-hidden rounded-md bg-muted">
+                      <div
+                        className="flex h-full items-center rounded-md bg-primary px-2 text-xs font-medium text-neutral-900 transition-all"
+                        style={{ width: `${Math.max(widthPct, n > 0 ? 8 : 0)}%` }}
+                      >
+                        {n > 0 ? n : ''}
+                      </div>
                     </div>
-                    <div className="h-2.5 overflow-hidden rounded-full bg-muted">
-                      <div className={cn('h-full rounded-full', p.className)} style={{ width: `${p.value}%` }} />
-                    </div>
+                    <span className="w-12 shrink-0 text-right text-xs text-muted-foreground">{convPct}%</span>
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                   </button>
-                ))}
-              </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Program split */}
+          <div className="rounded-lg border bg-background p-4 shadow-sm">
+            <h2 className="text-sm font-semibold">Por programa</h2>
+            <p className="text-xs text-muted-foreground">Clic para ver los registros</p>
+            <div className="mt-4 space-y-3">
+              {PROGRAM_SPLIT.map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  onClick={() => setDrill({ type: 'program', value: p.key })}
+                  className={cn(
+                    'w-full rounded-md p-1 text-left transition-colors hover:bg-muted/50',
+                    drill?.type === 'program' && drill.value === p.key && 'bg-muted',
+                  )}
+                >
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span>{p.label}</span>
+                    <span className="text-muted-foreground">{p.value}%</span>
+                  </div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+                    <div className={cn('h-full rounded-full', p.className)} style={{ width: `${p.value}%` }} />
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Drill-down panel (Metabase-style) */}
-        <aside className="hidden min-h-0 flex-col overflow-hidden border-l lg:flex">
-          {drill ? (
-            <>
-              <div className="flex items-center justify-between border-b p-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{drillTitle}</p>
-                  <p className="text-xs text-muted-foreground">{drillRows.length} registros</p>
-                </div>
-                <button type="button" onClick={() => setDrill(null)} aria-label="Cerrar" className="rounded-md p-1 hover:bg-muted">
-                  <X className="size-4" />
-                </button>
+        {/* Data explorer (Metabase-style) — full width below, uses the available space */}
+        <div className="rounded-lg border bg-background shadow-sm">
+          <div className="flex items-center justify-between border-b p-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <Table2 className="size-4" />
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                {drillRows.length === 0 ? (
-                  <p className="p-4 text-sm text-muted-foreground">Sin registros en la muestra actual.</p>
-                ) : (
-                  <ul>
-                    {drillRows.map((c) => (
-                      <li key={c.id}>
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/crm/inbox?c=${encodeURIComponent(c.id)}`)}
-                          className="flex w-full items-center gap-3 border-b px-3 py-2.5 text-left hover:bg-muted/50"
-                        >
-                          <Avatar className="size-8"><AvatarFallback className="text-[10px]">{initials(c.displayName)}</AvatarFallback></Avatar>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{c.displayName}</p>
-                            <p className="truncate text-xs text-muted-foreground">{c.phone}</p>
-                          </div>
-                          {c.program && (
-                            <Badge className="bg-primary/15 px-1.5 py-0 text-[10px] font-medium text-primary hover:bg-primary/15">
-                              {c.program.charAt(0).toUpperCase() + c.program.slice(1)}
-                            </Badge>
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold">Explorador de datos</h2>
+                <p className="truncate text-xs text-muted-foreground">
+                  {drill ? `${drillTitle} · ${drillRows.length} registros` : 'Clic en una etapa del embudo o un programa para ver los registros asociados.'}
+                </p>
               </div>
-            </>
+            </div>
+            {drill && (
+              <button type="button" onClick={() => setDrill(null)} aria-label="Limpiar selección" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
+
+          {!drill ? (
+            <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
+              <div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <MousePointerClick className="size-5" />
+              </div>
+              <p className="text-sm font-medium">Selecciona una etapa o programa</p>
+              <p className="max-w-sm text-xs text-muted-foreground">
+                Al hacer clic en una barra del embudo o en un programa, aquí aparecerán los contactos asociados.
+              </p>
+            </div>
+          ) : drillRows.length === 0 ? (
+            <p className="px-4 py-12 text-center text-sm text-muted-foreground">Sin registros en la muestra actual.</p>
           ) : (
-            <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-              Clic en una etapa del embudo o un programa para explorar los registros asociados.
+            <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {drillRows.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => router.push(`/crm/inbox?c=${encodeURIComponent(c.id)}`)}
+                  className="flex items-center gap-3 rounded-lg border bg-background p-2.5 text-left transition-colors hover:border-primary hover:bg-muted/50"
+                >
+                  <Avatar className="size-9"><AvatarFallback className="text-[11px]">{initials(c.displayName)}</AvatarFallback></Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{c.displayName}</p>
+                    <p className="truncate text-xs text-muted-foreground">{c.phone}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-normal">{WA_LEAD_STATE_LABELS[c.leadState]}</Badge>
+                    {c.program && (
+                      <Badge className="bg-primary/15 px-1.5 py-0 text-[10px] font-medium text-primary hover:bg-primary/15">
+                        {c.program.charAt(0).toUpperCase() + c.program.slice(1)}
+                      </Badge>
+                    )}
+                  </div>
+                </button>
+              ))}
             </div>
           )}
-        </aside>
+        </div>
       </div>
     </div>
   );

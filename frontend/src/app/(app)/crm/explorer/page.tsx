@@ -14,12 +14,12 @@
 import { useMemo, useState, type DragEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { KanbanSquare, Table as TableIcon, Bot, CalendarClock, Search } from 'lucide-react';
+import { KanbanSquare, Table as TableIcon, Bot, CalendarClock } from 'lucide-react';
 import { useApiClient } from '@/hooks/use-api-client';
 import { useConversations, useUpdateConversation } from '@/hooks';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/filter-bar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Table,
@@ -120,41 +120,39 @@ export default function ExplorerPage() {
         <span className="text-xs text-muted-foreground">{conversations.length} contactos</span>
       </div>
 
-      {/* Filter bar: search + program (drywall/melamina/…) */}
-      <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-        <div className="relative w-56">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar contacto…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 pl-8"
-          />
-        </div>
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Programa:</span>
-        <button
-          type="button"
-          onClick={() => setProgramFilter('all')}
-          className={cn(
-            'rounded-full border px-2.5 py-1 text-xs transition-colors',
-            programFilter === 'all' ? 'border-primary bg-primary text-neutral-900' : 'text-muted-foreground hover:bg-muted',
-          )}
-        >
-          Todos
-        </button>
-        {programs.map((p) => (
+      {/* Filter bar: prominent full-width search + program quick-filter (drywall/melamina/…) */}
+      <div className="flex flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center">
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar contacto por nombre o teléfono…"
+        />
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+          <span className="mr-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Programa:</span>
           <button
-            key={p}
             type="button"
-            onClick={() => setProgramFilter(p)}
+            onClick={() => setProgramFilter('all')}
             className={cn(
               'rounded-full border px-2.5 py-1 text-xs transition-colors',
-              programFilter === p ? 'border-primary bg-primary text-neutral-900' : 'text-muted-foreground hover:bg-muted',
+              programFilter === 'all' ? 'border-primary bg-primary text-neutral-900' : 'text-muted-foreground hover:bg-muted',
             )}
           >
-            {programLabel(p)}
+            Todos
           </button>
-        ))}
+          {programs.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setProgramFilter(p)}
+              className={cn(
+                'rounded-full border px-2.5 py-1 text-xs transition-colors',
+                programFilter === p ? 'border-primary bg-primary text-neutral-900' : 'text-muted-foreground hover:bg-muted',
+              )}
+            >
+              {programLabel(p)}
+            </button>
+          ))}
+        </div>
       </div>
 
       <Tabs defaultValue="kanban" className="flex min-h-0 flex-1 flex-col">

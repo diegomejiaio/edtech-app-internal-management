@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/filter-bar';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -136,20 +137,22 @@ export default function LibraryPage() {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b p-3">
-        <h1 className="text-sm font-semibold">Reutilizables</h1>
+        <div className="flex items-baseline gap-2">
+          <h1 className="text-sm font-semibold">Reutilizables</h1>
+          <span className="text-xs text-muted-foreground">{visible.length} elementos</span>
+        </div>
         <Button size="sm" variant="outline" className="h-8 gap-1" onClick={openCreate}>
           <Plus className="size-4" /> Nuevo
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-        <Input
-          placeholder="Buscar contenido…"
+      <div className="flex flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center">
+        <SearchInput
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="h-9 w-56"
+          onChange={setSearch}
+          placeholder="Buscar contenido por título o etiqueta…"
         />
-        <div className="flex flex-wrap gap-1">
+        <div className="flex shrink-0 flex-wrap gap-1">
           {FILTERS.map((f) => (
             <button
               key={f.value}
@@ -164,7 +167,6 @@ export default function LibraryPage() {
             </button>
           ))}
         </div>
-        <span className="ml-auto text-xs text-muted-foreground">{visible.length} elementos</span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
