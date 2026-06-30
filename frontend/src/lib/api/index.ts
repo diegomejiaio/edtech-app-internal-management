@@ -44,3 +44,7 @@ export type { TeacherPayment, TeacherPaymentBody, TeacherPaymentListParams as Te
 // Expenses
 export { getExpenses, getExpense, createExpense, updateExpense, deleteExpense } from './expenses';
 export type { Expense, ExpenseBody, ExpenseListParams } from './expenses';
+
+// WhatsApp CRM
+export { getConversations, getConversation, updateConversation, getMessages, sendMessage, aiSuggest, improveMessage, WA_STATUS_LABELS, WA_AI_MODE_LABELS, WA_LEAD_STATE_LABELS } from './whatsapp';
+export type { WaConversation, WaMessage, WaAttachment, WaStatus, WaAiMode, WaLeadState, WaSender, WaMessageStatus, WaConversationListParams, WaConversationUpdate, WaSendBody, WaAiSuggestion, WaImproveAction, WaImproveBody, WaImproveResult } from './whatsapp';

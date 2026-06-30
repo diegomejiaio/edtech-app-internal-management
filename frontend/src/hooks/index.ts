@@ -13,6 +13,7 @@ export { useEnrollments, useInfiniteEnrollments, useEnrollment, useCreateEnrollm
 export { useStudentPayments, useInfiniteStudentPayments, useDebtors, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from './use-student-payments';
 export { useTeacherPayments, useInfiniteTeacherPayments, useCreateTeacherPayment, useUpdateTeacherPayment, useDeleteTeacherPayment } from './use-teacher-payments';
 export { useExpenses, useInfiniteExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from './use-expenses';
+export { useConversations, useConversation, useMessages, useInfiniteMessages, useUpdateConversation, useSendMessage, useAiSuggest, useImproveMessage } from './use-whatsapp';
 export { flattenInfiniteItems, getInfiniteTotal } from './infinite-list';
 
 // Utilities
