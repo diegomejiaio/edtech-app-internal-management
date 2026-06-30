@@ -10,7 +10,10 @@ import {
   endOfMonth,
   startOfYear,
   endOfYear,
+  startOfDay,
+  endOfDay,
   subMonths,
+  subDays,
 } from 'date-fns';
 
 /** A date range expressed as native `Date` objects (inclusive). */
@@ -19,8 +22,8 @@ export interface DateRange {
   to: Date;
 }
 
-/** Available presets for the dashboard period filter. */
-export type PeriodPreset = 'thisMonth' | 'last3Months' | 'thisYear' | 'custom';
+/** Available presets for the period filter. */
+export type PeriodPreset = 'last30Days' | 'thisMonth' | 'last3Months' | 'thisYear' | 'custom';
 
 /** Returns `YYYY-MM` for the current month in local time. */
 export function currentMonth(): string {
@@ -50,6 +53,8 @@ export function toIsoDate(date: Date): string {
 /** Returns the `from`/`to` Date range for a given preset, anchored at `now`. */
 export function presetRange(preset: PeriodPreset, now: Date = new Date()): DateRange | undefined {
   switch (preset) {
+    case 'last30Days':
+      return { from: startOfDay(subDays(now, 29)), to: endOfDay(now) };
     case 'thisMonth':
       return { from: startOfMonth(now), to: endOfMonth(now) };
     case 'last3Months':

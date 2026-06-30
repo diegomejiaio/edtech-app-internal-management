@@ -7,7 +7,7 @@
  * Emits `DateRange` so consumers can convert with `rangeToIso` when calling APIs.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { CalendarIcon } from 'lucide-react';
 import { format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -35,20 +35,25 @@ import {
 } from '@/lib/dashboard-period';
 
 const PRESET_LABELS: Record<PeriodPreset, string> = {
+  last30Days: 'Últimos 30 días',
   thisMonth: 'Este mes',
   last3Months: 'Últimos 3 meses',
   thisYear: 'Este año',
   custom: 'Personalizado',
 };
 
+const DEFAULT_PRESETS: PeriodPreset[] = ['thisMonth', 'last3Months', 'thisYear', 'custom'];
+
 interface PeriodFilterProps {
   value: DateRange;
   onChange: (value: DateRange) => void;
   className?: string;
+  /** Which presets to offer (and their order). Defaults to the dashboard set. */
+  presets?: PeriodPreset[];
 }
 
 function detectPreset(value: DateRange): PeriodPreset {
-  for (const preset of ['thisMonth', 'last3Months', 'thisYear'] as const) {
+  for (const preset of ['last30Days', 'thisMonth', 'last3Months', 'thisYear'] as const) {
     const range = presetRange(preset);
     if (
       range &&
@@ -67,23 +72,24 @@ function formatRangeLabel(range: DateRange): string {
   return `${format(range.from, fromFmt, { locale: es })} – ${format(range.to, 'd MMM yyyy', { locale: es })}`;
 }
 
-export function PeriodFilter({ value, onChange, className }: PeriodFilterProps) {
-  const [preset, setPreset] = useState<PeriodPreset>(() => detectPreset(value));
+export function PeriodFilter({ value, onChange, className, presets = DEFAULT_PRESETS }: PeriodFilterProps) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [tempRange, setTempRange] = useState<DayPickerRange | undefined>({
     from: value.from,
     to: value.to,
   });
 
-  useEffect(() => {
-    setPreset(detectPreset(value));
-    setTempRange({ from: value.from, to: value.to });
-  }, [value]);
+  // Derive the active preset from `value` during render (no state-sync effect).
+  // While the custom calendar is open we force the "custom" label.
+  const detected = detectPreset(value);
+  const preset: PeriodPreset = calendarOpen ? 'custom' : detected;
 
   function handlePresetChange(next: PeriodPreset) {
-    setPreset(next);
     if (next === 'custom') {
-      setCalendarOpen(true);
+      setTempRange({ from: value.from, to: value.to });
+      // Defer opening so the Select's closing pointer/focus events don't
+      // immediately dismiss the calendar popover (Radix dismissable-layer race).
+      setTimeout(() => setCalendarOpen(true), 0);
       return;
     }
     const range = presetRange(next);
@@ -94,15 +100,11 @@ export function PeriodFilter({ value, onChange, className }: PeriodFilterProps) 
     setTempRange(range);
     if (range?.from && range?.to) {
       onChange({ from: range.from, to: range.to });
-      setPreset('custom');
       setTimeout(() => setCalendarOpen(false), 200);
     }
   }
 
-  const displayLabel = useMemo(() => {
-    if (preset !== 'custom') return PRESET_LABELS[preset];
-    return formatRangeLabel(value);
-  }, [preset, value]);
+  const displayLabel = preset !== 'custom' ? PRESET_LABELS[preset] : formatRangeLabel(value);
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
@@ -114,10 +116,9 @@ export function PeriodFilter({ value, onChange, className }: PeriodFilterProps) 
           <SelectValue>{displayLabel}</SelectValue>
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="thisMonth">{PRESET_LABELS.thisMonth}</SelectItem>
-          <SelectItem value="last3Months">{PRESET_LABELS.last3Months}</SelectItem>
-          <SelectItem value="thisYear">{PRESET_LABELS.thisYear}</SelectItem>
-          <SelectItem value="custom">{PRESET_LABELS.custom}</SelectItem>
+          {presets.map((preset) => (
+            <SelectItem key={preset} value={preset}>{PRESET_LABELS[preset]}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
 
