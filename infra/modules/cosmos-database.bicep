@@ -189,6 +189,58 @@ resource operationsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases
 }
 
 // -----------------------------------------------------------------------------
+// Container: whatsapp (WhatsApp CRM MVP — docs/10-whatsapp-crm-mvp.md)
+//   Holds: conversation, message, lead, waConfig
+//   PK: /type. No unique key. TTL disabled (soft delete in app code).
+//   Composites: (type, status, lastMessageAt DESC) inbox ordering;
+//               (type, conversationId, ts ASC) thread; default updated/created.
+// -----------------------------------------------------------------------------
+
+resource whatsappContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-11-15' = {
+  parent: db
+  name: 'whatsapp'
+  properties: {
+    resource: {
+      id: 'whatsapp'
+      partitionKey: {
+        paths: ['/type']
+        kind: 'Hash'
+        version: 2
+      }
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+        includedPaths: [
+          { path: '/*' }
+        ]
+        excludedPaths: [
+          { path: '/text/?' }
+          { path: '/lastMessagePreview/?' }
+          { path: '/"_etag"/?' }
+        ]
+        compositeIndexes: [
+          [
+            { path: '/type', order: 'ascending' }
+            { path: '/status', order: 'ascending' }
+            { path: '/lastMessageAt', order: 'descending' }
+          ]
+          [
+            { path: '/type', order: 'ascending' }
+            { path: '/conversationId', order: 'ascending' }
+            { path: '/ts', order: 'ascending' }
+          ]
+          [
+            { path: '/updatedAt', order: 'descending' }
+            { path: '/createdAt', order: 'descending' }
+          ]
+        ]
+      }
+      defaultTtl: -1
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Outputs (consumed by main.bicep + role-assignment-cosmos.bicep)
 // -----------------------------------------------------------------------------
 
