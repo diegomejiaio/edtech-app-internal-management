@@ -13,6 +13,7 @@ import { UserButton, useUser } from '@clerk/clerk-react';
 import {
   LayoutDashboard,
   Users,
+  User,
   Calendar,
   ClipboardList,
   CreditCard,
@@ -54,6 +55,7 @@ const MAIN_NAV: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Horarios', href: '/schedules', icon: Calendar },
   { label: 'Alumnos', href: '/students', icon: Users },
+  { label: 'Profesores', href: '/teachers', icon: User },
   { label: 'Inscripciones', href: '/enrollments', icon: ClipboardList },
   { label: 'Pagos alumnos', href: '/student-payments', icon: CreditCard },
 ];
