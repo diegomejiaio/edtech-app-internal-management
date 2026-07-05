@@ -200,7 +200,7 @@ public sealed class StudentPaymentFunction
         var (enrollments, _) = await _enrollmentRepo.SearchAsync(
             studentId: null,
             scheduleId: scheduleId,
-            status: Domain.Common.EnrollmentStatus.Active,
+            statuses: [Domain.Common.EnrollmentStatus.Active],
             includeInactive: false,
             limit: 500,
             offset: 0,

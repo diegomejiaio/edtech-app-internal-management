@@ -39,7 +39,7 @@ const TOP_LIMIT = 8;
 
 export function ActiveSchedulesCard({ client }: ActiveSchedulesCardProps) {
   const { data, isLoading } = useSchedules(client, {
-    status: 'active',
+    status: ['active'],
     limit: TOP_LIMIT,
     sort: 'course:asc',
   });

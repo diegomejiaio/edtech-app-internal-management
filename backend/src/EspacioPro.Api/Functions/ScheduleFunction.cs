@@ -74,17 +74,12 @@ public sealed class ScheduleFunction
         if (!TryParseDate(req.Query["startDateTo"].FirstOrDefault(), out var startDateTo))
             return req.ValidationError("startDateTo", "startDateTo must be ISO date YYYY-MM-DD.");
 
-        ScheduleStatus? status = null;
-        if (!string.IsNullOrWhiteSpace(statusRaw))
-        {
-            if (!Enum.TryParse<ScheduleStatus>(statusRaw, ignoreCase: true, out var parsed))
-                return req.ValidationError("status", "status must be one of: active, inProgress, finished, cancelled.");
-            status = parsed;
-        }
+        if (!EnumCsv.TryParse<ScheduleStatus>(statusRaw, out var statuses))
+            return req.ValidationError("status", "status must be a comma-separated list of: active, inProgress, finished, cancelled.");
 
         var (items, total) = await _repo.SearchAsync(
             search,
-            status,
+            statuses,
             teacherId,
             course,
             startDateFrom,
@@ -493,7 +488,7 @@ public sealed class ScheduleFunction
         var (enrollments, _) = await _enrollmentRepo.SearchAsync(
             studentId: null,
             scheduleId: id,
-            status: EnrollmentStatus.Active,
+            statuses: [EnrollmentStatus.Active],
             includeInactive: false,
             limit: 500,
             offset: 0,
@@ -539,7 +534,7 @@ public sealed class ScheduleFunction
 
         var (schedules, _) = await _repo.SearchAsync(
             search: null,
-            status: null,
+            statuses: null,
             teacherId: null,
             course: null,
             startDateFrom: null,
@@ -722,7 +717,7 @@ public sealed class ScheduleFunction
         var (enrollments, _) = await _enrollmentRepo.SearchAsync(
             studentId: null,
             scheduleId: schedule.Id,
-            status: EnrollmentStatus.Active,
+            statuses: [EnrollmentStatus.Active],
             includeInactive: false,
             limit: 500,
             offset: 0,

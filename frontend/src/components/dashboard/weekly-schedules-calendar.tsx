@@ -92,7 +92,7 @@ export function WeeklySchedulesCalendar({ client }: WeeklySchedulesCalendarProps
   );
 
   const { data, isLoading } = useSchedules(client, {
-    status: 'active',
+    status: ['active'],
     limit: 100,
     sort: 'course:asc',
   });

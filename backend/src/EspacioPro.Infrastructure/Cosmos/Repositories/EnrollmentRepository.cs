@@ -56,16 +56,18 @@ public sealed class EnrollmentRepository : CosmosRepository<Enrollment>
     public async Task<(IReadOnlyList<Enrollment> Items, int Total)> SearchAsync(
         string? studentId,
         string? scheduleId,
-        EnrollmentStatus? status,
+        IReadOnlyList<EnrollmentStatus>? statuses,
         bool includeInactive,
         int limit,
         int offset,
         CancellationToken ct = default)
     {
+        var hasStatuses = statuses is { Count: > 0 };
+
         var where = "c.type = @type" + (includeInactive ? "" : " AND c.active = true");
         if (!string.IsNullOrWhiteSpace(studentId)) where += " AND c.studentId = @studentId";
         if (!string.IsNullOrWhiteSpace(scheduleId)) where += " AND c.scheduleId = @scheduleId";
-        if (status is not null) where += " AND c.status = @status";
+        if (hasStatuses) where += " AND ARRAY_CONTAINS(@statuses, c.status)";
 
         var countDef = new QueryDefinition($"SELECT VALUE COUNT(1) FROM c WHERE {where}");
         var pageDef = new QueryDefinition(
@@ -86,11 +88,11 @@ public sealed class EnrollmentRepository : CosmosRepository<Enrollment>
             countDef.WithParameter("@scheduleId", scheduleId);
             pageDef.WithParameter("@scheduleId", scheduleId);
         }
-        if (status is not null)
+        if (hasStatuses)
         {
-            var wire = EnumWire.ToCamel(status.Value);
-            countDef.WithParameter("@status", wire);
-            pageDef.WithParameter("@status", wire);
+            var wire = statuses!.Select(s => EnumWire.ToCamel(s)).ToArray();
+            countDef.WithParameter("@statuses", wire);
+            pageDef.WithParameter("@statuses", wire);
         }
 
         var partitionOpts = new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) };

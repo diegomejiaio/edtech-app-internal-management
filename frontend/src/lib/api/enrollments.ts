@@ -33,7 +33,8 @@ export interface EnrollmentBody {
 export interface EnrollmentListParams extends ListParams {
   studentId?: string;
   scheduleId?: string;
-  status?: EnrollmentStatus;
+  /** One or more statuses; serialized to a comma-separated `status` query param. */
+  status?: EnrollmentStatus[];
 }
 
 /** Filters for `GET /enrollments/{id}/payments`. */
@@ -50,10 +51,15 @@ export interface EnrollmentPaymentParams extends ListParams {
 export const getEnrollments = (
   client: ApiClient,
   params?: EnrollmentListParams,
-): Promise<PaginatedResponse<Enrollment>> =>
-  client.get<PaginatedResponse<Enrollment>>('/enrollments', {
-    params: params as Record<string, string | number | boolean | undefined>,
+): Promise<PaginatedResponse<Enrollment>> => {
+  const { status, ...rest } = params ?? {};
+  return client.get<PaginatedResponse<Enrollment>>('/enrollments', {
+    params: {
+      ...(rest as Record<string, string | number | boolean | undefined>),
+      status: status?.length ? status.join(',') : undefined,
+    },
   });
+};
 
 /** Get a single enrollment by ID (includes student + schedule snapshots). */
 export const getEnrollment = (

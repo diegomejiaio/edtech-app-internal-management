@@ -49,7 +49,7 @@ export function EnrollmentPicker({
   const { data } = useEnrollments(client, {
     studentId,
     scheduleId,
-    status: 'active',
+    status: ['active'],
     limit: 20,
   });
 

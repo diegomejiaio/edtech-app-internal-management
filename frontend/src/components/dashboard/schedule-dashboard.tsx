@@ -89,7 +89,7 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
   const period = getMonthDateRange(month);
 
   const { data: scheduleList, isLoading: listLoading } = useSchedules(client, {
-    status: 'active',
+    status: ['active'],
     startDateFrom: period.startDateFrom,
     startDateTo: period.startDateTo,
     limit: 100,

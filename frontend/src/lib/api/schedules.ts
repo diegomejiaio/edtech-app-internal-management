@@ -57,7 +57,8 @@ export interface ScheduleBody {
 /** Filters for `GET /schedules`. */
 export interface ScheduleListParams extends ListParams {
   search?: string;
-  status?: ScheduleStatus;
+  /** One or more statuses; serialized to a comma-separated `status` query param. */
+  status?: ScheduleStatus[];
   teacherId?: string;
   course?: string;
   startDateFrom?: string;
@@ -152,10 +153,15 @@ export interface ScheduleDashboard {
 export const getSchedules = (
   client: ApiClient,
   params?: ScheduleListParams,
-): Promise<PaginatedResponse<ScheduleWithCounts>> =>
-  client.get<PaginatedResponse<ScheduleWithCounts>>('/schedules', {
-    params: params as Record<string, string | number | boolean | undefined>,
+): Promise<PaginatedResponse<ScheduleWithCounts>> => {
+  const { status, ...rest } = params ?? {};
+  return client.get<PaginatedResponse<ScheduleWithCounts>>('/schedules', {
+    params: {
+      ...(rest as Record<string, string | number | boolean | undefined>),
+      status: status?.length ? status.join(',') : undefined,
+    },
   });
+};
 
 /** Get a single schedule by ID (includes computed counts). */
 export const getSchedule = (

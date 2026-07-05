@@ -74,7 +74,7 @@ public sealed class ScheduleRepository : CosmosRepository<Schedule>
     /// </summary>
     public async Task<(IReadOnlyList<Schedule> Items, int Total)> SearchAsync(
         string? search,
-        ScheduleStatus? status,
+        IReadOnlyList<ScheduleStatus>? statuses,
         string? teacherId,
         string? course,
         DateOnly? startDateFrom,
@@ -84,9 +84,11 @@ public sealed class ScheduleRepository : CosmosRepository<Schedule>
         int offset,
         CancellationToken ct = default)
     {
+        var hasStatuses = statuses is { Count: > 0 };
+
         var where = "c.type = @type" + (includeInactive ? "" : " AND c.active = true");
         if (!string.IsNullOrWhiteSpace(search)) where += " AND CONTAINS(c.searchText, @search)";
-        if (status is not null) where += " AND c.status = @status";
+        if (hasStatuses) where += " AND ARRAY_CONTAINS(@statuses, c.status)";
         if (!string.IsNullOrWhiteSpace(teacherId)) where += " AND c.teacherId = @teacherId";
         if (!string.IsNullOrWhiteSpace(course)) where += " AND c.course = @course";
         if (startDateFrom is not null) where += " AND c.startDate >= @startDateFrom";
@@ -107,11 +109,11 @@ public sealed class ScheduleRepository : CosmosRepository<Schedule>
             countDef.WithParameter("@search", normalized);
             pageDef.WithParameter("@search", normalized);
         }
-        if (status is not null)
+        if (hasStatuses)
         {
-            var statusWire = EnumWire.ToCamel(status.Value);
-            countDef.WithParameter("@status", statusWire);
-            pageDef.WithParameter("@status", statusWire);
+            var wire = statuses!.Select(s => EnumWire.ToCamel(s)).ToArray();
+            countDef.WithParameter("@statuses", wire);
+            pageDef.WithParameter("@statuses", wire);
         }
         if (!string.IsNullOrWhiteSpace(teacherId))
         {

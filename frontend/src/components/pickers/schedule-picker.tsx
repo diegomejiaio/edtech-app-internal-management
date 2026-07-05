@@ -55,7 +55,7 @@ export function SchedulePicker({
   const [search, setSearch] = useState('');
 
   const { data } = useSchedules(client, {
-    status: activeOnly ? 'active' : undefined,
+    status: activeOnly ? ['active'] : undefined,
     limit: 50,
   });
 

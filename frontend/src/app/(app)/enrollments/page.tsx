@@ -9,18 +9,20 @@ import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { formatTableDate } from '@/lib/dates';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteEnrollments, useUpdateEnrollment, useDeleteEnrollment } from '@/hooks';
-import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, ReadOnlyField, type Column } from '@/components/data';
+import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, ReadOnlyField, StatusMultiSelect, StatusBadgeMenu, type Column, type StatusOption } from '@/components/data';
 import { EnrollmentWizard } from '@/components/enrollments/enrollment-wizard';
 import { EnrollmentPaymentsBlock } from '@/components/enrollments/enrollment-payments-block';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { getApiErrorMessage, isApiError, isConflict, ENROLLMENT_STATUS_LABELS } from '@/lib/api';
 import type { Enrollment, EnrollmentBody, EnrollmentStatus } from '@/lib/api';
 
 const STATUSES: EnrollmentStatus[] = ['active', 'completed', 'cancelled', 'pending'];
+const STATUS_OPTIONS: StatusOption<EnrollmentStatus>[] = STATUSES.map((s) => ({ value: s, label: ENROLLMENT_STATUS_LABELS[s] }));
+const DEFAULT_STATUS_FILTER: EnrollmentStatus[] = ['active', 'pending'];
+const TERMINAL_STATUSES: EnrollmentStatus[] = ['completed', 'cancelled'];
 
 const statusColors: Record<EnrollmentStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   active: 'default',
@@ -29,28 +31,23 @@ const statusColors: Record<EnrollmentStatus, 'default' | 'secondary' | 'destruct
   pending: 'outline',
 };
 
-const columns: Column<Enrollment>[] = [
+const baseColumns: Column<Enrollment>[] = [
   { key: 'code', header: 'Código', cell: (e) => e.code ? <span className="font-mono text-xs font-medium">{e.code}</span> : '—' },
   { key: 'student', header: 'Alumno', cell: (e) => e.studentName },
   { key: 'doc', header: 'Documento', cell: (e) => e.studentDoc },
   { key: 'schedule', header: 'Horario', cell: (e) => e.scheduleName },
   { key: 'date', header: 'Fecha inscripción', cell: (e) => formatTableDate(e.enrollmentDate) },
   { key: 'price', header: 'Precio', cell: (e) => `S/ ${e.schedulePrice.toFixed(2)}` },
-  {
-    key: 'status',
-    header: 'Estado',
-    cell: (e) => <Badge variant={statusColors[e.status]}>{ENROLLMENT_STATUS_LABELS[e.status]}</Badge>,
-  },
 ];
 
 export default function EnrollmentsPage() {
   const client = useApiClient();
   const limit = 25;
-  const [statusFilter, setStatusFilter] = useState<EnrollmentStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<EnrollmentStatus[]>(DEFAULT_STATUS_FILTER);
 
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteEnrollments(client, {
     limit,
-    status: statusFilter === 'all' ? undefined : statusFilter,
+    status: statusFilter,
   });
   const enrollments = useMemo(() => flattenInfiniteItems(data, { sortBy: (e) => e.enrollmentDate }), [data]);
   const total = getInfiniteTotal(data);
@@ -88,6 +85,42 @@ export default function EnrollmentsPage() {
       });
   }
 
+  function handleStatusChange(e: Enrollment, next: EnrollmentStatus) {
+    if (next === e.status) return;
+    const body: EnrollmentBody = {
+      studentId: e.studentId,
+      scheduleId: e.scheduleId,
+      enrollmentDate: e.enrollmentDate,
+      status: next,
+      schedulePrice: e.schedulePrice,
+    };
+
+    updateMutation.mutateAsync({ id: e.id, body, ifMatch: e._etag })
+      .then(() => toast.success('Estado actualizado'))
+      .catch((err) => {
+        if (isConflict(err)) toast.error('Ya existe una inscripción activa para este alumno en este horario');
+        else if (isApiError(err)) toast.error(getApiErrorMessage(err));
+        else toast.error('Error inesperado');
+      });
+  }
+
+  const columns: Column<Enrollment>[] = [
+    ...baseColumns,
+    {
+      key: 'status',
+      header: 'Estado',
+      cell: (e) => (
+        <StatusBadgeMenu
+          value={e.status}
+          options={STATUS_OPTIONS}
+          variants={statusColors}
+          terminalStatuses={TERMINAL_STATUSES}
+          onChange={(next) => handleStatusChange(e, next)}
+        />
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -97,13 +130,11 @@ export default function EnrollmentsPage() {
       />
 
       <div className="flex justify-end">
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as EnrollmentStatus | 'all')}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Estado" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los estados</SelectItem>
-            {STATUSES.map((s) => <SelectItem key={s} value={s}>{ENROLLMENT_STATUS_LABELS[s]}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <StatusMultiSelect
+          options={STATUS_OPTIONS}
+          value={statusFilter}
+          onChange={setStatusFilter}
+        />
       </div>
 
       <DataTable

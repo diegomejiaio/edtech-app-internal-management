@@ -41,10 +41,10 @@ export function GlobalKpis({ client }: GlobalKpisProps) {
   // page hits the limit a dedicated `/dashboard/stats` endpoint should
   // take over (see docs/04-api-design.md).
   const enrollmentsQuery = useEnrollments(client, {
-    status: 'active',
+    status: ['active'],
     limit: 500,
   });
-  const schedulesQuery = useSchedules(client, { status: 'active', limit: 1 });
+  const schedulesQuery = useSchedules(client, { status: ['active'], limit: 1 });
   const paymentsQuery = useStudentPayments(client, { from, to, limit: 500 });
   const expensesQuery = useExpenses(client, { from, to, limit: 500 });
 

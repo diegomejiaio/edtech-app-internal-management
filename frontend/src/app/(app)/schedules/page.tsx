@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { formatTableDate } from '@/lib/dates';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteSchedules, useCreateSchedule, useUpdateSchedule, useDeleteSchedule } from '@/hooks';
-import { PageHeader, DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { PageHeader, DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, StatusMultiSelect, StatusBadgeMenu, type Column, type StatusOption } from '@/components/data';
 import { TeacherPicker, CatalogSelect } from '@/components/pickers';
 import { ScheduleDashboard } from '@/components/dashboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,11 +20,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { getApiErrorMessage, isApiError, isConflict, SCHEDULE_STATUS_LABELS } from '@/lib/api';
 import type { ScheduleWithCounts, ScheduleBody, ScheduleStatus } from '@/lib/api';
 
 const STATUSES: ScheduleStatus[] = ['active', 'inProgress', 'finished', 'cancelled'];
+const STATUS_OPTIONS: StatusOption<ScheduleStatus>[] = STATUSES.map((s) => ({ value: s, label: SCHEDULE_STATUS_LABELS[s] }));
+const DEFAULT_STATUS_FILTER: ScheduleStatus[] = ['active', 'inProgress'];
+const TERMINAL_STATUSES: ScheduleStatus[] = ['finished', 'cancelled'];
 
 const statusColors: Record<ScheduleStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   active: 'default',
@@ -33,7 +35,7 @@ const statusColors: Record<ScheduleStatus, 'default' | 'secondary' | 'destructiv
   cancelled: 'destructive',
 };
 
-const columns: Column<ScheduleWithCounts>[] = [
+const baseColumns: Column<ScheduleWithCounts>[] = [
   { key: 'code', header: 'Código', cell: (s) => s.code ? <span className="font-mono text-xs font-medium">{s.code}</span> : '—' },
   { key: 'course', header: 'Curso', cell: (s) => `${s.course} · ${s.level}` },
   { key: 'startDate', header: 'Fecha Inicio', cell: (s) => formatTableDate(s.startDate) },
@@ -41,23 +43,18 @@ const columns: Column<ScheduleWithCounts>[] = [
   { key: 'schedule', header: 'Horario', cell: (s) => `${s.weekdays} ${s.startTime}–${s.endTime}` },
   { key: 'capacity', header: 'Ocupación', cell: (s) => `${s.enrolledActiveCount}/${s.capacity} (${Math.round(s.occupancyPct * 100)}%)` },
   { key: 'price', header: 'Precio', cell: (s) => `S/ ${s.price.toFixed(2)}` },
-  {
-    key: 'status',
-    header: 'Estado',
-    cell: (s) => <Badge variant={statusColors[s.status] ?? 'outline'}>{SCHEDULE_STATUS_LABELS[s.status] ?? s.status ?? '—'}</Badge>,
-  },
 ];
 
 export default function SchedulesPage() {
   const client = useApiClient();
   const router = useRouter();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<ScheduleStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<ScheduleStatus[]>(DEFAULT_STATUS_FILTER);
   const limit = 25;
 
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteSchedules(client, {
     search: search || undefined,
-    status: statusFilter === 'all' ? undefined : statusFilter,
+    status: statusFilter,
     limit,
   });
   const schedules = useMemo(() => flattenInfiniteItems(data, { sortBy: (s) => s.startDate }), [data]);
@@ -125,6 +122,47 @@ export default function SchedulesPage() {
       });
   }
 
+  function handleStatusChange(s: ScheduleWithCounts, next: ScheduleStatus) {
+    if (next === s.status) return;
+    const body: ScheduleBody = {
+      course: s.course,
+      level: s.level,
+      teacherId: s.teacherId,
+      weekdays: s.weekdays,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      price: s.price,
+      capacity: s.capacity,
+      status: next,
+      startDate: s.startDate,
+    };
+
+    updateMutation.mutateAsync({ id: s.id, body, ifMatch: s._etag })
+      .then(() => toast.success('Estado actualizado'))
+      .catch((err) => {
+        if (isConflict(err)) toast.error('Conflicto al actualizar el estado');
+        else if (isApiError(err)) toast.error(getApiErrorMessage(err));
+        else toast.error('Error inesperado');
+      });
+  }
+
+  const columns: Column<ScheduleWithCounts>[] = [
+    ...baseColumns,
+    {
+      key: 'status',
+      header: 'Estado',
+      cell: (s) => (
+        <StatusBadgeMenu
+          value={s.status}
+          options={STATUS_OPTIONS}
+          variants={statusColors}
+          terminalStatuses={TERMINAL_STATUSES}
+          onChange={(next) => handleStatusChange(s, next)}
+        />
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -148,13 +186,11 @@ export default function SchedulesPage() {
                 onChange={setSearch}
               />
             </div>
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ScheduleStatus | 'all')}>
-              <SelectTrigger className="sm:w-48"><SelectValue placeholder="Estado" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                {STATUSES.map((s) => <SelectItem key={s} value={s}>{SCHEDULE_STATUS_LABELS[s]}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <StatusMultiSelect
+              options={STATUS_OPTIONS}
+              value={statusFilter}
+              onChange={setStatusFilter}
+            />
           </div>
           <DataTable
             columns={columns}

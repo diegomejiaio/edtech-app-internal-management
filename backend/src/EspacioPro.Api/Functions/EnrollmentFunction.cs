@@ -55,15 +55,10 @@ public sealed class EnrollmentFunction
         var limit = ClampLimit(req.Query["limit"].FirstOrDefault());
         var offset = Math.Max(0, ParseInt(req.Query["offset"].FirstOrDefault(), 0));
 
-        EnrollmentStatus? status = null;
-        if (!string.IsNullOrWhiteSpace(statusRaw))
-        {
-            if (!Enum.TryParse<EnrollmentStatus>(statusRaw, ignoreCase: true, out var parsed))
-                return req.ValidationError("status", "status must be one of: active, completed, cancelled, pending.");
-            status = parsed;
-        }
+        if (!EnumCsv.TryParse<EnrollmentStatus>(statusRaw, out var statuses))
+            return req.ValidationError("status", "status must be a comma-separated list of: active, completed, cancelled, pending.");
 
-        var (items, total) = await _repo.SearchAsync(studentId, scheduleId, status, includeInactive, limit, offset, ct);
+        var (items, total) = await _repo.SearchAsync(studentId, scheduleId, statuses, includeInactive, limit, offset, ct);
         return new OkObjectResult(new Paginated<Enrollment>(items, total, limit, offset));
     }
 
@@ -214,15 +209,10 @@ public sealed class EnrollmentFunction
         var limit = ClampLimit(req.Query["limit"].FirstOrDefault());
         var offset = Math.Max(0, ParseInt(req.Query["offset"].FirstOrDefault(), 0));
 
-        EnrollmentStatus? status = null;
-        if (!string.IsNullOrWhiteSpace(statusRaw))
-        {
-            if (!Enum.TryParse<EnrollmentStatus>(statusRaw, ignoreCase: true, out var parsed))
-                return req.ValidationError("status", "status must be one of: active, completed, cancelled, pending.");
-            status = parsed;
-        }
+        if (!EnumCsv.TryParse<EnrollmentStatus>(statusRaw, out var statuses))
+            return req.ValidationError("status", "status must be a comma-separated list of: active, completed, cancelled, pending.");
 
-        var (items, total) = await _repo.SearchAsync(studentId, scheduleId: null, status, includeInactive: false, limit, offset, ct);
+        var (items, total) = await _repo.SearchAsync(studentId, scheduleId: null, statuses, includeInactive: false, limit, offset, ct);
         return new OkObjectResult(new Paginated<Enrollment>(items, total, limit, offset));
     }
 
@@ -238,15 +228,10 @@ public sealed class EnrollmentFunction
         var limit = ClampLimit(req.Query["limit"].FirstOrDefault());
         var offset = Math.Max(0, ParseInt(req.Query["offset"].FirstOrDefault(), 0));
 
-        EnrollmentStatus? status = null;
-        if (!string.IsNullOrWhiteSpace(statusRaw))
-        {
-            if (!Enum.TryParse<EnrollmentStatus>(statusRaw, ignoreCase: true, out var parsed))
-                return req.ValidationError("status", "status must be one of: active, completed, cancelled, pending.");
-            status = parsed;
-        }
+        if (!EnumCsv.TryParse<EnrollmentStatus>(statusRaw, out var statuses))
+            return req.ValidationError("status", "status must be a comma-separated list of: active, completed, cancelled, pending.");
 
-        var (items, total) = await _repo.SearchAsync(studentId: null, scheduleId, status, includeInactive: false, limit, offset, ct);
+        var (items, total) = await _repo.SearchAsync(studentId: null, scheduleId, statuses, includeInactive: false, limit, offset, ct);
         var totalPaidAmounts = await _paymentRepo.GetTotalPaidAmountsAsync(items.Select(e => e.Id).ToArray(), ct);
         var rows = items
             .Select(e => ScheduleEnrollmentResponse.From(e, totalPaidAmounts.GetValueOrDefault(e.Id)))

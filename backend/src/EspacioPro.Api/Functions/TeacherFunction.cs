@@ -202,7 +202,7 @@ public sealed class TeacherFunction
 
         var (items, total) = await _scheduleRepo.SearchAsync(
             search: null,
-            status,
+            status is null ? null : [status.Value],
             teacherId,
             course: null,
             startDateFrom: null,
