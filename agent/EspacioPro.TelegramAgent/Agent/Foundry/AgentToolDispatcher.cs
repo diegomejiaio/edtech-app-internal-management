@@ -51,6 +51,21 @@ public sealed class AgentToolDispatcher
                 AgentToolset.CreateStudent => await CreateStudentAsync(args, ct),
                 AgentToolset.CreateEnrollment => await CreateEnrollmentAsync(args, ct),
                 AgentToolset.RegisterStudentPayment => await RegisterStudentPaymentAsync(args, ct),
+                AgentToolset.GetTeacher => await GetTeacherAsync(args, ct),
+                AgentToolset.CreateTeacher => await CreateTeacherAsync(args, ct),
+                AgentToolset.UpdateTeacher => await UpdateTeacherAsync(args, ct),
+                AgentToolset.UpdateStudent => await UpdateStudentAsync(args, ct),
+                AgentToolset.UpdateSchedule => await UpdateScheduleAsync(args, ct),
+                AgentToolset.UpdateEnrollment => await UpdateEnrollmentAsync(args, ct),
+                AgentToolset.QueryScheduleDashboard => await QueryScheduleDashboardAsync(args, ct),
+                AgentToolset.ListStudentPayments => await ListStudentPaymentsAsync(args, ct),
+                AgentToolset.UpdateStudentPayment => await UpdateStudentPaymentAsync(args, ct),
+                AgentToolset.CreateTeacherPayment => await CreateTeacherPaymentAsync(args, ct),
+                AgentToolset.ListTeacherPayments => await ListTeacherPaymentsAsync(args, ct),
+                AgentToolset.CreateExpense => await CreateExpenseAsync(args, ct),
+                AgentToolset.ListExpenses => await ListExpensesAsync(args, ct),
+                AgentToolset.QueryDebtors => await QueryDebtorsAsync(args, ct),
+                AgentToolset.AddCatalogItem => await AddCatalogItemAsync(args, ct),
                 _ => Error($"Unknown tool '{name}'."),
             };
         }
@@ -180,7 +195,253 @@ public sealed class AgentToolDispatcher
         return FromApiResult(result);
     }
 
+    // ------------------------------------------------------ teachers (write)
+
+    private async Task<string> GetTeacherAsync(JsonElement args, CancellationToken ct)
+    {
+        var id = GetString(args, "id");
+        if (string.IsNullOrWhiteSpace(id))
+            return Error("Missing required argument 'id'.");
+
+        var body = await _api.GetRawAsync($"/api/v1/teachers/{Uri.EscapeDataString(id)}", ct);
+        return body is null
+            ? Error($"Teacher '{id}' not found.")
+            : Ok(new { teacher = AsRaw(body) });
+    }
+
+    private async Task<string> CreateTeacherAsync(JsonElement args, CancellationToken ct)
+    {
+        var request = new EspacioProApiClient.CreateTeacherRequest(
+            FirstName: GetString(args, "firstName") ?? string.Empty,
+            LastName: GetString(args, "lastName") ?? string.Empty,
+            DocType: GetString(args, "docType") ?? "dni",
+            DocNumber: GetString(args, "docNumber") ?? string.Empty,
+            Phone: GetString(args, "phone"),
+            Email: GetString(args, "email"),
+            Specialty: GetString(args, "specialty"));
+
+        var result = await _api.CreateTeacherAsync(request, ct);
+        return FromApiResult(result);
+    }
+
+    private static readonly string[] TeacherUpdatableFields =
+        ["firstName", "lastName", "docType", "docNumber", "phone", "email", "specialty", "active"];
+
+    private async Task<string> UpdateTeacherAsync(JsonElement args, CancellationToken ct)
+    {
+        var id = GetString(args, "id");
+        if (string.IsNullOrWhiteSpace(id))
+            return Error("Missing required argument 'id'.");
+
+        var result = await _api.UpdateEntityAsync(
+            $"/api/v1/teachers/{Uri.EscapeDataString(id)}", args, TeacherUpdatableFields, ct);
+        return FromApiResult(result);
+    }
+
+    // ------------------------------------------------------ students (write)
+
+    private static readonly string[] StudentUpdatableFields =
+        ["firstName", "lastName", "docType", "docNumber", "phone", "email", "source", "notes", "active"];
+
+    private async Task<string> UpdateStudentAsync(JsonElement args, CancellationToken ct)
+    {
+        var id = GetString(args, "id");
+        if (string.IsNullOrWhiteSpace(id))
+            return Error("Missing required argument 'id'.");
+
+        var result = await _api.UpdateEntityAsync(
+            $"/api/v1/students/{Uri.EscapeDataString(id)}", args, StudentUpdatableFields, ct);
+        return FromApiResult(result);
+    }
+
+    // ------------------------------------------------ schedules (write/read)
+
+    private static readonly string[] ScheduleUpdatableFields =
+        ["course", "level", "teacherId", "weekdays", "startTime", "endTime", "price", "capacity", "status", "startDate"];
+
+    private async Task<string> UpdateScheduleAsync(JsonElement args, CancellationToken ct)
+    {
+        var id = GetString(args, "id");
+        if (string.IsNullOrWhiteSpace(id))
+            return Error("Missing required argument 'id'.");
+
+        var result = await _api.UpdateEntityAsync(
+            $"/api/v1/schedules/{Uri.EscapeDataString(id)}", args, ScheduleUpdatableFields, ct);
+        return FromApiResult(result);
+    }
+
+    private async Task<string> QueryScheduleDashboardAsync(JsonElement args, CancellationToken ct)
+    {
+        var scheduleId = GetString(args, "scheduleId");
+        if (string.IsNullOrWhiteSpace(scheduleId))
+            return Error("Missing required argument 'scheduleId'.");
+
+        var path = $"/api/v1/schedules/{Uri.EscapeDataString(scheduleId)}/dashboard";
+        var month = GetString(args, "month");
+        if (!string.IsNullOrWhiteSpace(month))
+            path += $"?month={Uri.EscapeDataString(month)}";
+
+        var body = await _api.GetRawAsync(path, ct);
+        return body is null
+            ? Error($"Dashboard for schedule '{scheduleId}' is unavailable.")
+            : Ok(new { scheduleId, dashboard = AsRaw(body) });
+    }
+
+    // ------------------------------------------------ enrollments (write)
+
+    private static readonly string[] EnrollmentUpdatableFields =
+        ["status", "schedulePrice", "enrollmentDate"];
+
+    private async Task<string> UpdateEnrollmentAsync(JsonElement args, CancellationToken ct)
+    {
+        var id = GetString(args, "id");
+        if (string.IsNullOrWhiteSpace(id))
+            return Error("Missing required argument 'id'.");
+
+        var result = await _api.UpdateEntityAsync(
+            $"/api/v1/enrollments/{Uri.EscapeDataString(id)}", args, EnrollmentUpdatableFields, ct);
+        return FromApiResult(result);
+    }
+
+    // ------------------------------------------ student payments (read/write)
+
+    private async Task<string> ListStudentPaymentsAsync(JsonElement args, CancellationToken ct)
+    {
+        var query = BuildQuery(
+            ("enrollmentId", GetString(args, "enrollmentId")),
+            ("studentId", GetString(args, "studentId")),
+            ("from", GetString(args, "from")),
+            ("to", GetString(args, "to")),
+            ("limit", DefaultLimit.ToString()));
+
+        var body = await _api.GetRawAsync($"/api/v1/student-payments{query}", ct);
+        return body is null
+            ? Error("Could not list student payments.")
+            : Ok(new { payments = AsRaw(body) });
+    }
+
+    private static readonly string[] StudentPaymentUpdatableFields =
+        ["date", "amount", "installmentNumber", "paymentMethod", "hasReceipt", "receiptNumber", "notes"];
+
+    private async Task<string> UpdateStudentPaymentAsync(JsonElement args, CancellationToken ct)
+    {
+        var id = GetString(args, "id");
+        if (string.IsNullOrWhiteSpace(id))
+            return Error("Missing required argument 'id'.");
+
+        var result = await _api.UpdateEntityAsync(
+            $"/api/v1/student-payments/{Uri.EscapeDataString(id)}", args, StudentPaymentUpdatableFields, ct);
+        return FromApiResult(result);
+    }
+
+    // ------------------------------------------ teacher payments (read/write)
+
+    private async Task<string> CreateTeacherPaymentAsync(JsonElement args, CancellationToken ct)
+    {
+        var request = new EspacioProApiClient.CreateTeacherPaymentRequest(
+            TeacherId: GetString(args, "teacherId") ?? string.Empty,
+            Date: GetString(args, "date") ?? string.Empty,
+            Amount: GetDecimal(args, "amount"),
+            Concept: GetString(args, "concept"),
+            PaymentMethod: GetString(args, "paymentMethod"),
+            Notes: GetString(args, "notes"));
+
+        var result = await _api.CreateTeacherPaymentAsync(request, ct);
+        return FromApiResult(result);
+    }
+
+    private async Task<string> ListTeacherPaymentsAsync(JsonElement args, CancellationToken ct)
+    {
+        var query = BuildQuery(
+            ("teacherId", GetString(args, "teacherId")),
+            ("from", GetString(args, "from")),
+            ("to", GetString(args, "to")),
+            ("limit", DefaultLimit.ToString()));
+
+        var body = await _api.GetRawAsync($"/api/v1/teacher-payments{query}", ct);
+        return body is null
+            ? Error("Could not list teacher payments.")
+            : Ok(new { payments = AsRaw(body) });
+    }
+
+    // ------------------------------------------------ expenses (read/write)
+
+    private async Task<string> CreateExpenseAsync(JsonElement args, CancellationToken ct)
+    {
+        var request = new EspacioProApiClient.CreateExpenseRequest(
+            Date: GetString(args, "date") ?? string.Empty,
+            Category: GetString(args, "category"),
+            Description: GetString(args, "description"),
+            Amount: GetDecimal(args, "amount"),
+            PaymentMethod: GetString(args, "paymentMethod"),
+            ScheduleId: GetString(args, "scheduleId"),
+            Notes: GetString(args, "notes"));
+
+        var result = await _api.CreateExpenseAsync(request, ct);
+        return FromApiResult(result);
+    }
+
+    private async Task<string> ListExpensesAsync(JsonElement args, CancellationToken ct)
+    {
+        var query = BuildQuery(
+            ("from", GetString(args, "from")),
+            ("to", GetString(args, "to")),
+            ("category", GetString(args, "category")),
+            ("scheduleId", GetString(args, "scheduleId")),
+            ("limit", DefaultLimit.ToString()));
+
+        var body = await _api.GetRawAsync($"/api/v1/expenses{query}", ct);
+        return body is null
+            ? Error("Could not list expenses.")
+            : Ok(new { expenses = AsRaw(body) });
+    }
+
+    // ------------------------------------------------ operational / catalog
+
+    private async Task<string> QueryDebtorsAsync(JsonElement args, CancellationToken ct)
+    {
+        var scheduleId = GetString(args, "scheduleId");
+        var month = GetString(args, "month");
+        if (string.IsNullOrWhiteSpace(scheduleId))
+            return Error("Missing required argument 'scheduleId'.");
+        if (string.IsNullOrWhiteSpace(month))
+            return Error("Missing required argument 'month' (format yyyy-MM).");
+
+        var query = BuildQuery(("scheduleId", scheduleId), ("month", month));
+        var body = await _api.GetRawAsync($"/api/v1/student-payments/debtors{query}", ct);
+        return body is null
+            ? Error($"Could not compute debtors for schedule '{scheduleId}'.")
+            : Ok(new { debtors = AsRaw(body) });
+    }
+
+    private async Task<string> AddCatalogItemAsync(JsonElement args, CancellationToken ct)
+    {
+        var code = GetString(args, "code");
+        var value = GetString(args, "value");
+        if (string.IsNullOrWhiteSpace(code))
+            return Error("Missing required argument 'code'.");
+        if (string.IsNullOrWhiteSpace(value))
+            return Error("Missing required argument 'value'.");
+
+        var request = new EspacioProApiClient.AddCatalogItemRequest(
+            Value: value,
+            Order: GetIntOrNull(args, "order"));
+
+        var result = await _api.AddCatalogItemAsync(code, request, ct);
+        return FromApiResult(result);
+    }
+
     // --------------------------------------------------------------- helpers
+
+    /// <summary>Builds a "?a=1&amp;b=2" query string, skipping null/blank values (URL-encoded).</summary>
+    private static string BuildQuery(params (string Key, string? Value)[] parameters)
+    {
+        var parts = parameters
+            .Where(p => !string.IsNullOrWhiteSpace(p.Value))
+            .Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value!)}")
+            .ToArray();
+        return parts.Length == 0 ? string.Empty : "?" + string.Join("&", parts);
+    }
 
     private static JsonDocument ParseArguments(string? argumentsJson)
     {
@@ -244,6 +505,18 @@ public sealed class AgentToolDispatcher
             JsonValueKind.Number => v.GetInt32(),
             JsonValueKind.String when int.TryParse(v.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var i) => i,
             _ => 0,
+        };
+    }
+
+    private static int? GetIntOrNull(JsonElement args, string name)
+    {
+        if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty(name, out var v))
+            return null;
+        return v.ValueKind switch
+        {
+            JsonValueKind.Number => v.GetInt32(),
+            JsonValueKind.String when int.TryParse(v.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var i) => i,
+            _ => null,
         };
     }
 

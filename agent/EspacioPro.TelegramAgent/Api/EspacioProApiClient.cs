@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -149,6 +150,101 @@ public sealed class EspacioProApiClient
     /// <summary>POST /api/v1/enrollments. Enrolls a student into a schedule (validates capacity).</summary>
     public Task<ApiResult> CreateEnrollmentAsync(CreateEnrollmentRequest request, CancellationToken ct)
         => PostJsonAsync("/api/v1/enrollments", request, ct);
+
+    /// <summary>POST /api/v1/teachers. 409 if a teacher with the same (docType, docNumber) is active.</summary>
+    public Task<ApiResult> CreateTeacherAsync(CreateTeacherRequest request, CancellationToken ct)
+        => PostJsonAsync("/api/v1/teachers", request, ct);
+
+    /// <summary>POST /api/v1/teacher-payments. TeacherId must reference an active teacher.</summary>
+    public Task<ApiResult> CreateTeacherPaymentAsync(CreateTeacherPaymentRequest request, CancellationToken ct)
+        => PostJsonAsync("/api/v1/teacher-payments", request, ct);
+
+    /// <summary>POST /api/v1/expenses. ScheduleId is optional (links the expense to a schedule).</summary>
+    public Task<ApiResult> CreateExpenseAsync(CreateExpenseRequest request, CancellationToken ct)
+        => PostJsonAsync("/api/v1/expenses", request, ct);
+
+    /// <summary>POST /api/v1/catalogs/{code}/items. Adds one active value to a catalog.</summary>
+    public Task<ApiResult> AddCatalogItemAsync(string code, AddCatalogItemRequest request, CancellationToken ct)
+        => PostJsonAsync($"/api/v1/catalogs/{Uri.EscapeDataString(code)}/items", request, ct);
+
+    /// <summary>
+    /// GET a single resource as raw JSON. Returns the response body verbatim so the caller can
+    /// hand it straight back to the model, or <c>null</c> on a non-success status. Used by the
+    /// list/detail/report tools that don't need a typed DTO.
+    /// </summary>
+    public async Task<string?> GetRawAsync(string path, CancellationToken ct)
+    {
+        var url = $"{_baseUrl}{path}";
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            AddAgentKey(request);
+            using var resp = await _http.SendAsync(request, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if (resp.IsSuccessStatusCode)
+                return body;
+            _logger.LogError("GET {Path} failed: {Status} {Body}", path, (int)resp.StatusCode, body);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling GET {Path}.", path);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Full-replace update helper. PUT is a full replacement in this API (docs §3), so we GET the
+    /// current entity, overlay only the caller-provided fields (non-null values from
+    /// <paramref name="overrides"/> whose keys are listed in <paramref name="fields"/>) and PUT the
+    /// merged object back. Server-owned fields (id, code, audit, snapshots) are preserved untouched
+    /// and ignored by the backend's write model. No <c>If-Match</c> is sent, so updates are
+    /// last-write-wins where the backend allows it.
+    /// </summary>
+    public async Task<ApiResult> UpdateEntityAsync(
+        string path, JsonElement overrides, IEnumerable<string> fields, CancellationToken ct)
+    {
+        var entity = await GetJsonObjectAsync(path, ct);
+        if (entity is null)
+            return ApiResult.Fail((int)HttpStatusCode.NotFound, $"{{\"error\":\"Resource '{path}' not found or unreadable.\"}}");
+
+        foreach (var field in fields)
+        {
+            if (overrides.ValueKind == JsonValueKind.Object
+                && overrides.TryGetProperty(field, out var value)
+                && value.ValueKind != JsonValueKind.Null
+                && value.ValueKind != JsonValueKind.Undefined)
+            {
+                entity[field] = JsonNode.Parse(value.GetRawText());
+            }
+        }
+
+        return await SendJsonAsync(HttpMethod.Put, path, entity, ct);
+    }
+
+    private async Task<JsonObject?> GetJsonObjectAsync(string path, CancellationToken ct)
+    {
+        var url = $"{_baseUrl}{path}";
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            AddAgentKey(request);
+            using var resp = await _http.SendAsync(request, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _logger.LogError("GET {Path} failed: {Status}", path, (int)resp.StatusCode);
+                return null;
+            }
+            var stream = await resp.Content.ReadAsStreamAsync(ct);
+            var node = await JsonSerializer.DeserializeAsync<JsonNode>(stream, ReadOptions, ct);
+            return node as JsonObject;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling GET {Path}.", path);
+            return null;
+        }
+    }
 
     // ---------------------------------------------------- thread persistence
 
@@ -523,6 +619,49 @@ public sealed class EspacioProApiClient
         string ScheduleId,
         string EnrollmentDate,
         string Status);
+
+    /// <summary>
+    /// Mirrors the backend TeacherWriteRequest. <see cref="DocType"/> is a camelCase enum string
+    /// ("dni" | "ce" | "passport"). Null optional fields are omitted on the wire.
+    /// </summary>
+    public sealed record CreateTeacherRequest(
+        string FirstName,
+        string LastName,
+        string DocType,
+        string DocNumber,
+        string? Phone,
+        string? Email,
+        string? Specialty);
+
+    /// <summary>
+    /// Mirrors the backend TeacherPaymentWriteRequest. <see cref="Date"/> is "yyyy-MM-dd".
+    /// Optional fields are omitted on the wire when null.
+    /// </summary>
+    public sealed record CreateTeacherPaymentRequest(
+        string TeacherId,
+        string Date,
+        decimal Amount,
+        string? Concept,
+        string? PaymentMethod,
+        string? Notes);
+
+    /// <summary>
+    /// Mirrors the backend ExpenseWriteRequest. <see cref="Date"/> is "yyyy-MM-dd";
+    /// <see cref="ScheduleId"/> optionally links the expense to a schedule.
+    /// </summary>
+    public sealed record CreateExpenseRequest(
+        string Date,
+        string? Category,
+        string? Description,
+        decimal Amount,
+        string? PaymentMethod,
+        string? ScheduleId,
+        string? Notes);
+
+    /// <summary>Mirrors the backend CatalogAddItemRequest. <see cref="Order"/> is optional.</summary>
+    public sealed record AddCatalogItemRequest(
+        string Value,
+        int? Order);
 
     /// <summary>Response shape for GET /api/v1/agent/threads/{chatId}.</summary>
     private sealed record AgentThreadDto(long ChatId, string ThreadId, string UpdatedAt);
