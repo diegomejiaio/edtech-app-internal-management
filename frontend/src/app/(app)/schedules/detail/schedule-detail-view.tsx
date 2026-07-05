@@ -15,9 +15,8 @@ import {
   useScheduleDashboard,
   useUpdateScheduleSession,
 } from '@/hooks';
-import { ConfirmDeleteDialog, DataTable, type Column } from '@/components/data';
+import { ConfirmDeleteDialog, DataTable, StatusBadge, type Column } from '@/components/data';
 import { PageBreadcrumb, PageHeader } from '@/components/layout';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,15 +24,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatCard } from '@/components/ui/stat-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ATTENDANCE_STATUS_LABELS, getApiErrorMessage, isApiError, SCHEDULE_SESSION_STATUS_LABELS, SCHEDULE_STATUS_LABELS } from '@/lib/api';
+import { ATTENDANCE_STATUS_LABELS, getApiErrorMessage, isApiError } from '@/lib/api';
+import { formatAuditMetadata } from '@/lib/audit';
 import { currentMonthInPeru, formatTableDate } from '@/lib/dates';
+import { STATUS_LABELS, STATUS_VARIANTS, TERMINAL_STATUSES } from '@/lib/status';
 import type { AttendanceStatus, ScheduleEnrollment, ScheduleSession, ScheduleSessionStatus } from '@/lib/api';
-
-const sessionStatusColors: Record<ScheduleSessionStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  scheduled: 'secondary',
-  completed: 'default',
-  cancelled: 'destructive',
-};
 
 const attendanceStatuses: AttendanceStatus[] = ['present', 'absent', 'late', 'pending'];
 
@@ -59,6 +54,7 @@ export function ScheduleDetailView() {
   const [endDraft, setEndDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<ScheduleSession | null>(null);
+  const [pendingSessionStatus, setPendingSessionStatus] = useState<ScheduleSessionStatus | null>(null);
 
   const scheduleQuery = useSchedule(client, id);
   const dashboardQuery = useScheduleDashboard(client, id, month);
@@ -113,9 +109,11 @@ export function ScheduleDetailView() {
       key: 'status',
       header: 'Estado',
       cell: (s) => (
-        <Badge variant={sessionStatusColors[s.status] ?? 'outline'}>
-          {SCHEDULE_SESSION_STATUS_LABELS[s.status] ?? s.status}
-        </Badge>
+        <StatusBadge
+          value={s.status}
+          labels={STATUS_LABELS.scheduleSession}
+          variants={STATUS_VARIANTS.scheduleSession}
+        />
       ),
     },
     { key: 'attendance', header: 'Asistencia', cell: (s) => `${s.attendance.filter((a) => a.status === 'present').length}/${s.attendance.length}` },
@@ -123,13 +121,23 @@ export function ScheduleDetailView() {
 
   const enrollmentColumns: Column<ScheduleEnrollmentRow>[] = [
     { key: 'student', header: 'Alumno', cell: (e) => e.studentName },
-    { key: 'status', header: 'Estado', cell: (e) => e.status },
+    {
+      key: 'status',
+      header: 'Estado',
+      cell: (e) => (
+        <StatusBadge
+          value={e.status}
+          labels={STATUS_LABELS.enrollment}
+          variants={STATUS_VARIANTS.enrollment}
+        />
+      ),
+    },
     { key: 'amount', header: 'Monto', cell: (e) => currency(e.amount) },
     { key: 'paid', header: 'Pagado', cell: (e) => currency(e.paidAmount) },
     { key: 'pending', header: 'Pendiente', cell: (e) => currency(e.pendingAmount) },
   ];
 
-  function handleSessionStatus(status: ScheduleSessionStatus) {
+  function applySessionStatus(status: ScheduleSessionStatus) {
     if (!selectedSession) return;
     updateSession.mutate(
       {
@@ -147,6 +155,21 @@ export function ScheduleDetailView() {
         onError: (err) => toast.error(isApiError(err) ? getApiErrorMessage(err) : 'No se pudo actualizar la sesión'),
       },
     );
+  }
+
+  function handleSessionStatus(status: ScheduleSessionStatus) {
+    if (!selectedSession || status === selectedSession.status) return;
+    if ((TERMINAL_STATUSES.scheduleSession as readonly ScheduleSessionStatus[]).includes(status)) {
+      setPendingSessionStatus(status);
+      return;
+    }
+    applySessionStatus(status);
+  }
+
+  function confirmSessionStatusChange() {
+    if (!pendingSessionStatus) return;
+    applySessionStatus(pendingSessionStatus);
+    setPendingSessionStatus(null);
   }
 
   function handleAttendance(studentId: string, status: AttendanceStatus) {
@@ -288,7 +311,9 @@ export function ScheduleDetailView() {
               <Info label="Duración total" value={schedule?.courseDurationHours ? `${schedule.courseDurationHours} h` : '—'} />
               <Info label="Capacidad" value={schedule ? `${schedule.enrolledActiveCount}/${schedule.capacity}` : '—'} />
               <Info label="Precio" value={schedule ? currency(schedule.price) : '—'} />
-              <Info label="Estado" value={schedule ? SCHEDULE_STATUS_LABELS[schedule.status] ?? schedule.status : '—'} />
+              <Info label="Estado" value={schedule ? STATUS_LABELS.schedule[schedule.status] : '—'} />
+              <Info label="Creado por" value={formatAuditMetadata(schedule?.createdBy, schedule?.createdAt)} />
+              <Info label="Última edición" value={formatAuditMetadata(schedule?.updatedBy, schedule?.updatedAt)} />
             </CardContent>
           </Card>
 
@@ -368,7 +393,7 @@ export function ScheduleDetailView() {
                   <Select value={selectedSession.status} onValueChange={(value) => handleSessionStatus(value as ScheduleSessionStatus)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {Object.entries(SCHEDULE_SESSION_STATUS_LABELS).map(([value, label]) => (
+                      {Object.entries(STATUS_LABELS.scheduleSession).map(([value, label]) => (
                         <SelectItem key={value} value={value}>{label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -426,6 +451,23 @@ export function ScheduleDetailView() {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDeleteDialog
+        open={pendingSessionStatus !== null}
+        onOpenChange={(next) => {
+          if (!next) setPendingSessionStatus(null);
+        }}
+        onConfirm={confirmSessionStatusChange}
+        title={pendingSessionStatus
+          ? `¿Cambiar estado de la sesión a "${STATUS_LABELS.scheduleSession[pendingSessionStatus]}"?`
+          : '¿Cambiar estado de la sesión?'}
+        description={pendingSessionStatus
+          ? `Este cambio marcará la sesión como "${STATUS_LABELS.scheduleSession[pendingSessionStatus]}". Podrás revertirlo luego si es necesario.`
+          : undefined}
+        confirmLabel="Confirmar"
+        loadingLabel="Confirmando..."
+        isLoading={updateSession.isPending}
+      />
 
       <ConfirmDeleteDialog
         open={confirmDelete}

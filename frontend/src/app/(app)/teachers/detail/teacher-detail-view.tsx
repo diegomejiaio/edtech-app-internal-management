@@ -17,22 +17,16 @@ import {
   useInfiniteTeacherPayments,
   useTeacher,
 } from '@/hooks';
-import { DataTable, type Column } from '@/components/data';
+import { DataTable, StatusBadge, type Column } from '@/components/data';
 import { PageBreadcrumb, PageHeader } from '@/components/layout';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/stat-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DOC_TYPE_LABELS, SCHEDULE_STATUS_LABELS } from '@/lib/api';
+import { DOC_TYPE_LABELS } from '@/lib/api';
+import { formatAuditMetadata } from '@/lib/audit';
 import { formatTableDate } from '@/lib/dates';
-import type { ScheduleStatus, ScheduleWithCounts, TeacherPayment } from '@/lib/api';
-
-const scheduleStatusColors: Record<ScheduleStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  active: 'default',
-  inProgress: 'default',
-  finished: 'secondary',
-  cancelled: 'destructive',
-};
+import { STATUS_LABELS, STATUS_VARIANTS } from '@/lib/status';
+import type { ScheduleWithCounts, TeacherPayment } from '@/lib/api';
 
 function currency(value: number | undefined) {
   return `S/ ${(value ?? 0).toFixed(2)}`;
@@ -76,9 +70,11 @@ export function TeacherDetailView() {
       key: 'status',
       header: 'Estado',
       cell: (s) => (
-        <Badge variant={scheduleStatusColors[s.status] ?? 'outline'}>
-          {SCHEDULE_STATUS_LABELS[s.status] ?? s.status}
-        </Badge>
+        <StatusBadge
+          value={s.status}
+          labels={STATUS_LABELS.schedule}
+          variants={STATUS_VARIANTS.schedule}
+        />
       ),
     },
   ];
@@ -125,6 +121,8 @@ export function TeacherDetailView() {
           <Info label="Email" value={teacher?.email ?? '—'} />
           <Info label="Especialidad" value={teacher?.specialty ?? '—'} />
           <Info label="Estado" value={teacher?.active ? 'Activo' : 'Inactivo'} />
+          <Info label="Creado por" value={formatAuditMetadata(teacher?.createdBy, teacher?.createdAt)} />
+          <Info label="Última edición" value={formatAuditMetadata(teacher?.updatedBy, teacher?.updatedAt)} />
         </CardContent>
       </Card>
 

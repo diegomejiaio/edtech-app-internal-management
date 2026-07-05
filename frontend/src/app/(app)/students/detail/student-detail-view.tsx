@@ -17,22 +17,17 @@ import {
   useInfiniteStudentPayments,
   useStudent,
 } from '@/hooks';
-import { DataTable, type Column } from '@/components/data';
+import { DataTable, StatusBadge, type Column } from '@/components/data';
 import { PageBreadcrumb, PageHeader } from '@/components/layout';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/stat-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DOC_TYPE_LABELS, ENROLLMENT_STATUS_LABELS } from '@/lib/api';
+import { DOC_TYPE_LABELS } from '@/lib/api';
+import { formatAuditMetadata } from '@/lib/audit';
 import { formatTableDate } from '@/lib/dates';
-import type { Enrollment, EnrollmentStatus, StudentPayment } from '@/lib/api';
-
-const enrollmentStatusColors: Record<EnrollmentStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  active: 'default',
-  completed: 'secondary',
-  cancelled: 'destructive',
-  pending: 'outline',
-};
+import { STATUS_LABELS, STATUS_VARIANTS } from '@/lib/status';
+import type { Enrollment, StudentPayment } from '@/lib/api';
 
 function currency(value: number | undefined) {
   return `S/ ${(value ?? 0).toFixed(2)}`;
@@ -89,9 +84,11 @@ export function StudentDetailView() {
       key: 'status',
       header: 'Estado',
       cell: (e) => (
-        <Badge variant={enrollmentStatusColors[e.status] ?? 'outline'}>
-          {ENROLLMENT_STATUS_LABELS[e.status] ?? e.status}
-        </Badge>
+        <StatusBadge
+          value={e.status}
+          labels={STATUS_LABELS.enrollment}
+          variants={STATUS_VARIANTS.enrollment}
+        />
       ),
     },
   ];
@@ -158,6 +155,8 @@ export function StudentDetailView() {
           <Info label="Fuente" value={student?.source ?? '—'} />
           <Info label="Estado" value={student?.active ? 'Activo' : 'Inactivo'} />
           <Info label="Notas" value={student?.notes ?? '—'} />
+          <Info label="Creado por" value={formatAuditMetadata(student?.createdBy, student?.createdAt)} />
+          <Info label="Última edición" value={formatAuditMetadata(student?.updatedBy, student?.updatedAt)} />
         </CardContent>
       </Card>
 

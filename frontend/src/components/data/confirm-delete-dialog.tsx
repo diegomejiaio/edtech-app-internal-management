@@ -23,6 +23,11 @@ interface ConfirmDeleteDialogProps {
   onConfirm: () => void;
   /** Entity name shown in the dialog (Spanish). */
   entityName?: string;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
+  loadingLabel?: string;
+  cancelLabel?: string;
   isLoading?: boolean;
 }
 
@@ -31,25 +36,30 @@ export function ConfirmDeleteDialog({
   onOpenChange,
   onConfirm,
   entityName = 'este registro',
+  title = '¿Estás seguro?',
+  description,
+  confirmLabel = 'Desactivar',
+  loadingLabel = 'Procesando...',
+  cancelLabel = 'Cancelar',
   isLoading = false,
 }: ConfirmDeleteDialogProps) {
+  const body = description ?? `Se desactivará ${entityName}. Esta acción se puede revertir.`;
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Se desactivará {entityName}. Esta acción se puede revertir.
-          </AlertDialogDescription>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{body}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel disabled={isLoading}>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isLoading}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isLoading ? 'Eliminando...' : 'Eliminar'}
+            {isLoading ? loadingLabel : confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

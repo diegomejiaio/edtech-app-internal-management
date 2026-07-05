@@ -19,11 +19,11 @@ const badgeVariants = cva(
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         // Semantic status variants
         success:
-          "border-transparent bg-green-500/15 text-green-800 dark:bg-green-500/25 dark:text-green-400",
+          "border-transparent bg-success text-success-foreground [a&]:hover:bg-success/90",
         warning:
-          "border-transparent bg-amber-500/15 text-amber-800 dark:bg-amber-500/25 dark:text-amber-400",
+          "border-transparent bg-warning text-warning-foreground [a&]:hover:bg-warning/90",
         info:
-          "border-transparent bg-blue-500/15 text-blue-700 dark:bg-blue-500/25 dark:text-blue-400",
+          "border-transparent bg-info text-info-foreground [a&]:hover:bg-info/90",
       },
     },
     defaultVariants: {

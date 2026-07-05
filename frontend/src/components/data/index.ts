@@ -11,3 +11,4 @@ export { ErrorBoundary } from './error-boundary';
 export { StatusMultiSelect } from './status-multi-select';
 export type { StatusOption } from './status-multi-select';
 export { StatusBadgeMenu } from './status-badge-menu';
+export { StatusBadge } from './status-badge';

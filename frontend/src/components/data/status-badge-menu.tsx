@@ -18,16 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { ConfirmDeleteDialog } from './confirm-delete-dialog';
 import { cn } from '@/lib/utils';
 import type { StatusOption } from './status-multi-select';
 
@@ -38,7 +29,7 @@ interface StatusBadgeMenuProps<T extends string> {
   options: StatusOption<T>[];
   variants: Record<T, BadgeVariant>;
   /** Statuses that require a confirmation step before applying. */
-  terminalStatuses?: T[];
+  terminalStatuses?: readonly T[];
   onChange: (next: T) => void;
   disabled?: boolean;
 }
@@ -88,20 +79,16 @@ export function StatusBadgeMenu<T extends string>({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Cambiar estado a &quot;{pendingLabel}&quot;?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Este cambio marca el registro como &quot;{pendingLabel}&quot;. Podrás revertirlo luego si es necesario.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirm}>Confirmar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={pending !== null}
+        onOpenChange={(open) => !open && setPending(null)}
+        onConfirm={confirm}
+        title={`¿Cambiar estado a "${pendingLabel}"?`}
+        description={`Este cambio marca el registro como "${pendingLabel}". Podrás revertirlo luego si es necesario.`}
+        confirmLabel="Confirmar"
+        loadingLabel="Confirmando..."
+        isLoading={false}
+      />
     </>
   );
 }

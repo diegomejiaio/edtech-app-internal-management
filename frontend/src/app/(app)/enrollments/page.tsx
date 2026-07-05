@@ -16,20 +16,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getApiErrorMessage, isApiError, isConflict, ENROLLMENT_STATUS_LABELS } from '@/lib/api';
+import { getApiErrorMessage, isApiError, isConflict } from '@/lib/api';
+import { STATUS_LABELS, STATUS_VARIANTS, TERMINAL_STATUSES } from '@/lib/status';
 import type { Enrollment, EnrollmentBody, EnrollmentStatus } from '@/lib/api';
 
 const STATUSES: EnrollmentStatus[] = ['active', 'completed', 'cancelled', 'pending'];
-const STATUS_OPTIONS: StatusOption<EnrollmentStatus>[] = STATUSES.map((s) => ({ value: s, label: ENROLLMENT_STATUS_LABELS[s] }));
+const STATUS_OPTIONS: StatusOption<EnrollmentStatus>[] = STATUSES.map((s) => ({ value: s, label: STATUS_LABELS.enrollment[s] }));
 const DEFAULT_STATUS_FILTER: EnrollmentStatus[] = ['active', 'pending'];
-const TERMINAL_STATUSES: EnrollmentStatus[] = ['completed', 'cancelled'];
-
-const statusColors: Record<EnrollmentStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  active: 'default',
-  completed: 'secondary',
-  cancelled: 'destructive',
-  pending: 'outline',
-};
 
 const baseColumns: Column<Enrollment>[] = [
   { key: 'code', header: 'Código', cell: (e) => e.code ? <span className="font-mono text-xs font-medium">{e.code}</span> : '—' },
@@ -113,8 +106,8 @@ export default function EnrollmentsPage() {
         <StatusBadgeMenu
           value={e.status}
           options={STATUS_OPTIONS}
-          variants={statusColors}
-          terminalStatuses={TERMINAL_STATUSES}
+          variants={STATUS_VARIANTS.enrollment}
+          terminalStatuses={TERMINAL_STATUSES.enrollment}
           onChange={(next) => handleStatusChange(e, next)}
         />
       ),
@@ -191,7 +184,7 @@ export default function EnrollmentsPage() {
           <Label htmlFor="status">Estado</Label>
           <Select name="status" defaultValue={editing?.status ?? 'active'}>
             <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{ENROLLMENT_STATUS_LABELS[s]}</SelectItem>)}</SelectContent>
+            <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{STATUS_LABELS.enrollment[s]}</SelectItem>)}</SelectContent>
           </Select>
         </div>
 

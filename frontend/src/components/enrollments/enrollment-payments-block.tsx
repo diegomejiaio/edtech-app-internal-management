@@ -12,6 +12,7 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Trash2 } from 'lucide-react';
+import { ConfirmDeleteDialog } from '@/components/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,6 +51,7 @@ export function EnrollmentPaymentsBlock({ enrollmentId }: EnrollmentPaymentsBloc
   const deleteMutation = useDeleteStudentPayment(client);
 
   const [showForm, setShowForm] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<StudentPayment | null>(null);
   const [date, setDate] = useState(toIsoDate(new Date()));
   const [amount, setAmount] = useState('');
   const [installmentNumber, setInstallmentNumber] = useState(nextInstallment);
@@ -106,11 +108,12 @@ export function EnrollmentPaymentsBlock({ enrollmentId }: EnrollmentPaymentsBloc
     }
   }
 
-  async function handleDelete(p: StudentPayment) {
-    if (!confirm(`Eliminar pago de S/ ${p.amount.toFixed(2)} (cuota ${p.installmentNumber})?`)) return;
+  async function confirmDeletePayment() {
+    if (!paymentToDelete) return;
     try {
-      await deleteMutation.mutateAsync(p.id);
+      await deleteMutation.mutateAsync(paymentToDelete.id);
       toast.success('Pago eliminado');
+      setPaymentToDelete(null);
     } catch (err) {
       const detail = isApiError(err) ? getApiErrorMessage(err) : 'error desconocido';
       toast.error(`Error al eliminar: ${detail}`);
@@ -156,7 +159,7 @@ export function EnrollmentPaymentsBlock({ enrollmentId }: EnrollmentPaymentsBloc
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => handleDelete(p)}
+                onClick={() => setPaymentToDelete(p)}
                 disabled={deleteMutation.isPending}
                 className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                 title="Eliminar pago"
@@ -240,6 +243,21 @@ export function EnrollmentPaymentsBlock({ enrollmentId }: EnrollmentPaymentsBloc
           </Button>
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={paymentToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPaymentToDelete(null);
+        }}
+        onConfirm={confirmDeletePayment}
+        title="¿Eliminar pago?"
+        description={paymentToDelete
+          ? `Se eliminará el pago de S/ ${paymentToDelete.amount.toFixed(2)} (cuota ${paymentToDelete.installmentNumber}). Esta acción se puede revertir.`
+          : undefined}
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando..."
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }

@@ -20,20 +20,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getApiErrorMessage, isApiError, isConflict, SCHEDULE_STATUS_LABELS } from '@/lib/api';
+import { getApiErrorMessage, isApiError, isConflict } from '@/lib/api';
+import { STATUS_LABELS, STATUS_VARIANTS, TERMINAL_STATUSES } from '@/lib/status';
 import type { ScheduleWithCounts, ScheduleBody, ScheduleStatus } from '@/lib/api';
 
 const STATUSES: ScheduleStatus[] = ['active', 'inProgress', 'finished', 'cancelled'];
-const STATUS_OPTIONS: StatusOption<ScheduleStatus>[] = STATUSES.map((s) => ({ value: s, label: SCHEDULE_STATUS_LABELS[s] }));
+const STATUS_OPTIONS: StatusOption<ScheduleStatus>[] = STATUSES.map((s) => ({ value: s, label: STATUS_LABELS.schedule[s] }));
 const DEFAULT_STATUS_FILTER: ScheduleStatus[] = ['active', 'inProgress'];
-const TERMINAL_STATUSES: ScheduleStatus[] = ['finished', 'cancelled'];
-
-const statusColors: Record<ScheduleStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  active: 'default',
-  inProgress: 'secondary',
-  finished: 'outline',
-  cancelled: 'destructive',
-};
 
 const baseColumns: Column<ScheduleWithCounts>[] = [
   { key: 'code', header: 'Código', cell: (s) => s.code ? <span className="font-mono text-xs font-medium">{s.code}</span> : '—' },
@@ -155,8 +148,8 @@ export default function SchedulesPage() {
         <StatusBadgeMenu
           value={s.status}
           options={STATUS_OPTIONS}
-          variants={statusColors}
-          terminalStatuses={TERMINAL_STATUSES}
+          variants={STATUS_VARIANTS.schedule}
+          terminalStatuses={TERMINAL_STATUSES.schedule}
           onChange={(next) => handleStatusChange(s, next)}
         />
       ),
@@ -271,7 +264,7 @@ export default function SchedulesPage() {
             <Label>Estado</Label>
             <Select value={pickedStatus} onValueChange={(v) => setPickedStatus(v as ScheduleStatus)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{SCHEDULE_STATUS_LABELS[s]}</SelectItem>)}</SelectContent>
+              <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{STATUS_LABELS.schedule[s]}</SelectItem>)}</SelectContent>
             </Select>
           </div>
         </div>
