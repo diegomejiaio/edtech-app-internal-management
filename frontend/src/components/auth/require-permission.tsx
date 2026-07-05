@@ -27,6 +27,7 @@ export function RequirePermission({
 }
 
 /** Hook version — in v1 returns true for admin users. */
-export function usePermission(_permission: string): boolean {
+export function usePermission(permission: string): boolean {
+  void permission;
   return useIsAdmin();
 }

@@ -87,7 +87,6 @@ export function ScrollTable({
   // (avoids layout thrashing on scroll indicator visibility).
   // This pattern is safe because updateScrollState must sync scroll state
   // before the browser paints, preventing jank on initial render.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useLayoutEffect(() => {
     updateScrollState();
 

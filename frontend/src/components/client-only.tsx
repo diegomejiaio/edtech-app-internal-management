@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useSyncExternalStore, type ReactNode } from 'react'
 
 interface ClientOnlyProps {
   children: ReactNode
@@ -14,11 +14,11 @@ interface ClientOnlyProps {
  * that generate random IDs causing hydration mismatches in static export mode.
  */
 export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  )
 
   if (!mounted) {
     return <>{fallback}</>

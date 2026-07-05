@@ -45,10 +45,12 @@ export default function DashboardPage() {
 
       <ScheduleDashboard client={client} />
 
-      <EnrollmentWizard
-        open={enrollOpen}
-        onOpenChange={setEnrollOpen}
-      />
+      {enrollOpen && (
+        <EnrollmentWizard
+          open={enrollOpen}
+          onOpenChange={setEnrollOpen}
+        />
+      )}
     </div>
   );
 }

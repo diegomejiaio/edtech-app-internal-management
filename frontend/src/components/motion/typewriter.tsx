@@ -22,7 +22,6 @@ export function Typewriter({
 }: TypewriterProps) {
   const [displayedText, setDisplayedText] = useState('')
   const [isTyping, setIsTyping] = useState(false)
-  const [showCursor, setShowCursor] = useState(cursor)
 
   useEffect(() => {
     const startTimer = setTimeout(() => {
@@ -49,7 +48,7 @@ export function Typewriter({
   return (
     <span className={className}>
       {displayedText}
-      {showCursor && (
+      {cursor && (
         <motion.span
           animate={{ opacity: isTyping ? 1 : [1, 0] }}
           transition={{ 

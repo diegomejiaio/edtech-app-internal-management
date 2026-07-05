@@ -54,7 +54,6 @@ export function CountUp({
   // Resetear si el target cambia (ej: cambio de período o empresa)
   useEffect(() => {
     spring.jump(0);
-    setDisplayValue(0);
     if (isInView) {
       const timer = setTimeout(() => {
         spring.set(target);
