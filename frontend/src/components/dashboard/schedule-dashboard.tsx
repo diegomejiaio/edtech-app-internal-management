@@ -45,13 +45,7 @@ import type { ApiClient, ScheduleWithCounts } from '@/lib/api';
 import { useSchedules, useScheduleDashboard } from '@/hooks';
 import { StatCard } from '@/components/ui/stat-card';
 import { cn } from '@/lib/utils';
-import { formatTableDate } from '@/lib/dates';
-
-/** Returns `YYYY-MM` for the current month. */
-function currentMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
+import { currentMonthInPeru, formatTableDate, isScheduleActiveInMonth } from '@/lib/dates';
 function formatScheduleTitle(schedule: ScheduleWithCounts): string {
   return `${schedule.course} · ${schedule.level} · ${schedule.weekdays} ${schedule.startTime}`;
 }
@@ -60,43 +54,26 @@ function currency(value: number): string {
   return `S/ ${value.toFixed(2)}`;
 }
 
-function isScheduleInMonth(schedule: ScheduleWithCounts, month: string): boolean {
-  return schedule.startDate.startsWith(month);
-}
-
-function getMonthDateRange(month: string): { startDateFrom: string; startDateTo: string } {
-  const normalizedMonth = /^\d{4}-\d{2}$/.test(month) ? month : currentMonth();
-  const [yearRaw, monthRaw] = normalizedMonth.split('-');
-  const year = Number(yearRaw);
-  const monthNumber = Number(monthRaw);
-  const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
-
-  return {
-    startDateFrom: `${normalizedMonth}-01`,
-    startDateTo: `${normalizedMonth}-${String(lastDay).padStart(2, '0')}`,
-  };
-}
-
 interface ScheduleDashboardProps {
   client: ApiClient;
 }
 
 export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
   const [scheduleId, setScheduleId] = useState<string | undefined>();
-  const [month, setMonth] = useState(currentMonth());
+  const [month, setMonth] = useState(currentMonthInPeru());
   const [pickerOpen, setPickerOpen] = useState(false);
   const [scheduleSearch, setScheduleSearch] = useState('');
-  const period = getMonthDateRange(month);
 
   const { data: scheduleList, isLoading: listLoading } = useSchedules(client, {
     status: ['active'],
-    startDateFrom: period.startDateFrom,
-    startDateTo: period.startDateTo,
     limit: 100,
   });
 
   const schedulesForMonth = useMemo(
-    () => (scheduleList?.items ?? []).filter((schedule) => isScheduleInMonth(schedule, month)),
+    () =>
+      (scheduleList?.items ?? []).filter((schedule) =>
+        isScheduleActiveInMonth(schedule.startDate, schedule.projectedEndDate, month),
+      ),
     [scheduleList?.items, month],
   );
 

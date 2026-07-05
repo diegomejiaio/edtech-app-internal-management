@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { StatCard } from '@/components/ui/stat-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ATTENDANCE_STATUS_LABELS, getApiErrorMessage, isApiError, SCHEDULE_SESSION_STATUS_LABELS, SCHEDULE_STATUS_LABELS } from '@/lib/api';
-import { formatTableDate } from '@/lib/dates';
+import { currentMonthInPeru, formatTableDate } from '@/lib/dates';
 import type { AttendanceStatus, ScheduleEnrollment, ScheduleSession, ScheduleSessionStatus } from '@/lib/api';
 
 const sessionStatusColors: Record<ScheduleSessionStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -36,10 +36,6 @@ const sessionStatusColors: Record<ScheduleSessionStatus, 'default' | 'secondary'
 };
 
 const attendanceStatuses: AttendanceStatus[] = ['present', 'absent', 'late', 'pending'];
-
-function currentMonth() {
-  return new Date().toISOString().slice(0, 7);
-}
 
 function currency(value: number | undefined) {
   return `S/ ${(value ?? 0).toFixed(2)}`;
@@ -55,7 +51,7 @@ export function ScheduleDetailView() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id') ?? '';
   const client = useApiClient();
-  const [month, setMonth] = useState(currentMonth);
+  const [month, setMonth] = useState(currentMonthInPeru);
   const [selectedSession, setSelectedSession] = useState<ScheduleSession | null>(null);
   const [scheduleEtag, setScheduleEtag] = useState<string | undefined>();
   const [dateDraft, setDateDraft] = useState('');
