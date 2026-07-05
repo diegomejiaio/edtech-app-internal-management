@@ -25,7 +25,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <AuthGate>
-      <SidebarProvider defaultOpen={false}>
+      <SidebarProvider defaultOpen={true}>
         <AppSidebar />
         <SidebarInset className="min-w-0 overflow-hidden">
           <SidebarTrigger className="fixed left-2 top-2 z-50 border bg-background/80 backdrop-blur md:hidden" />
