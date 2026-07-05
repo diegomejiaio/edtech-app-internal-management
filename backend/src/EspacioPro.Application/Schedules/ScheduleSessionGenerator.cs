@@ -91,6 +91,51 @@ public static class ScheduleSessionGenerator
             .LastOrDefault()
             ?.Date;
     }
+
+    /// <summary>
+    /// Shifts every movable active session (Scheduled status, no recorded attendance) by
+    /// <paramref name="deltaDays"/>, preserving finalized/attended sessions in place. Powers
+    /// non-destructive start-date edits: the plan moves without discarding already-held classes
+    /// or manual reschedules, and without the destructive full regeneration.
+    /// </summary>
+    public static void ShiftScheduledSessions(
+        Schedule schedule,
+        int deltaDays,
+        AuditUser? auditUser,
+        DateTimeOffset? now = null)
+    {
+        if (deltaDays == 0)
+            return;
+
+        var timestamp = (now ?? DateTimeOffset.UtcNow).UtcDateTime.ToString("o");
+        foreach (var session in schedule.Sessions)
+        {
+            if (!session.Active
+                || session.Status is ScheduleSessionStatus.Completed or ScheduleSessionStatus.Cancelled
+                || HasRecordedAttendance(session))
+                continue;
+
+            session.Date = session.Date.AddDays(deltaDays);
+            session.UpdatedAt = timestamp;
+            session.UpdatedBy = auditUser;
+        }
+    }
+
+    /// <summary>
+    /// Re-derives <see cref="Schedule.StartDate"/> from the earliest active session, keeping the
+    /// schedule's start date in sync with its first session (single source of truth). No-op when
+    /// the schedule has no active sessions.
+    /// </summary>
+    public static void SyncStartDateToEarliestSession(Schedule schedule)
+    {
+        var earliest = schedule.Sessions
+            .Where(s => s.Active)
+            .OrderBy(s => s.Date)
+            .ThenBy(s => s.SequenceNumber)
+            .FirstOrDefault();
+        if (earliest is not null)
+            schedule.StartDate = earliest.Date;
+    }
 }
 
 public sealed class ScheduleSessionRegenerationException : Exception

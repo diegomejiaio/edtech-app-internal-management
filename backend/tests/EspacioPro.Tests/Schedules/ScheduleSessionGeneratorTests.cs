@@ -98,6 +98,110 @@ public class ScheduleSessionGeneratorTests
         schedule.ProjectedEndDate.Should().Be(new DateOnly(2026, 6, 30));
     }
 
+    [Fact]
+    public void ShiftScheduledSessions_MovesAllScheduledSessionsByDelta()
+    {
+        var schedule = SampleSchedule("LMiV", new DateOnly(2026, 6, 1));
+        schedule.Sessions = [.. ScheduleSessionGenerator.Generate(schedule, 6m, null)];
+        var originalDates = schedule.Sessions.Select(s => s.Date).ToArray();
+
+        ScheduleSessionGenerator.ShiftScheduledSessions(schedule, deltaDays: 7, auditUser: null);
+
+        schedule.Sessions.Select(s => s.Date).Should().Equal(originalDates.Select(d => d.AddDays(7)));
+    }
+
+    [Fact]
+    public void ShiftScheduledSessions_PreservesFinalizedAndAttendedSessions()
+    {
+        var schedule = SampleSchedule("LMiV", new DateOnly(2026, 6, 1));
+        schedule.Sessions = [.. ScheduleSessionGenerator.Generate(schedule, 6m, null)];
+        schedule.Sessions[0].Status = ScheduleSessionStatus.Completed;
+        schedule.Sessions[1].Attendance.Add(new ScheduleAttendance
+        {
+            StudentId = "std-1",
+            StudentName = "Ana",
+            Status = AttendanceStatus.Present,
+        });
+        var completedDate = schedule.Sessions[0].Date;
+        var attendedDate = schedule.Sessions[1].Date;
+        var scheduledDate = schedule.Sessions[2].Date;
+
+        ScheduleSessionGenerator.ShiftScheduledSessions(schedule, deltaDays: 7, auditUser: null);
+
+        schedule.Sessions[0].Date.Should().Be(completedDate);
+        schedule.Sessions[1].Date.Should().Be(attendedDate);
+        schedule.Sessions[2].Date.Should().Be(scheduledDate.AddDays(7));
+    }
+
+    [Fact]
+    public void SyncStartDateToEarliestSession_SetsStartDateToMinActiveSession()
+    {
+        var schedule = SampleSchedule("LMiV", new DateOnly(2026, 6, 1));
+        schedule.Sessions = [.. ScheduleSessionGenerator.Generate(schedule, 6m, null)];
+
+        // Move the first session forward so a later session becomes the earliest.
+        schedule.Sessions[0].Date = new DateOnly(2026, 6, 30);
+
+        ScheduleSessionGenerator.SyncStartDateToEarliestSession(schedule);
+
+        schedule.StartDate.Should().Be(new DateOnly(2026, 6, 3));
+    }
+
+    [Fact]
+    public void SyncStartDateToEarliestSession_TracksRescheduledFirstSession()
+    {
+        var schedule = SampleSchedule("LMiV", new DateOnly(2026, 6, 1));
+        schedule.Sessions = [.. ScheduleSessionGenerator.Generate(schedule, 6m, null)];
+
+        // Move the first session earlier: start date should follow it.
+        schedule.Sessions[0].Date = new DateOnly(2026, 5, 25);
+
+        ScheduleSessionGenerator.SyncStartDateToEarliestSession(schedule);
+
+        schedule.StartDate.Should().Be(new DateOnly(2026, 5, 25));
+    }
+
+    [Fact]
+    public void StartDateShift_ThenSync_MovesWholePlanToNewStart()
+    {
+        // Mirrors ScheduleFunction.Update pure-startDate-change flow: shift by delta, then sync.
+        var schedule = SampleSchedule("LMiV", new DateOnly(2026, 6, 1));
+        schedule.Sessions = [.. ScheduleSessionGenerator.Generate(schedule, 6m, null)];
+        var newStart = new DateOnly(2026, 6, 8);
+        var delta = newStart.DayNumber - schedule.StartDate.DayNumber;
+
+        ScheduleSessionGenerator.ShiftScheduledSessions(schedule, delta, null);
+        ScheduleSessionGenerator.SyncStartDateToEarliestSession(schedule);
+
+        schedule.StartDate.Should().Be(newStart);
+        schedule.Sessions[0].Date.Should().Be(newStart);
+        schedule.Sessions.Select(s => s.Date).Should().Equal(
+            new DateOnly(2026, 6, 8),
+            new DateOnly(2026, 6, 10),
+            new DateOnly(2026, 6, 12));
+    }
+
+    [Fact]
+    public void StartDateShift_WithHeldFirstSession_ReSyncsStartToHeldSession()
+    {
+        // Edge case: the first session was already held. The shift moves only upcoming sessions,
+        // and the sync keeps startDate anchored to the held session (a started course cannot move
+        // its start), never losing data.
+        var schedule = SampleSchedule("LMiV", new DateOnly(2026, 6, 1));
+        schedule.Sessions = [.. ScheduleSessionGenerator.Generate(schedule, 6m, null)];
+        schedule.Sessions[0].Status = ScheduleSessionStatus.Completed;
+        var heldDate = schedule.Sessions[0].Date;
+        var newStart = new DateOnly(2026, 6, 8);
+        var delta = newStart.DayNumber - schedule.StartDate.DayNumber;
+
+        ScheduleSessionGenerator.ShiftScheduledSessions(schedule, delta, null);
+        ScheduleSessionGenerator.SyncStartDateToEarliestSession(schedule);
+
+        schedule.Sessions[0].Date.Should().Be(heldDate);
+        schedule.StartDate.Should().Be(heldDate);
+        schedule.Sessions[1].Date.Should().Be(new DateOnly(2026, 6, 10));
+    }
+
     private static Schedule SampleSchedule(string weekdays, DateOnly startDate) => new()
     {
         Id = "sch-1",

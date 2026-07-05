@@ -184,7 +184,26 @@ public sealed class ScheduleFunction
         var previous = CloneScheduleForRegenerationCheck(existing);
         MapToEntity(body, existing, context.Teacher!);
         existing.CourseDurationHours = context.CourseDurationHours;
-        if (ScheduleSessionGenerator.RequiresRegeneration(previous, existing))
+
+        var onlyStartDateChanged =
+            previous.StartDate != existing.StartDate
+            && previous.Course == existing.Course
+            && previous.Level == existing.Level
+            && previous.Weekdays == existing.Weekdays
+            && previous.StartTime == existing.StartTime
+            && previous.EndTime == existing.EndTime;
+
+        if (onlyStartDateChanged)
+        {
+            // Non-destructive shift: move upcoming (scheduled, un-attended) sessions by the same
+            // day delta, preserving already-held sessions and manual reschedules. Avoids the
+            // destructive full regeneration and the 409 that blocked start-date edits on live
+            // schedules. StartDate is then re-synced to the earliest active session.
+            var deltaDays = existing.StartDate.DayNumber - previous.StartDate.DayNumber;
+            ScheduleSessionGenerator.ShiftScheduledSessions(existing, deltaDays, _currentUser.GetAuditUser());
+            ScheduleSessionGenerator.SyncStartDateToEarliestSession(existing);
+        }
+        else if (ScheduleSessionGenerator.RequiresRegeneration(previous, existing))
         {
             try
             {
@@ -337,6 +356,11 @@ public sealed class ScheduleFunction
             }
         }
 
+        // Rescheduling a session can change which session is first: keep the schedule's start date
+        // synced with the earliest active session (single source of truth).
+        if (body.Date is not null)
+            ScheduleSessionGenerator.SyncStartDateToEarliestSession(schedule);
+
         ScheduleSessionGenerator.ApplyProjection(schedule);
 
         var ifMatch = req.Headers.IfMatch.FirstOrDefault();
@@ -388,6 +412,8 @@ public sealed class ScheduleFunction
         session.DeletedBy = auditUser;
         session.UpdatedAt = now;
         session.UpdatedBy = auditUser;
+        // Deleting the first session promotes the next one: keep start date synced.
+        ScheduleSessionGenerator.SyncStartDateToEarliestSession(schedule);
         ScheduleSessionGenerator.ApplyProjection(schedule);
 
         var ifMatch = req.Headers.IfMatch.FirstOrDefault();
