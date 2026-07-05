@@ -12,6 +12,72 @@
 export const PERU_TZ = 'America/Lima';
 
 /**
+ * Returns the current month in Peru timezone as `YYYY-MM`.
+ *
+ * This is the canonical helper for month pickers that drive month-scoped
+ * dashboard queries. It avoids UTC/local drift near month boundaries.
+ */
+export function currentMonthInPeru(referenceDate: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: PERU_TZ,
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(referenceDate);
+
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+
+  if (!year || !month) {
+    const fallback = new Date(referenceDate);
+    return `${fallback.getFullYear()}-${String(fallback.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  return `${year}-${month}`;
+}
+
+/** Returns the inclusive `[from, to]` bounds for a `YYYY-MM` month value. */
+export function monthBounds(month: string): { from: string; to: string } | null {
+  if (!/^\d{4}-\d{2}$/.test(month)) return null;
+
+  const [yearRaw, monthRaw] = month.split('-');
+  const year = Number(yearRaw);
+  const monthNumber = Number(monthRaw);
+  if (!Number.isInteger(year) || !Number.isInteger(monthNumber) || monthNumber < 1 || monthNumber > 12) {
+    return null;
+  }
+
+  const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  return {
+    from: `${yearRaw}-${monthRaw}-01`,
+    to: `${yearRaw}-${monthRaw}-${String(lastDay).padStart(2, '0')}`,
+  };
+}
+
+function normalizeDateOnly(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
+  return match?.[1] ?? null;
+}
+
+/**
+ * Returns true when a schedule is active at any point during the target month.
+ *
+ * Rule: `startDate <= monthEnd && projectedEndDate >= monthStart`.
+ */
+export function isScheduleActiveInMonth(
+  startDate: string,
+  projectedEndDate: string | null | undefined,
+  month: string,
+): boolean {
+  const bounds = monthBounds(month);
+  const normalizedStart = normalizeDateOnly(startDate);
+  if (!bounds || !normalizedStart) return false;
+
+  const normalizedEnd = normalizeDateOnly(projectedEndDate) ?? normalizedStart;
+  return normalizedStart <= bounds.to && normalizedEnd >= bounds.from;
+}
+
+/**
  * Format a UTC date for display in Peru timezone.
  *
  * @param utcDate - Date in UTC (from API/database)

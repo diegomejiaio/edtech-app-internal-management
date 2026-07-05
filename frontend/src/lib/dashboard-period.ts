@@ -15,6 +15,7 @@ import {
   subMonths,
   subDays,
 } from 'date-fns';
+import { currentMonthInPeru } from './dates';
 
 /** A date range expressed as native `Date` objects (inclusive). */
 export interface DateRange {
@@ -25,10 +26,9 @@ export interface DateRange {
 /** Available presets for the period filter. */
 export type PeriodPreset = 'last30Days' | 'thisMonth' | 'last3Months' | 'thisYear' | 'custom';
 
-/** Returns `YYYY-MM` for the current month in local time. */
+/** Returns `YYYY-MM` for the current month in Peru timezone. */
 export function currentMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  return currentMonthInPeru();
 }
 
 /** Returns the inclusive `[from, to]` ISO date range for a `YYYY-MM` value. */
