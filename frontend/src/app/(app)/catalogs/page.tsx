@@ -71,11 +71,6 @@ export default function CatalogsPage() {
       <PageHeader
         title="Catálogos"
         description="Datos maestros del sistema (cursos, niveles, medios de pago, etc.)"
-        action={(
-          <Button asChild>
-            <Link href="/teachers">Gestionar profesores</Link>
-          </Button>
-        )}
       />
 
       {isLoading && (
