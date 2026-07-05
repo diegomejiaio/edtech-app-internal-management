@@ -155,7 +155,9 @@ export default function EnrollmentsPage() {
       />
 
       {/* Wizard for new enrollment (mirrors legacy GAS 2-step flow) */}
-      <EnrollmentWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+      {wizardOpen && (
+        <EnrollmentWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+      )}
 
       {/* Edit sheet (legacy single-form, only for editing) */}
       <FormSheetDialog

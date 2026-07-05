@@ -9,7 +9,7 @@
  * See docs/04-api-design.md §6.1 for the BFF response shape.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -120,12 +120,6 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
 
   const selectedSchedule = schedulesForMonth.find((schedule) => schedule.id === scheduleId);
   const dashboardScheduleId = selectedSchedule?.id;
-
-  useEffect(() => {
-    if (scheduleId && !selectedSchedule) {
-      setScheduleId(undefined);
-    }
-  }, [scheduleId, selectedSchedule]);
 
   const { data: dashboard, isLoading: dashLoading } = useScheduleDashboard(
     client,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Calendar, CheckCircle2, CircleDollarSign, ClipboardList, Trash2, Users } from 'lucide-react';
@@ -71,12 +71,13 @@ export function ScheduleDetailView() {
   const updateSession = useUpdateScheduleSession(client);
   const deleteSession = useDeleteScheduleSession(client);
 
-  useEffect(() => {
-    if (!selectedSession) return;
-    setDateDraft(selectedSession.date);
-    setStartDraft(selectedSession.startTime.slice(0, 5));
-    setEndDraft(selectedSession.endTime.slice(0, 5));
-  }, [selectedSession]);
+  function selectSession(session: ScheduleSession | null) {
+    setSelectedSession(session);
+    if (!session) return;
+    setDateDraft(session.date);
+    setStartDraft(session.startTime.slice(0, 5));
+    setEndDraft(session.endTime.slice(0, 5));
+  }
 
   const sessions = useMemo(() => flattenInfiniteItems(sessionQuery.data, { sortBy: (s) => s.date }), [sessionQuery.data]);
   const schedule = scheduleQuery.data;
@@ -143,7 +144,7 @@ export function ScheduleDetailView() {
       },
       {
         onSuccess: (updated) => {
-          setSelectedSession(updated.session);
+          selectSession(updated.session);
           setScheduleEtag(updated.scheduleEtag ?? undefined);
           toast.success('Sesión actualizada');
         },
@@ -169,7 +170,7 @@ export function ScheduleDetailView() {
       },
       {
         onSuccess: (updated) => {
-          setSelectedSession(updated.session);
+          selectSession(updated.session);
           setScheduleEtag(updated.scheduleEtag ?? undefined);
           toast.success('Asistencia actualizada');
         },
@@ -197,7 +198,7 @@ export function ScheduleDetailView() {
       },
       {
         onSuccess: (updated) => {
-          setSelectedSession(updated.session);
+          selectSession(updated.session);
           setScheduleEtag(updated.scheduleEtag ?? undefined);
           toast.success('Sesión reprogramada');
         },
@@ -224,7 +225,7 @@ export function ScheduleDetailView() {
         onSuccess: () => {
           setConfirmDelete(false);
           setSessionToDelete(null);
-          if (selectedSession?.id === target.id) setSelectedSession(null);
+          if (selectedSession?.id === target.id) selectSession(null);
           setScheduleEtag(undefined);
           toast.success('Sesión eliminada');
         },
@@ -321,7 +322,7 @@ export function ScheduleDetailView() {
                 emptyMessage="Aún no hay sesiones generadas"
                 actions={(s) => (
                   <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedSession(s)}>Ver</Button>
+                    <Button variant="ghost" size="sm" onClick={() => selectSession(s)}>Ver</Button>
                     <Button
                       variant="ghost"
                       size="icon-sm"

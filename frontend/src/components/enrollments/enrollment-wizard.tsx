@@ -20,7 +20,7 @@
  * the payment later from the student-payments page.
  */
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { FormSheetDialog } from '@/components/data';
 import { StudentPicker, SchedulePicker, CatalogSelect } from '@/components/pickers';
@@ -130,36 +130,6 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
       notes: note,
     });
   }
-
-  // Reset whenever the sheet re-opens so previous selections don't leak.
-  useEffect(() => {
-    if (open) {
-      setStudentId(undefined);
-      setScheduleId(undefined);
-      setEnrollmentDate(toIsoDate(new Date()));
-      setPrice("");
-      setIsPack(false);
-      setScheduleId2(undefined);
-      setPrice2('');
-      setTotalReceived('');
-      setAmount2('');
-      setShowNewStudent(false);
-      setNewDocType('dni');
-      setNewDocNumber('');
-      setNewFirstName('');
-      setNewLastName('');
-      setNewPhone('');
-      setNewEmail('');
-      setNewSource(undefined);
-      setNewStudentNotes('');
-      setAmount('');
-      setInstallmentNumber('1');
-      setPaymentMethod(undefined);
-      setHasReceipt(false);
-      setReceiptNumber('');
-      setPaymentNotes('');
-    }
-  }, [open]);
 
   function handleToggleNewStudent() {
     if (showNewStudent) {
