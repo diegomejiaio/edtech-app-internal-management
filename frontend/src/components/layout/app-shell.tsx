@@ -4,7 +4,7 @@
  * App sidebar navigation for Espacio Pro v1.
  *
  * Sidebar morphology: collapsible icon sidebar,
- * SidebarRail, header with logo, flat nav items, settings in footer.
+ * SidebarRail, header with logo, flat nav items.
  */
 
 import Link from 'next/link';
@@ -41,6 +41,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Logo } from '@/components/logo';
@@ -57,7 +58,6 @@ const MAIN_NAV: NavItem[] = [
   { label: 'Alumnos', href: '/students', icon: Users },
   { label: 'Profesores', href: '/teachers', icon: User },
   { label: 'Inscripciones', href: '/enrollments', icon: ClipboardList },
-  { label: 'Pagos alumnos', href: '/student-payments', icon: CreditCard },
 ];
 
 const CRM_NAV: NavItem[] = [
@@ -71,19 +71,32 @@ const CRM_NAV: NavItem[] = [
 ];
 
 const FINANCE_NAV: NavItem[] = [
+  { label: 'Pagos alumnos', href: '/student-payments', icon: CreditCard },
   { label: 'Pagos profesores', href: '/teacher-payments', icon: Wallet },
   { label: 'Cobranzas', href: '/collections', icon: HandCoins },
   { label: 'Gastos', href: '/expenses', icon: Receipt },
 ];
 
-const SETTINGS_ITEM: NavItem = {
+const CATALOGS_ITEM: NavItem = {
   label: 'Catálogos',
   href: '/catalogs',
   icon: Settings,
 };
 
+const CATALOG_ROUTE_PREFIXES = [
+  '/catalogs',
+  '/courses',
+  '/levels',
+  '/spaces',
+  '/payment-methods',
+  '/expense-categories',
+  '/weekdays',
+  '/student-sources',
+];
+
 export function AppSidebar() {
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
   const { user } = useUser();
   const displayName =
     user?.fullName || user?.username || user?.primaryEmailAddress?.emailAddress || 'Usuario';
@@ -91,6 +104,25 @@ export function AppSidebar() {
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
+  const isCatalogRouteActive = CATALOG_ROUTE_PREFIXES.some((prefix) => isActive(prefix));
+  const closeMobileSidebar = () => setOpenMobile(false);
+
+  function renderNavItem(item: NavItem, active = isActive(item.href)) {
+    return (
+      <SidebarMenuItem key={item.href}>
+        <SidebarMenuButton
+          asChild
+          isActive={active}
+          tooltip={item.label}
+        >
+          <Link href={item.href} onClick={closeMobileSidebar}>
+            <item.icon />
+            <span>{item.label}</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -99,7 +131,7 @@ export function AppSidebar() {
           <SidebarMenu className="flex-1">
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
-                <Link href="/dashboard">
+                <Link href="/dashboard" onClick={closeMobileSidebar}>
                   <Logo variant="icon" className="size-8 shrink-0" />
                   <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
                     <span className="text-base font-semibold tracking-tight text-sidebar-foreground">
@@ -122,42 +154,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {MAIN_NAV.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.href)}
-                    tooltip={item.label}
-                  >
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>CRM</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {CRM_NAV.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.href)}
-                    tooltip={item.label}
-                  >
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {MAIN_NAV.map((item) => renderNavItem(item))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -166,41 +163,31 @@ export function AppSidebar() {
           <SidebarGroupLabel>Finanzas</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {FINANCE_NAV.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.href)}
-                    tooltip={item.label}
-                  >
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {FINANCE_NAV.map((item) => renderNavItem(item))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Catálogos</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {renderNavItem(CATALOGS_ITEM, isCatalogRouteActive)}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>CRM (beta)</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {CRM_NAV.map((item) => renderNavItem(item))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={isActive(SETTINGS_ITEM.href)}
-              tooltip={SETTINGS_ITEM.label}
-            >
-              <Link href={SETTINGS_ITEM.href}>
-                <SETTINGS_ITEM.icon />
-                <span>{SETTINGS_ITEM.label}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        <div className="-mx-2 h-px bg-sidebar-border" />
         <div className="flex items-center gap-2 px-1.5 py-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <UserButton
             afterSignOutUrl="/sign-in"
