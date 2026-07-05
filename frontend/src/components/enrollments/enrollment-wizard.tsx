@@ -49,6 +49,7 @@ import {
   DOC_TYPE_LABELS,
   type DocType,
 } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import { toIsoDate } from '@/lib/dashboard-period';
 
 interface EnrollmentWizardProps {
@@ -60,6 +61,9 @@ interface EnrollmentWizardProps {
 
 const DOC_TYPES: DocType[] = ['dni', 'ce', 'passport'];
 
+/** Default traceability note stamped on each payment of a pack enrollment. */
+const PACK_NOTE = 'Pack';
+
 export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWizardProps) {
   const client = useApiClient();
 
@@ -69,6 +73,14 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
   const [enrollmentDate, setEnrollmentDate] = useState<string>(toIsoDate(new Date()));
   // Negotiated price: defaults to the picked schedule's list price, editable for discounts/packs.
   const [price, setPrice] = useState<string>('');
+
+  // Pack mode: enroll in a second schedule (Básico + Avanzado) from the same form.
+  const [isPack, setIsPack] = useState(false);
+  const [scheduleId2, setScheduleId2] = useState<string | undefined>();
+  const [price2, setPrice2] = useState<string>('');
+  // Total handed over by the student in a pack; split across the two enrollments.
+  const [totalReceived, setTotalReceived] = useState('');
+  const [amount2, setAmount2] = useState('');
 
   // Inline "create student" form
   const [showNewStudent, setShowNewStudent] = useState(false);
@@ -97,6 +109,28 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
     createEnrollmentMutation.isPending ||
     createPaymentMutation.isPending;
 
+  // Pack payment distribution (derived): what the student paid vs. how it's split.
+  const packTotalReceived = Number.parseFloat(totalReceived) || 0;
+  const amountBasico = Number.parseFloat(amount) || 0;
+  const amountAvanzado = Number.parseFloat(amount2) || 0;
+  const packRemaining = packTotalReceived - amountBasico - amountAvanzado;
+  const packBalances = isPack && packTotalReceived > 0 && Math.abs(packRemaining) < 0.001;
+
+  // Creates one initial payment; shared by both pack legs. `paymentMethod` is
+  // guaranteed set by the caller (validated before any write in pack mode).
+  async function createInitialPayment(enrollmentId: string, amt: number, note: string) {
+    await createPaymentMutation.mutateAsync({
+      enrollmentId,
+      date: enrollmentDate,
+      amount: amt,
+      installmentNumber: 1,
+      paymentMethod: paymentMethod as string,
+      hasReceipt,
+      receiptNumber: hasReceipt ? receiptNumber.trim() || null : null,
+      notes: note,
+    });
+  }
+
   // Reset whenever the sheet re-opens so previous selections don't leak.
   useEffect(() => {
     if (open) {
@@ -104,6 +138,11 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
       setScheduleId(undefined);
       setEnrollmentDate(toIsoDate(new Date()));
       setPrice("");
+      setIsPack(false);
+      setScheduleId2(undefined);
+      setPrice2('');
+      setTotalReceived('');
+      setAmount2('');
       setShowNewStudent(false);
       setNewDocType('dni');
       setNewDocNumber('');
@@ -141,6 +180,17 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
       return;
     }
 
+    if (isPack) {
+      if (!scheduleId2) {
+        toast.error('Selecciona el segundo horario del pack');
+        return;
+      }
+      if (scheduleId2 === scheduleId) {
+        toast.error('Los dos horarios del pack deben ser distintos');
+        return;
+      }
+    }
+
     // Resolve the student id: either pick the new one or use the selected.
     let resolvedStudentId: string | undefined = studentId;
 
@@ -174,8 +224,20 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
       return;
     }
 
-    // Create the enrollment.
-    let enrollmentId: string;
+    // Pack payment distribution must reconcile before creating anything.
+    if (isPack && packTotalReceived > 0) {
+      if (!paymentMethod) {
+        toast.error('Selecciona el medio de pago del pago inicial');
+        return;
+      }
+      if (Math.abs(packRemaining) > 0.001) {
+        toast.error('La distribución del pago no cuadra con el total recibido');
+        return;
+      }
+    }
+
+    // Create the first enrollment (Básico leg in a pack).
+    let enrollmentId1: string;
     try {
       const enrollment = await createEnrollmentMutation.mutateAsync({
         studentId: resolvedStudentId,
@@ -184,7 +246,7 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
         status: 'active',
         schedulePrice: price.trim() ? Number.parseFloat(price) : undefined,
       });
-      enrollmentId = enrollment.id;
+      enrollmentId1 = enrollment.id;
     } catch (err) {
       if (isConflict(err)) {
         toast.error('Ya existe una inscripción activa para este alumno en este horario');
@@ -196,7 +258,67 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
       return;
     }
 
-    // Optional initial payment.
+    // Pack: create the second enrollment (Avanzado). If it fails, the first one
+    // stays (no hard delete — project rule) and the operator finishes manually.
+    let enrollmentId2: string | undefined;
+    if (isPack) {
+      try {
+        const enrollment2 = await createEnrollmentMutation.mutateAsync({
+          studentId: resolvedStudentId,
+          scheduleId: scheduleId2 as string,
+          enrollmentDate,
+          status: 'active',
+          schedulePrice: price2.trim() ? Number.parseFloat(price2) : undefined,
+        });
+        enrollmentId2 = enrollment2.id;
+      } catch (err) {
+        const detail = isConflict(err)
+          ? 'ya existe una inscripción activa en ese horario'
+          : isApiError(err)
+            ? getApiErrorMessage(err)
+            : 'error desconocido';
+        toast.warning(
+          `Se creó la inscripción de Básico, pero falló Avanzado: ${detail}. Complétala manualmente.`,
+        );
+        onSuccess?.();
+        onOpenChange(false);
+        return;
+      }
+    }
+
+    // Pack: distribute the initial payment across both legs (2 payment records).
+    if (isPack) {
+      if (packTotalReceived > 0) {
+        const packNote = paymentNotes.trim() || PACK_NOTE;
+        const failures: string[] = [];
+        if (amountBasico > 0) {
+          try {
+            await createInitialPayment(enrollmentId1, amountBasico, packNote);
+          } catch {
+            failures.push('Básico');
+          }
+        }
+        if (amountAvanzado > 0 && enrollmentId2) {
+          try {
+            await createInitialPayment(enrollmentId2, amountAvanzado, packNote);
+          } catch {
+            failures.push('Avanzado');
+          }
+        }
+        if (failures.length === 0) {
+          toast.success('Pack matriculado y pago distribuido registrado');
+        } else {
+          toast.warning(`Pack matriculado, pero falló el pago de: ${failures.join(', ')}`);
+        }
+      } else {
+        toast.success('Pack matriculado (sin pago inicial)');
+      }
+      onSuccess?.();
+      onOpenChange(false);
+      return;
+    }
+
+    // Single enrollment: optional initial payment (unchanged behavior).
     const amountNum = Number.parseFloat(amount);
     if (amount.trim() && amountNum > 0) {
       if (!paymentMethod) {
@@ -207,7 +329,7 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
       }
       try {
         await createPaymentMutation.mutateAsync({
-          enrollmentId,
+          enrollmentId: enrollmentId1,
           date: enrollmentDate,
           amount: amountNum,
           installmentNumber: Number.parseInt(installmentNumber, 10) || 1,
@@ -234,11 +356,30 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
       open={open}
       onOpenChange={onOpenChange}
       title="Nueva matrícula"
-      description="Matricula un alumno en un horario activo"
+      description={isPack ? 'Matrícula en pack: Básico + Avanzado' : 'Matricula un alumno en un horario activo'}
       isLoading={isSubmitting}
       onSubmit={handleSubmit}
-      submitLabel="Matricular"
+      submitLabel={isPack ? 'Matricular pack' : 'Matricular'}
     >
+      {/* Pack toggle */}
+      <div className="flex items-center justify-between rounded-md border p-3">
+        <div className="space-y-0.5 pr-3">
+          <Label htmlFor="packMode">Pack (Básico + Avanzado)</Label>
+          <p className="text-xs text-muted-foreground">
+            Matricula en dos horarios y distribuye un pago inicial entre ambos.
+          </p>
+        </div>
+        <Switch
+          id="packMode"
+          checked={isPack}
+          onCheckedChange={(checked) => {
+            setIsPack(checked);
+            if (checked && !paymentNotes.trim()) setPaymentNotes(PACK_NOTE);
+            if (!checked && paymentNotes.trim() === PACK_NOTE) setPaymentNotes('');
+          }}
+        />
+      </div>
+
       {/* Alumno */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -344,7 +485,7 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
 
       {/* Horario */}
       <div className="space-y-2">
-        <Label>Horario</Label>
+        <Label>{isPack ? 'Horario 1 · Básico' : 'Horario'}</Label>
         <SchedulePicker
           client={client}
           value={scheduleId}
@@ -359,7 +500,7 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
 
       {/* Precio (editable, default = precio del horario) */}
       <div className="space-y-2">
-        <Label htmlFor="enrollmentPrice">Precio (S/)</Label>
+        <Label htmlFor="enrollmentPrice">{isPack ? 'Precio Básico (S/)' : 'Precio (S/)'}</Label>
         <Input
           id="enrollmentPrice"
           name="schedulePrice"
@@ -374,6 +515,36 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
           Por defecto es el precio del horario. Edítalo si acordaste un descuento o pack.
         </p>
       </div>
+
+      {/* Segundo horario + precio (solo pack) */}
+      {isPack && (
+        <>
+          <div className="space-y-2">
+            <Label>Horario 2 · Avanzado</Label>
+            <SchedulePicker
+              client={client}
+              value={scheduleId2}
+              onChange={(id, schedule) => {
+                setScheduleId2(id);
+                setPrice2(schedule.price.toString());
+              }}
+              name="scheduleId2"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="enrollmentPrice2">Precio Avanzado (S/)</Label>
+            <Input
+              id="enrollmentPrice2"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={price2}
+              onChange={(e) => setPrice2(e.target.value)}
+            />
+          </div>
+        </>
+      )}
 
       {/* Fecha de inscripción */}
       <div className="space-y-2">
@@ -391,30 +562,85 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
       {/* Pago inicial (opcional) */}
       <div className="border-t pt-4 space-y-3">
         <div className="text-sm font-medium">Pago inicial (opcional)</div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="paymentAmount">Monto (S/)</Label>
-            <Input
-              id="paymentAmount"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
+        {isPack ? (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="totalReceived">Total recibido (S/)</Label>
+              <Input
+                id="totalReceived"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={totalReceived}
+                onChange={(e) => setTotalReceived(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="amountBasico">→ Básico (S/)</Label>
+                <Input
+                  id="amountBasico"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="amountAvanzado">→ Avanzado (S/)</Label>
+                <Input
+                  id="amountAvanzado"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={amount2}
+                  onChange={(e) => setAmount2(e.target.value)}
+                />
+              </div>
+            </div>
+            {packTotalReceived > 0 && (
+              <p
+                className={cn(
+                  'text-xs',
+                  packBalances ? 'text-muted-foreground' : 'text-destructive',
+                )}
+              >
+                {packBalances
+                  ? 'Distribución completa ✓'
+                  : `Restante por asignar: S/ ${packRemaining.toFixed(2)}`}
+              </p>
+            )}
+          </>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="paymentAmount">Monto (S/)</Label>
+              <Input
+                id="paymentAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="paymentInstallment">Cuota N°</Label>
+              <Input
+                id="paymentInstallment"
+                type="number"
+                min="1"
+                value={installmentNumber}
+                onChange={(e) => setInstallmentNumber(e.target.value)}
+              />
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="paymentInstallment">Cuota N°</Label>
-            <Input
-              id="paymentInstallment"
-              type="number"
-              min="1"
-              value={installmentNumber}
-              onChange={(e) => setInstallmentNumber(e.target.value)}
-            />
-          </div>
-        </div>
+        )}
         <div className="space-y-1.5">
           <Label>Medio de pago</Label>
           <CatalogSelect

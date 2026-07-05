@@ -1,0 +1,27 @@
+# .worktreeinclude — Copilot CLI auto-copies these git-ignored files into new worktrees.
+#
+# Git worktrees only materialize tracked files, so local secrets (our .gitignore'd
+# env files) would be missing in a freshly created worktree/session. Listing them
+# here makes Copilot copy them from the main checkout automatically.
+#
+# Syntax is .gitignore-style: one pattern per line; "!" negates a previous match.
+# Nothing here is ever uploaded — files are copied locally between checkouts.
+# Do NOT put real secret values in this file; it only references paths.
+
+# Frontend (Next.js) local env — Clerk keys, API base URL
+frontend/.env.local
+frontend/.env*.local
+
+# E2E test credentials (Clerk test user)
+e2e/.env
+
+# Backend Azure Functions local settings (Cosmos connection)
+backend/src/EspacioPro.Api/local.settings.json
+
+# Telegram agent local settings
+agent/EspacioPro.TelegramAgent/local.settings.json
+
+# Safety net: never pull env/settings files out of dependency or build trees
+!**/node_modules/**
+!**/bin/**
+!**/obj/**

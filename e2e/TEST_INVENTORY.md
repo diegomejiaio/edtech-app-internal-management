@@ -53,6 +53,13 @@ Columns:
 | 1 | lists payments when editing an enrollment | regression | read | active | |
 | 2 | registers and deletes a student payment tied to the enrollment | write-heavy | write | active | `test.setTimeout(90_000)` |
 
+### `tests/regression/pack-enrollment.spec.ts` — Pack enrollment @session-features
+
+| # | Test | Tier | Backend | Status | Notes |
+|---|------|------|---------|--------|-------|
+| 1 | creates two enrollments and a split payment with Pack notes | regression | mocked | active | Captures POST bodies |
+| 2 | blocks submit when the split does not match the total received | regression | mocked | active | Guardrail: restante ≠ 0 |
+
 ### `tests/regression/forms-filters.spec.ts` — Form spacing and payment filters @session-features
 
 | # | Test | Tier | Backend | Status | Notes |
@@ -123,11 +130,11 @@ Columns:
 | Tier         | Count |
 |--------------|-------|
 | smoke        | 6     |
-| regression   | 20    |
+| regression   | 22    |
 | write-heavy  | 7     |
-| **active**   | **30** |
+| **active**   | **32** |
 | **skipped**  | **3** (flaky-env) |
-| **total**    | **33** unique × 2 projects = **66** executions |
+| **total**    | **35** unique × 2 projects = **70** executions |
 
 ---
 
