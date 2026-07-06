@@ -33,7 +33,11 @@ export function useStudentPayments(
   });
 }
 
-export function useInfiniteStudentPayments(client: ApiClient, params?: InfiniteStudentPaymentListParams) {
+export function useInfiniteStudentPayments(
+  client: ApiClient,
+  params?: InfiniteStudentPaymentListParams,
+  options?: { enabled?: boolean },
+) {
   const limit = params?.limit ?? 25;
 
   return useInfiniteQuery({
@@ -41,6 +45,7 @@ export function useInfiniteStudentPayments(client: ApiClient, params?: InfiniteS
     queryFn: ({ pageParam }) => getStudentPayments(client, { ...params, limit, offset: pageParam }),
     initialPageParam: 0,
     getNextPageParam: getNextOffset,
+    enabled: options?.enabled ?? true,
   });
 }
 

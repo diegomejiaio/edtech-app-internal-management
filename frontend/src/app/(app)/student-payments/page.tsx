@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { formatTableDate } from '@/lib/dates';
 import { toIsoDate, presetRange, rangeToIso, type DateRange } from '@/lib/dashboard-period';
-import { flattenInfiniteItems, getInfiniteTotal, getInfiniteTotalAmount, useEnrollment, useStudentPayments, useInfiniteStudentPayments, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from '@/hooks';
+import { flattenInfiniteItems, getInfiniteTotal, getInfiniteTotalAmount, useEnrollment, useInfiniteStudentPayments, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from '@/hooks';
 import { DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, ReadOnlyField, type Column } from '@/components/data';
 import { PageHeader, PageHeaderButton } from '@/components/layout';
 import { EnrollmentPicker, CatalogSelect } from '@/components/pickers';
@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { getApiErrorMessage, isApiError } from '@/lib/api';
 import type { StudentPayment, StudentPaymentBody } from '@/lib/api';
+import { subtractMoney, sumMoney, toMoneyCents } from '@/lib/money';
 
 const formatMoney = (value: number) => `S/ ${value.toFixed(2)}`;
 
@@ -85,41 +86,122 @@ export default function StudentPaymentsPage() {
   const [pickedEnrollmentId, setPickedEnrollmentId] = useState<string | undefined>();
   const [pickedPaymentMethod, setPickedPaymentMethod] = useState<string | undefined>();
   const selectedPaymentsParams = useMemo(
-    () => pickedEnrollmentId ? { enrollmentId: pickedEnrollmentId, limit: 20 } : undefined,
+    () => pickedEnrollmentId ? { enrollmentId: pickedEnrollmentId, limit: 25 } : undefined,
     [pickedEnrollmentId],
   );
   const { data: selectedEnrollment } = useEnrollment(client, pickedEnrollmentId);
-  const { data: selectedPaymentsData, isLoading: isLoadingSelectedPayments } = useStudentPayments(
+  const {
+    data: selectedPaymentsData,
+    isLoading: isLoadingSelectedPayments,
+    isFetchingNextPage: isFetchingMoreSelectedPayments,
+    hasNextPage: hasMoreSelectedPayments,
+    fetchNextPage: fetchMoreSelectedPayments,
+  } = useInfiniteStudentPayments(
     client,
     selectedPaymentsParams,
-    { enabled: !!pickedEnrollmentId },
+    { enabled: formOpen && !!pickedEnrollmentId },
   );
+
+  useEffect(() => {
+    if (!formOpen || !pickedEnrollmentId || !hasMoreSelectedPayments || isFetchingMoreSelectedPayments) return;
+    fetchMoreSelectedPayments();
+  }, [formOpen, pickedEnrollmentId, hasMoreSelectedPayments, isFetchingMoreSelectedPayments, fetchMoreSelectedPayments]);
+
   const selectedPayments = useMemo(
-    () => selectedPaymentsData?.items ?? [],
+    () => flattenInfiniteItems(selectedPaymentsData),
     [selectedPaymentsData],
   );
   const selectedPaymentsTotal = useMemo(
-    () => selectedPayments.reduce((totalAmount, payment) => totalAmount + payment.amount, 0),
+    () => sumMoney(selectedPayments.map((payment) => payment.amount)),
+    [selectedPayments],
+  );
+  const suggestedInstallmentNumber = useMemo(
+    () => selectedPayments.reduce((max, payment) => Math.max(max, payment.installmentNumber), 0) + 1,
     [selectedPayments],
   );
   const selectedPendingAmount = selectedEnrollment
-    ? Math.max(selectedEnrollment.schedulePrice - selectedPaymentsTotal, 0)
+    ? Math.max(0, subtractMoney(selectedEnrollment.schedulePrice, selectedPaymentsTotal))
     : undefined;
+  const maxAllowedAmount = useMemo(() => {
+    if (selectedPendingAmount === undefined) return undefined;
+    return sumMoney([selectedPendingAmount, editing?.amount ?? 0]);
+  }, [selectedPendingAmount, editing?.amount]);
+  const isSyncingEnrollmentPayments = !!pickedEnrollmentId && (
+    isLoadingSelectedPayments || isFetchingMoreSelectedPayments || hasMoreSelectedPayments === true
+  );
 
-  function openCreate() { setEditing(null); setPickedEnrollmentId(undefined); setPickedPaymentMethod(undefined); setFormOpen(true); }
-  function openEdit(p: StudentPayment) { setEditing(p); setPickedEnrollmentId(p.enrollmentId); setPickedPaymentMethod(p.paymentMethod); setFormOpen(true); }
+  function openCreate() {
+    setEditing(null);
+    setPickedEnrollmentId(undefined);
+    setPickedPaymentMethod(undefined);
+    setFormOpen(true);
+  }
+
+  function openEdit(p: StudentPayment) {
+    setEditing(p);
+    setPickedEnrollmentId(p.enrollmentId);
+    setPickedPaymentMethod(p.paymentMethod);
+    setFormOpen(true);
+  }
 
   function handleSubmit(ev: FormEvent<HTMLFormElement>) {
     ev.preventDefault();
     const fd = new FormData(ev.currentTarget);
+    const enrollmentId = pickedEnrollmentId ?? (fd.get('enrollmentId') as string);
+    if (!enrollmentId) {
+      toast.error('Selecciona una inscripción');
+      return;
+    }
+
+    const amount = Number.parseFloat((fd.get('amount') as string) ?? '');
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error('Ingresa un monto válido (> 0)');
+      return;
+    }
+    const normalizedAmount = sumMoney([amount]);
+    if (maxAllowedAmount !== undefined && toMoneyCents(normalizedAmount) > toMoneyCents(maxAllowedAmount)) {
+      toast.error(`El monto supera el saldo pendiente (${formatMoney(maxAllowedAmount)})`);
+      return;
+    }
+
+    const installmentNumber = Number.parseInt((fd.get('installmentNumber') as string) ?? '', 10);
+    if (!Number.isInteger(installmentNumber) || installmentNumber < 1) {
+      toast.error('Ingresa un N° de cuota válido (>= 1)');
+      return;
+    }
+
+    const duplicatedInstallment = selectedPayments.some((payment) =>
+      payment.id !== editing?.id && payment.installmentNumber === installmentNumber
+    );
+    if (duplicatedInstallment) {
+      toast.error(`La cuota ${installmentNumber} ya está registrada para esta inscripción`);
+      return;
+    }
+
+    const hasReceipt = fd.get('hasReceipt') === 'on';
+    const receiptNumber = ((fd.get('receiptNumber') as string) ?? '').trim();
+    if (hasReceipt && !receiptNumber) {
+      toast.error('Ingresa el N° de boleta');
+      return;
+    }
+    const duplicatedReceipt = hasReceipt && receiptNumber.length > 0 && selectedPayments.some((payment) =>
+      payment.id !== editing?.id &&
+      payment.hasReceipt &&
+      payment.receiptNumber?.trim().toLowerCase() === receiptNumber.toLowerCase()
+    );
+    if (duplicatedReceipt) {
+      toast.error(`La boleta "${receiptNumber}" ya está registrada para esta inscripción`);
+      return;
+    }
+
     const body: StudentPaymentBody = {
-      enrollmentId: pickedEnrollmentId ?? (fd.get('enrollmentId') as string),
+      enrollmentId,
       date: fd.get('date') as string,
-      amount: Number(fd.get('amount')),
-      installmentNumber: Number(fd.get('installmentNumber')),
+      amount: normalizedAmount,
+      installmentNumber,
       paymentMethod: pickedPaymentMethod ?? (fd.get('paymentMethod') as string),
-      hasReceipt: fd.get('hasReceipt') === 'on',
-      receiptNumber: (fd.get('receiptNumber') as string) || null,
+      hasReceipt,
+      receiptNumber: hasReceipt ? receiptNumber : null,
       notes: (fd.get('notes') as string) || null,
     };
 
@@ -202,9 +284,16 @@ export default function StudentPaymentsPage() {
       {/* Create / Edit sheet */}
       <FormSheetDialog
         open={formOpen}
-        onOpenChange={setFormOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open);
+          if (!open) {
+            setEditing(null);
+            setPickedEnrollmentId(undefined);
+            setPickedPaymentMethod(undefined);
+          }
+        }}
         title={editing ? 'Editar pago' : 'Nuevo pago'}
-        isLoading={createMutation.isPending || updateMutation.isPending}
+        isLoading={createMutation.isPending || updateMutation.isPending || isSyncingEnrollmentPayments}
         onSubmit={handleSubmit}
       >
         {editing ? (
@@ -212,7 +301,12 @@ export default function StudentPaymentsPage() {
         ) : (
           <div className="space-y-2">
             <Label>Inscripción</Label>
-            <EnrollmentPicker client={client} value={pickedEnrollmentId} onChange={(id) => setPickedEnrollmentId(id)} name="enrollmentId" />
+            <EnrollmentPicker
+              client={client}
+              value={pickedEnrollmentId}
+              onChange={(id) => setPickedEnrollmentId(id)}
+              name="enrollmentId"
+            />
           </div>
         )}
         {pickedEnrollmentId && (
@@ -252,6 +346,9 @@ export default function StudentPaymentsPage() {
             {isLoadingSelectedPayments && (
               <p className="text-sm text-muted-foreground">Cargando pagos registrados...</p>
             )}
+            {!isLoadingSelectedPayments && isFetchingMoreSelectedPayments && (
+              <p className="text-sm text-muted-foreground">Cargando más pagos para calcular el saldo real...</p>
+            )}
 
             {!isLoadingSelectedPayments && selectedPayments.length === 0 && (
               <p className="text-sm text-muted-foreground">Esta inscripción todavía no tiene pagos registrados.</p>
@@ -279,10 +376,41 @@ export default function StudentPaymentsPage() {
         )}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2"><Label htmlFor="date">Fecha</Label><Input id="date" name="date" type="date" defaultValue={editing?.date ?? toIsoDate(new Date())} required /></div>
-          <div className="space-y-2"><Label htmlFor="amount">Monto (S/)</Label><Input id="amount" name="amount" type="number" step="0.01" defaultValue={editing?.amount} required /></div>
+          <div className="space-y-2">
+            <Label htmlFor="amount">Monto (S/)</Label>
+            <Input
+              id="amount"
+              name="amount"
+              type="number"
+              min="0.01"
+              max={maxAllowedAmount !== undefined ? maxAllowedAmount.toFixed(2) : undefined}
+              step="0.01"
+              inputMode="decimal"
+              placeholder="0.00"
+              key={`amount-${editing?.id ?? 'new'}-${pickedEnrollmentId ?? 'none'}-${selectedPendingAmount ?? 'none'}`}
+              defaultValue={editing ? editing.amount.toFixed(2) : selectedPendingAmount?.toFixed(2) ?? ''}
+              disabled={isSyncingEnrollmentPayments}
+              required
+            />
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2"><Label htmlFor="installmentNumber">N° Cuota</Label><Input id="installmentNumber" name="installmentNumber" type="number" defaultValue={editing?.installmentNumber} required /></div>
+          <div className="space-y-2">
+            <Label htmlFor="installmentNumber">N° Cuota</Label>
+            <Input
+              id="installmentNumber"
+              name="installmentNumber"
+              type="number"
+              min="1"
+              step="1"
+              inputMode="numeric"
+              key={`installment-${editing?.id ?? 'new'}-${pickedEnrollmentId ?? 'none'}-${suggestedInstallmentNumber}`}
+              defaultValue={editing?.installmentNumber ?? suggestedInstallmentNumber}
+              disabled={isSyncingEnrollmentPayments}
+              placeholder={String(suggestedInstallmentNumber)}
+              required
+            />
+          </div>
           <div className="space-y-2"><Label>Medio de pago</Label><CatalogSelect client={client} catalogCode="paymentMethods" value={pickedPaymentMethod} onChange={setPickedPaymentMethod} placeholder="Seleccionar medio..." /></div>
         </div>
         <div className="flex items-center gap-4">
