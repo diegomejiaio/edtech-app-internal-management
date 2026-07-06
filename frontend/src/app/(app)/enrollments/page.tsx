@@ -39,12 +39,23 @@ export default function EnrollmentsPage() {
   const limit = 25;
   const [statusFilter, setStatusFilter] = useState<EnrollmentStatus[]>(DEFAULT_STATUS_FILTER);
 
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteEnrollments(client, {
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteEnrollments(client, {
     limit,
     status: statusFilter,
   });
   const enrollments = useMemo(() => flattenInfiniteItems(data, { sortBy: (e) => e.enrollmentDate }), [data]);
   const total = getInfiniteTotal(data);
+  const hasFilters =
+    statusFilter.length !== DEFAULT_STATUS_FILTER.length ||
+    statusFilter.some((status) => !DEFAULT_STATUS_FILTER.includes(status));
   const updateMutation = useUpdateEnrollment(client);
   const deleteMutation = useDeleteEnrollment(client);
 
@@ -139,7 +150,19 @@ export default function EnrollmentsPage() {
         onLoadMore={() => fetchNextPage()}
         rowKey={(e) => e.id}
         isLoading={isLoading}
+        isError={isError}
+        onRetry={() => refetch()}
         isFetchingNextPage={isFetchingNextPage}
+        emptyState={{
+          title: 'No se encontraron inscripciones',
+          description: 'Registra inscripciones para gestionar pagos y asistencia.',
+          filterDescription: 'Ajusta los estados seleccionados.',
+          hasFilters,
+          action: {
+            label: 'Crear primera inscripción',
+            onClick: openCreate,
+          },
+        }}
         actions={(e) => (
           <RowActions
             onEdit={() => openEdit(e)}

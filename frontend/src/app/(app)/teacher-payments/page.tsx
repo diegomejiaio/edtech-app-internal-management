@@ -35,7 +35,7 @@ export default function TeacherPaymentsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteTeacherPayments(client, {
+  const { data, isLoading, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteTeacherPayments(client, {
     limit,
     from: dateFrom || undefined,
     to: dateTo || undefined,
@@ -100,7 +100,19 @@ export default function TeacherPaymentsPage() {
         onLoadMore={() => fetchNextPage()}
         rowKey={(p) => p.id}
         isLoading={isLoading}
+        isError={isError}
+        onRetry={() => refetch()}
         isFetchingNextPage={isFetchingNextPage}
+        emptyState={{
+          title: 'No se encontraron pagos de profesores',
+          description: 'Registra pagos para llevar control de honorarios.',
+          filterDescription: 'Ajusta el rango de fechas.',
+          hasFilters: Boolean(dateFrom || dateTo),
+          action: {
+            label: 'Registrar primer pago',
+            onClick: openCreate,
+          },
+        }}
         actions={(p) => (
           <RowActions
             onEdit={() => openEdit(p)}

@@ -176,6 +176,8 @@ export function StudentDetailView() {
             onLoadMore={() => enrollmentsQuery.fetchNextPage()}
             rowKey={(e) => e.id}
             isLoading={enrollmentsQuery.isLoading}
+            isError={enrollmentsQuery.isError}
+            onRetry={() => enrollmentsQuery.refetch()}
             isFetchingNextPage={enrollmentsQuery.isFetchingNextPage}
             autoLoadMore
             emptyMessage="Este alumno aún no tiene inscripciones"
@@ -191,6 +193,8 @@ export function StudentDetailView() {
             onLoadMore={() => paymentsQuery.fetchNextPage()}
             rowKey={(p) => p.id}
             isLoading={paymentsQuery.isLoading}
+            isError={paymentsQuery.isError}
+            onRetry={() => paymentsQuery.refetch()}
             isFetchingNextPage={paymentsQuery.isFetchingNextPage}
             autoLoadMore
             emptyMessage="Este alumno aún no tiene pagos registrados"
@@ -204,6 +208,8 @@ export function StudentDetailView() {
             total={activeEnrollments.length}
             rowKey={(e) => e.id}
             isLoading={enrollmentsQuery.isLoading}
+            isError={enrollmentsQuery.isError}
+            onRetry={() => enrollmentsQuery.refetch()}
             emptyMessage="No hay inscripciones activas"
           />
         </TabsContent>

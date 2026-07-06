@@ -46,13 +46,25 @@ export default function SchedulesPage() {
   const [statusFilter, setStatusFilter] = useState<ScheduleStatus[]>(DEFAULT_STATUS_FILTER);
   const limit = 25;
 
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteSchedules(client, {
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteSchedules(client, {
     search: search || undefined,
     status: statusFilter,
     limit,
   });
   const schedules = useMemo(() => flattenInfiniteItems(data, { sortBy: (s) => s.startDate }), [data]);
   const total = getInfiniteTotal(data);
+  const hasStatusFilters =
+    statusFilter.length !== DEFAULT_STATUS_FILTER.length ||
+    statusFilter.some((status) => !DEFAULT_STATUS_FILTER.includes(status));
+  const hasFilters = search.trim().length > 0 || hasStatusFilters;
   const createMutation = useCreateSchedule(client);
   const updateMutation = useUpdateSchedule(client);
   const deleteMutation = useDeleteSchedule(client);
@@ -194,7 +206,19 @@ export default function SchedulesPage() {
             onLoadMore={() => fetchNextPage()}
             rowKey={(s) => s.id}
             isLoading={isLoading}
+            isError={isError}
+            onRetry={() => refetch()}
             isFetchingNextPage={isFetchingNextPage}
+            emptyState={{
+              title: 'No se encontraron horarios',
+              description: 'Crea horarios para organizar cursos y matrículas.',
+              filterDescription: 'Ajusta la búsqueda o los estados seleccionados.',
+              hasFilters,
+              action: {
+                label: 'Crear primer horario',
+                onClick: openCreate,
+              },
+            }}
             actions={(s) => (
               <RowActions
                 onView={() => router.push(`/schedules/detail?id=${s.id}`)}

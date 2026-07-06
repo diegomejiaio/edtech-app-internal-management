@@ -338,6 +338,8 @@ export function ScheduleDetailView() {
                 onLoadMore={() => sessionQuery.fetchNextPage()}
                 rowKey={(s) => s.id}
                 isLoading={sessionQuery.isLoading}
+                isError={sessionQuery.isError}
+                onRetry={() => sessionQuery.refetch()}
                 isFetchingNextPage={sessionQuery.isFetchingNextPage}
                 autoLoadMore
                 emptyMessage="Aún no hay sesiones generadas"
@@ -368,6 +370,8 @@ export function ScheduleDetailView() {
                 onLoadMore={() => enrollmentQuery.fetchNextPage()}
                 rowKey={(e) => e.id}
                 isLoading={enrollmentQuery.isLoading}
+                isError={enrollmentQuery.isError}
+                onRetry={() => enrollmentQuery.refetch()}
                 isFetchingNextPage={enrollmentQuery.isFetchingNextPage}
                 autoLoadMore
                 emptyMessage="Aún no hay matrículas en este horario"

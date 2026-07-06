@@ -9,7 +9,7 @@
  */
 
 import { useState, type FormEvent } from 'react';
-import { Ban, BookOpen, Pencil, Plus, RotateCcw } from 'lucide-react';
+import { Ban, Pencil, Plus, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { useCatalog, useAddCatalogItem, useReplaceCatalogItems } from '@/hooks';
@@ -17,17 +17,15 @@ import { PageHeader, PageHeaderButton } from '@/components/layout';
 import { DataTable, FormSheetDialog, type Column } from '@/components/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { EmptyState } from '@/components/ui/empty-state';
 import { getApiErrorMessage, isApiError, type CatalogItem } from '@/lib/api';
 
 const CATALOG_CODE = 'courses';
 
 export default function CoursesPage() {
   const client = useApiClient();
-  const { data: catalog, isLoading } = useCatalog(client, CATALOG_CODE);
+  const { data: catalog, isLoading, isError, refetch } = useCatalog(client, CATALOG_CODE);
   const { data: levelsCatalog } = useCatalog(client, 'levels');
   const addMutation = useAddCatalogItem(client, CATALOG_CODE);
   const replaceMutation = useReplaceCatalogItems(client, CATALOG_CODE);
@@ -155,51 +153,50 @@ export default function CoursesPage() {
         </PageHeaderButton>
       </PageHeader>
 
-      {isLoading && <Skeleton className="h-40 w-full" />}
-
-      {!isLoading && items.length === 0 && (
-        <EmptyState
-          icon={BookOpen}
-          title="No hay cursos creados aún"
-          description="Cuando crees tu primer curso aparecerá aquí."
-        />
-      )}
-
-      {!isLoading && items.length > 0 && (
-        <DataTable
-          columns={columns}
-          data={items}
-          total={items.length}
-          rowKey={(item) => item.value}
-          animated={false}
-          actions={(item) => (
-            <div className="flex justify-end gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Editar ${item.value}`}
-                title="Editar"
-                onClick={() => openEdit(item)}
-              >
-                <Pencil />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className={item.active ? 'text-destructive hover:text-destructive' : 'text-primary hover:text-primary'}
-                aria-label={item.active ? `Desactivar ${item.value}` : `Reactivar ${item.value}`}
-                title={item.active ? 'Desactivar' : 'Reactivar'}
-                disabled={replaceMutation.isPending}
-                onClick={() => handleToggleActive(item)}
-              >
-                {item.active ? <Ban /> : <RotateCcw />}
-              </Button>
-            </div>
-          )}
-        />
-      )}
+      <DataTable
+        columns={columns}
+        data={items}
+        total={items.length}
+        rowKey={(item) => item.value}
+        isLoading={isLoading}
+        isError={isError}
+        onRetry={() => refetch()}
+        emptyState={{
+          title: 'No hay cursos creados aún',
+          description: 'Cuando crees tu primer curso aparecerá aquí.',
+          action: {
+            label: 'Crear primer curso',
+            onClick: openCreate,
+          },
+        }}
+        animated={false}
+        actions={(item) => (
+          <div className="flex justify-end gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Editar ${item.value}`}
+              title="Editar"
+              onClick={() => openEdit(item)}
+            >
+              <Pencil />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className={item.active ? 'text-destructive hover:text-destructive' : 'text-primary hover:text-primary'}
+              aria-label={item.active ? `Desactivar ${item.value}` : `Reactivar ${item.value}`}
+              title={item.active ? 'Desactivar' : 'Reactivar'}
+              disabled={replaceMutation.isPending}
+              onClick={() => handleToggleActive(item)}
+            >
+              {item.active ? <Ban /> : <RotateCcw />}
+            </Button>
+          </div>
+        )}
+      />
 
       <FormSheetDialog
         open={open}

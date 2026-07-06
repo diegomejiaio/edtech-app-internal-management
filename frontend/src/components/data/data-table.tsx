@@ -29,9 +29,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AnimatedTableBody, AnimatedTableRow } from '@/components/motion/animated-list';
 import { useEffect, useRef, type ReactNode } from 'react';
+import { type LucideIcon } from 'lucide-react';
 
 export interface Column<T> {
   /** Unique key for the column. */
@@ -65,6 +68,28 @@ interface DataTableProps<T> {
   skeletonRows?: number;
   /** Text shown when the table has no rows. */
   emptyMessage?: string;
+  /** Optional rich empty-state slot with CTA and filtered message handling. */
+  emptyState?: {
+    icon?: LucideIcon;
+    title: string;
+    description?: string;
+    filterDescription?: string;
+    hasFilters?: boolean;
+    action?: {
+      label: string;
+      onClick: () => void;
+    };
+  };
+  /** Error state when initial fetch fails and there are no rows to display. */
+  isError?: boolean;
+  /** Retry callback for error state (usually query `refetch`). */
+  onRetry?: () => void;
+  /** Optional custom title for error state. */
+  errorTitle?: string;
+  /** Optional custom description for error state. */
+  errorDescription?: string;
+  /** Optional custom retry button label. */
+  retryLabel?: string;
   /** Optional actions column rendered at the end of each row. */
   actions?: (row: T) => ReactNode;
   /** Enable stagger animations for data rows. Default: true */
@@ -83,11 +108,18 @@ export function DataTable<T>({
   autoLoadMore = false,
   skeletonRows = 5,
   emptyMessage = 'Sin resultados',
+  emptyState,
+  isError = false,
+  onRetry,
+  errorTitle,
+  errorDescription,
+  retryLabel,
   actions,
   animated = true,
 }: DataTableProps<T>) {
   const colCount = columns.length + (actions ? 1 : 0);
   const hasRows = data.length > 0;
+  const hasInitialError = isError && !hasRows && !isLoading;
   const hasMore = hasNextPage ?? data.length < total;
   const canLoadMore = hasMore && !isLoading && !isFetchingNextPage && !!onLoadMore;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -151,15 +183,44 @@ export function DataTable<T>({
             </TableBody>
           )}
 
+          {/* Error state */}
+          {hasInitialError && (
+            <TableBody>
+              <TableRow>
+                <TableCell colSpan={colCount} className="p-4">
+                  <ErrorState
+                    title={errorTitle}
+                    description={errorDescription}
+                    onRetry={onRetry}
+                    retryLabel={retryLabel}
+                    className="border-0 bg-transparent py-6"
+                  />
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          )}
+
           {/* Empty state */}
-          {!isLoading && !hasRows && (
+          {!isLoading && !hasRows && !hasInitialError && (
             <TableBody>
               <TableRow>
                 <TableCell
                   colSpan={colCount}
-                  className="py-8 text-center text-muted-foreground"
+                  className="p-4"
                 >
-                  {emptyMessage}
+                  {emptyState ? (
+                    <EmptyState
+                      icon={emptyState.icon}
+                      title={emptyState.title}
+                      description={emptyState.description}
+                      filterDescription={emptyState.filterDescription}
+                      hasFilters={emptyState.hasFilters}
+                      action={emptyState.action}
+                      className="border-0 py-6"
+                    />
+                  ) : (
+                    <p className="py-8 text-center text-muted-foreground">{emptyMessage}</p>
+                  )}
                 </TableCell>
               </TableRow>
             </TableBody>

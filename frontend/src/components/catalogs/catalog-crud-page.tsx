@@ -9,10 +9,8 @@ import { DataTable, FormSheetDialog, type Column } from '@/components/data';
 import { PageHeader, PageHeaderButton } from '@/components/layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
 import { getApiErrorMessage, isApiError, type CatalogCode, type CatalogItem } from '@/lib/api';
 
 interface CatalogCrudPageProps {
@@ -53,7 +51,7 @@ export function CatalogCrudPage({
   emptyDescription,
 }: CatalogCrudPageProps) {
   const client = useApiClient();
-  const { data: catalog, isLoading } = useCatalog(client, catalogCode);
+  const { data: catalog, isLoading, isError, refetch } = useCatalog(client, catalogCode);
   const addMutation = useAddCatalogItem(client, catalogCode);
   const replaceMutation = useReplaceCatalogItems(client, catalogCode);
 
@@ -153,51 +151,51 @@ export function CatalogCrudPage({
         </PageHeaderButton>
       </PageHeader>
 
-      {isLoading && <Skeleton className="h-40 w-full" />}
-
-      {!isLoading && items.length === 0 && (
-        <EmptyState
-          icon={emptyIcon}
-          title={emptyTitle}
-          description={emptyDescription}
-        />
-      )}
-
-      {!isLoading && items.length > 0 && (
-        <DataTable
-          columns={columns}
-          data={items}
-          total={items.length}
-          rowKey={(item) => item.value}
-          animated={false}
-          actions={(item) => (
-            <div className="flex justify-end gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Editar ${item.value}`}
-                title="Editar"
-                onClick={() => openEdit(item)}
-              >
-                <Pencil />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className={item.active ? 'text-destructive hover:text-destructive' : 'text-primary hover:text-primary'}
-                aria-label={item.active ? `Desactivar ${item.value}` : `Reactivar ${item.value}`}
-                title={item.active ? 'Desactivar' : 'Reactivar'}
-                disabled={replaceMutation.isPending}
-                onClick={() => handleToggleActive(item)}
-              >
-                {item.active ? <Ban /> : <RotateCcw />}
-              </Button>
-            </div>
-          )}
-        />
-      )}
+      <DataTable
+        columns={columns}
+        data={items}
+        total={items.length}
+        rowKey={(item) => item.value}
+        isLoading={isLoading}
+        isError={isError}
+        onRetry={() => refetch()}
+        emptyState={{
+          icon: emptyIcon,
+          title: emptyTitle,
+          description: emptyDescription,
+          action: {
+            label: createButtonLabel,
+            onClick: openCreate,
+          },
+        }}
+        animated={false}
+        actions={(item) => (
+          <div className="flex justify-end gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Editar ${item.value}`}
+              title="Editar"
+              onClick={() => openEdit(item)}
+            >
+              <Pencil />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className={item.active ? 'text-destructive hover:text-destructive' : 'text-primary hover:text-primary'}
+              aria-label={item.active ? `Desactivar ${item.value}` : `Reactivar ${item.value}`}
+              title={item.active ? 'Desactivar' : 'Reactivar'}
+              disabled={replaceMutation.isPending}
+              onClick={() => handleToggleActive(item)}
+            >
+              {item.active ? <Ban /> : <RotateCcw />}
+            </Button>
+          </div>
+        )}
+      />
 
       <FormSheetDialog
         open={open}

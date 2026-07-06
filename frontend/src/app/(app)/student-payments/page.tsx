@@ -63,7 +63,7 @@ export default function StudentPaymentsPage() {
     [from, to, debouncedSearch],
   );
 
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteStudentPayments(
+  const { data, isLoading, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteStudentPayments(
     client,
     listParams,
   );
@@ -169,7 +169,19 @@ export default function StudentPaymentsPage() {
         onLoadMore={() => fetchNextPage()}
         rowKey={(p) => p.id}
         isLoading={isLoading}
+        isError={isError}
+        onRetry={() => refetch()}
         isFetchingNextPage={isFetchingNextPage}
+        emptyState={{
+          title: 'No se encontraron pagos de alumnos',
+          description: 'Registra pagos para mantener el estado financiero al día.',
+          filterDescription: 'Ajusta la búsqueda o el periodo seleccionado.',
+          hasFilters: filtersActive || searchInput.trim().length > 0,
+          action: {
+            label: 'Registrar primer pago',
+            onClick: openCreate,
+          },
+        }}
         actions={(p) => (
           <RowActions
             onEdit={() => openEdit(p)}

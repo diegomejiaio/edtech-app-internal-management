@@ -141,6 +141,8 @@ export function TeacherDetailView() {
             onLoadMore={() => schedulesQuery.fetchNextPage()}
             rowKey={(s) => s.id}
             isLoading={schedulesQuery.isLoading}
+            isError={schedulesQuery.isError}
+            onRetry={() => schedulesQuery.refetch()}
             isFetchingNextPage={schedulesQuery.isFetchingNextPage}
             autoLoadMore
             emptyMessage="Este profesor aún no tiene horarios asignados"
@@ -156,6 +158,8 @@ export function TeacherDetailView() {
             onLoadMore={() => paymentsQuery.fetchNextPage()}
             rowKey={(p) => p.id}
             isLoading={paymentsQuery.isLoading}
+            isError={paymentsQuery.isError}
+            onRetry={() => paymentsQuery.refetch()}
             isFetchingNextPage={paymentsQuery.isFetchingNextPage}
             autoLoadMore
             emptyMessage="Este profesor aún no tiene pagos registrados"

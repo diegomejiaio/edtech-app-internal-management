@@ -44,7 +44,15 @@ export default function ExpensesPage() {
     .slice()
     .sort((a, b) => a.order - b.order);
 
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteExpenses(client, {
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteExpenses(client, {
     search: search || undefined,
     category: categoryFilter === 'all' ? undefined : categoryFilter,
     from: dateFrom || undefined,
@@ -139,7 +147,19 @@ export default function ExpensesPage() {
         onLoadMore={() => fetchNextPage()}
         rowKey={(e) => e.id}
         isLoading={isLoading}
+        isError={isError}
+        onRetry={() => refetch()}
         isFetchingNextPage={isFetchingNextPage}
+        emptyState={{
+          title: 'No se encontraron gastos',
+          description: 'Registra gastos para mantener el flujo operativo actualizado.',
+          filterDescription: 'Ajusta la búsqueda, categoría o rango de fechas.',
+          hasFilters: search.trim().length > 0 || categoryFilter !== 'all' || Boolean(dateFrom || dateTo),
+          action: {
+            label: 'Registrar primer gasto',
+            onClick: openCreate,
+          },
+        }}
         actions={(e) => (
           <RowActions
             onEdit={() => openEdit(e)}

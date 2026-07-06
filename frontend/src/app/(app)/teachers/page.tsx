@@ -46,12 +46,21 @@ export default function TeachersPage() {
   const [search, setSearch] = useState('');
   const limit = 25;
 
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteTeachers(client, {
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteTeachers(client, {
     search: search || undefined,
     limit,
   });
   const teachers = useMemo(() => flattenInfiniteItems(data, { sortBy: (t) => t.updatedAt ?? t.createdAt }), [data]);
   const total = getInfiniteTotal(data);
+  const hasFilters = search.trim().length > 0;
   const createMutation = useCreateTeacher(client);
   const updateMutation = useUpdateTeacher(client);
   const deleteMutation = useDeleteTeacher(client);
@@ -114,7 +123,19 @@ export default function TeachersPage() {
         onLoadMore={() => fetchNextPage()}
         rowKey={(t) => t.id}
         isLoading={isLoading}
+        isError={isError}
+        onRetry={() => refetch()}
         isFetchingNextPage={isFetchingNextPage}
+        emptyState={{
+          title: 'No se encontraron profesores',
+          description: 'Registra profesores para asignarlos a horarios.',
+          filterDescription: 'Prueba con otro término de búsqueda.',
+          hasFilters,
+          action: {
+            label: 'Crear primer profesor',
+            onClick: openCreate,
+          },
+        }}
         actions={(t) => (
           <RowActions
             onView={() => router.push(`/teachers/detail?id=${t.id}`)}

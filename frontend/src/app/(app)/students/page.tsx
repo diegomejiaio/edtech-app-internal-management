@@ -47,12 +47,21 @@ export default function StudentsPage() {
   const [search, setSearch] = useState('');
   const limit = 25;
 
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteStudents(client, {
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteStudents(client, {
     search: search || undefined,
     limit,
   });
   const students = useMemo(() => flattenInfiniteItems(data, { sortBy: (s) => s.updatedAt ?? s.createdAt }), [data]);
   const total = getInfiniteTotal(data);
+  const hasFilters = search.trim().length > 0;
   const createMutation = useCreateStudent(client);
   const updateMutation = useUpdateStudent(client);
   const deleteMutation = useDeleteStudent(client);
@@ -126,7 +135,19 @@ export default function StudentsPage() {
         onLoadMore={() => fetchNextPage()}
         rowKey={(s) => s.id}
         isLoading={isLoading}
+        isError={isError}
+        onRetry={() => refetch()}
         isFetchingNextPage={isFetchingNextPage}
+        emptyState={{
+          title: 'No se encontraron alumnos',
+          description: 'Registra alumnos para gestionar inscripciones y pagos.',
+          filterDescription: 'Prueba con otro término de búsqueda.',
+          hasFilters,
+          action: {
+            label: 'Crear primer alumno',
+            onClick: openCreate,
+          },
+        }}
         actions={(s) => (
           <RowActions
             onView={() => router.push(`/students/detail?id=${s.id}`)}
