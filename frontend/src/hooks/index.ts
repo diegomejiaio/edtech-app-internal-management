@@ -14,7 +14,7 @@ export { useStudentPayments, useInfiniteStudentPayments, useDebtors, useCreateSt
 export { useTeacherPayments, useInfiniteTeacherPayments, useCreateTeacherPayment, useUpdateTeacherPayment, useDeleteTeacherPayment } from './use-teacher-payments';
 export { useExpenses, useInfiniteExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from './use-expenses';
 export { useConversations, useConversation, useMessages, useInfiniteMessages, useUpdateConversation, useSendMessage, useAiSuggest, useImproveMessage } from './use-whatsapp';
-export { flattenInfiniteItems, getInfiniteTotal } from './infinite-list';
+export { flattenInfiniteItems, getInfiniteTotal, getInfiniteTotalAmount } from './infinite-list';
 
 // Utilities
 export { useIsMobile } from './use-mobile';

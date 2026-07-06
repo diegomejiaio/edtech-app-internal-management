@@ -256,7 +256,7 @@ public sealed class EnrollmentFunction
         DateOnly? from = DateOnly.TryParse(fromRaw, out var f) ? f : null;
         DateOnly? to = DateOnly.TryParse(toRaw, out var t) ? t : null;
 
-        var (items, total) = await _paymentRepo.SearchAsync(enrollmentId, studentId: null, from, to, includeInactive: false, limit, offset, ct: ct);
+        var (items, total, _) = await _paymentRepo.SearchAsync(enrollmentId, studentId: null, from, to, includeInactive: false, limit, offset, ct: ct);
         return new OkObjectResult(new Paginated<StudentPayment>(items, total, limit, offset));
     }
 

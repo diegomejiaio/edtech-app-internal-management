@@ -55,9 +55,11 @@ public sealed class StudentPaymentRepository : CosmosRepository<StudentPayment>
         return null;
     }
 
-    /// and date-range filters, plus pagination. Per <c>docs/04-api-design.md</c> §5.6.
+    /// <summary>
+    /// Lists student payments with optional enrollment/student/search/date filters, plus pagination.
+    /// Returns both row count and monetary aggregate for the full filtered result.
     /// </summary>
-    public async Task<(IReadOnlyList<StudentPayment> Items, int Total)> SearchAsync(
+    public async Task<(IReadOnlyList<StudentPayment> Items, int Total, decimal TotalAmount)> SearchAsync(
         string? enrollmentId,
         string? studentId,
         DateOnly? from,
@@ -87,33 +89,41 @@ public sealed class StudentPaymentRepository : CosmosRepository<StudentPayment>
             .WithParameter("@type", TypeDiscriminator)
             .WithParameter("@offset", offset)
             .WithParameter("@limit", limit);
+        var totalAmountDef = new QueryDefinition(
+            $"SELECT SUM(c.amount) AS totalAmount FROM c WHERE {where}")
+            .WithParameter("@type", TypeDiscriminator);
 
         if (q is not null)
         {
             countDef.WithParameter("@q", q);
             pageDef.WithParameter("@q", q);
+            totalAmountDef.WithParameter("@q", q);
         }
         if (!string.IsNullOrWhiteSpace(enrollmentId))
         {
             countDef.WithParameter("@enrollmentId", enrollmentId);
             pageDef.WithParameter("@enrollmentId", enrollmentId);
+            totalAmountDef.WithParameter("@enrollmentId", enrollmentId);
         }
         if (!string.IsNullOrWhiteSpace(studentId))
         {
             countDef.WithParameter("@studentId", studentId);
             pageDef.WithParameter("@studentId", studentId);
+            totalAmountDef.WithParameter("@studentId", studentId);
         }
         if (from is not null)
         {
             var v = from.Value.ToString("yyyy-MM-dd");
             countDef.WithParameter("@from", v);
             pageDef.WithParameter("@from", v);
+            totalAmountDef.WithParameter("@from", v);
         }
         if (to is not null)
         {
             var v = to.Value.ToString("yyyy-MM-dd");
             countDef.WithParameter("@to", v);
             pageDef.WithParameter("@to", v);
+            totalAmountDef.WithParameter("@to", v);
         }
 
         var partitionOpts = new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) };
@@ -128,6 +138,16 @@ public sealed class StudentPaymentRepository : CosmosRepository<StudentPayment>
             }
         }
 
+        decimal totalAmount = 0;
+        using (var totalAmountIter = Container.GetItemQueryIterator<TotalAmountRow>(totalAmountDef, requestOptions: partitionOpts))
+        {
+            while (totalAmountIter.HasMoreResults)
+            {
+                var page = await totalAmountIter.ReadNextAsync(ct);
+                totalAmount += page.Sum(row => row.TotalAmount ?? 0);
+            }
+        }
+
         var items = new List<StudentPayment>(limit);
         using var iter = Container.GetItemQueryIterator<StudentPayment>(pageDef, requestOptions: partitionOpts);
         while (iter.HasMoreResults)
@@ -136,7 +156,7 @@ public sealed class StudentPaymentRepository : CosmosRepository<StudentPayment>
             items.AddRange(page);
         }
 
-        return (items, total);
+        return (items, total, totalAmount);
     }
 
     /// <summary>
@@ -230,4 +250,7 @@ public sealed class StudentPaymentRepository : CosmosRepository<StudentPayment>
     private sealed record PaymentTotalRow(
         [property: JsonPropertyName("enrollmentId")] string EnrollmentId,
         [property: JsonPropertyName("totalAmount")] decimal TotalAmount);
+
+    private sealed record TotalAmountRow(
+        [property: JsonPropertyName("totalAmount")] decimal? TotalAmount);
 }

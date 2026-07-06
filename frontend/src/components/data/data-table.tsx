@@ -90,6 +90,12 @@ interface DataTableProps<T> {
   errorDescription?: string;
   /** Optional custom retry button label. */
   retryLabel?: string;
+  /** Optional summary block shown under the table (e.g., financial totals). */
+  summary?: {
+    label: string;
+    value: string;
+    description?: string;
+  };
   /** Optional actions column rendered at the end of each row. */
   actions?: (row: T) => ReactNode;
   /** Enable stagger animations for data rows. Default: true */
@@ -114,6 +120,7 @@ export function DataTable<T>({
   errorTitle,
   errorDescription,
   retryLabel,
+  summary,
   actions,
   animated = true,
 }: DataTableProps<T>) {
@@ -252,6 +259,18 @@ export function DataTable<T>({
           )}
         </Table>
       </div>
+
+      {summary && !isLoading && !hasInitialError && (
+        <div className="rounded-md border bg-muted/30 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">{summary.label}</p>
+            <p className="text-base font-semibold tabular-nums">{summary.value}</p>
+          </div>
+          {summary.description && (
+            <p className="mt-1 text-xs text-muted-foreground">{summary.description}</p>
+          )}
+        </div>
+      )}
 
       {/* Load-more controls */}
       {total > 0 && (

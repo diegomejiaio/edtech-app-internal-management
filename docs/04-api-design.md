@@ -14,7 +14,7 @@
 | 1 | **URI versioning** `/api/v1/{resource}` from day 0 | Cacheable, explicit routing, low cost now vs migration cost later when `seller`/`teacher` roles arrive. |
 | 2 | **No HATEOAS** in v1 | Single internal client (own Next.js front) consumes typed API client. Hypermedia adds noise without value. RMM Level 2. |
 | 3 | **PUT (full replace) only** for updates in v1 | Entities are small (≤10 fields). Front always has full doc in memory. PATCH added per-endpoint only when concurrent partial-edit pain appears. |
-| 4 | **Pagination**: `?limit=25&offset=0`, max-limit=100, defaults always present. Response envelope `{items, total, limit, offset}` (cheatsheet §8). | MS recommended explicit. Cosmos continuation token wrapped behind offset for v1. |
+| 4 | **Pagination**: `?limit=25&offset=0`, max-limit=100, defaults always present. Response envelope `{items, total, limit, offset}` (cheatsheet §8). Financial lists (`student-payments`, `teacher-payments`, `expenses`) also return `totalAmount` for the full filtered set. | MS recommended explicit. Cosmos continuation token wrapped behind offset for v1. |
 | 5 | **Filtering**: flat query params (`?status=active&scheduleId=X`) | No DSL/OData. UI knows its filters. |
 | 6 | **Sorting**: single field, `?sort=createdAt:desc` | Multi-sort = future work. |
 | 7 | **No field selection** in v1 | Docs are small, no real over-fetching. |
@@ -167,7 +167,7 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
 
 | Method | URI | Filters | Notes |
 |---|---|---|---|
-| GET | `/student-payments` | `?enrollmentId=X&from=YYYY-MM-DD&to=YYYY-MM-DD&studentId=Y` | |
+| GET | `/student-payments` | `?enrollmentId=X&from=YYYY-MM-DD&to=YYYY-MM-DD&studentId=Y` | Includes `totalAmount` aggregate for the full filtered result |
 | GET | `/student-payments/{id}` | — | |
 | POST | `/student-payments` | — | Validates `enrollmentId` exists+active |
 | PUT | `/student-payments/{id}` | — | |
@@ -178,7 +178,7 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
 
 | Method | URI | Filters | Notes |
 |---|---|---|---|
-| GET | `/teacher-payments` | `?teacherId=X&from&to` | |
+| GET | `/teacher-payments` | `?teacherId=X&from&to` | Includes `totalAmount` aggregate for the full filtered result |
 | GET | `/teacher-payments/{id}` | — | |
 | POST | `/teacher-payments` | — | |
 | PUT | `/teacher-payments/{id}` | — | |
@@ -188,7 +188,7 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
 
 | Method | URI | Filters | Notes |
 |---|---|---|---|
-| GET | `/expenses` | `?from&to&category=Materiales&scheduleId=X` | |
+| GET | `/expenses` | `?from&to&category=Materiales&scheduleId=X` | Includes `totalAmount` aggregate for the full filtered result |
 | GET | `/expenses/{id}` | — | |
 | POST | `/expenses` | — | |
 | PUT | `/expenses/{id}` | — | |

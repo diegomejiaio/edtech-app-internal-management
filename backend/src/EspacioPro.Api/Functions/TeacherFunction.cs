@@ -176,7 +176,7 @@ public sealed class TeacherFunction
         DateOnly? from = DateOnly.TryParse(fromRaw, out var f) ? f : null;
         DateOnly? to = DateOnly.TryParse(toRaw, out var t) ? t : null;
 
-        var (items, total) = await _teacherPaymentRepo.SearchAsync(teacherId, from, to, includeInactive: false, limit, offset, ct);
+        var (items, total, _) = await _teacherPaymentRepo.SearchAsync(teacherId, from, to, includeInactive: false, limit, offset, ct);
         return new OkObjectResult(new Paginated<TeacherPayment>(items, total, limit, offset));
     }
 

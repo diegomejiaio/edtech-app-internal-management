@@ -56,6 +56,23 @@ export function getInfiniteTotal<T>(
   return pages?.[pages.length - 1]?.total ?? 0;
 }
 
+export function getInfiniteTotalAmount<T>(
+  data: InfiniteData<PaginatedResponse<T>> | undefined,
+  amountSelector: (item: T) => number,
+): number {
+  const pages = data?.pages;
+  if (!pages || pages.length === 0) return 0;
+
+  const backendTotalAmount = pages[pages.length - 1]?.totalAmount;
+  if (typeof backendTotalAmount === 'number') {
+    return backendTotalAmount;
+  }
+
+  return pages
+    .flatMap((page) => page.items)
+    .reduce((sum, item) => sum + amountSelector(item), 0);
+}
+
 export function keepFirstInfinitePage(
   queryClient: QueryClient,
   queryKey: readonly unknown[],

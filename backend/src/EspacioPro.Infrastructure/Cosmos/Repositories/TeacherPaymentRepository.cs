@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using EspacioPro.Application.Abstractions;
 using EspacioPro.Domain.Common;
 using EspacioPro.Domain.Entities;
@@ -46,9 +47,11 @@ public sealed class TeacherPaymentRepository : CosmosRepository<TeacherPayment>
         return null;
     }
 
-    /// plus pagination. Per <c>docs/04-api-design.md</c> §5.7.
+    /// <summary>
+    /// Lists teacher payments with optional filters and pagination.
+    /// Returns both row count and monetary aggregate for the full filtered result.
     /// </summary>
-    public async Task<(IReadOnlyList<TeacherPayment> Items, int Total)> SearchAsync(
+    public async Task<(IReadOnlyList<TeacherPayment> Items, int Total, decimal TotalAmount)> SearchAsync(
         string? teacherId,
         DateOnly? from,
         DateOnly? to,
@@ -69,23 +72,29 @@ public sealed class TeacherPaymentRepository : CosmosRepository<TeacherPayment>
             .WithParameter("@type", TypeDiscriminator)
             .WithParameter("@offset", offset)
             .WithParameter("@limit", limit);
+        var totalAmountDef = new QueryDefinition(
+            $"SELECT SUM(c.amount) AS totalAmount FROM c WHERE {where}")
+            .WithParameter("@type", TypeDiscriminator);
 
         if (!string.IsNullOrWhiteSpace(teacherId))
         {
             countDef.WithParameter("@teacherId", teacherId);
             pageDef.WithParameter("@teacherId", teacherId);
+            totalAmountDef.WithParameter("@teacherId", teacherId);
         }
         if (from is not null)
         {
             var v = from.Value.ToString("yyyy-MM-dd");
             countDef.WithParameter("@from", v);
             pageDef.WithParameter("@from", v);
+            totalAmountDef.WithParameter("@from", v);
         }
         if (to is not null)
         {
             var v = to.Value.ToString("yyyy-MM-dd");
             countDef.WithParameter("@to", v);
             pageDef.WithParameter("@to", v);
+            totalAmountDef.WithParameter("@to", v);
         }
 
         var partitionOpts = new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) };
@@ -100,6 +109,16 @@ public sealed class TeacherPaymentRepository : CosmosRepository<TeacherPayment>
             }
         }
 
+        decimal totalAmount = 0;
+        using (var totalAmountIter = Container.GetItemQueryIterator<TotalAmountRow>(totalAmountDef, requestOptions: partitionOpts))
+        {
+            while (totalAmountIter.HasMoreResults)
+            {
+                var page = await totalAmountIter.ReadNextAsync(ct);
+                totalAmount += page.Sum(row => row.TotalAmount ?? 0);
+            }
+        }
+
         var items = new List<TeacherPayment>(limit);
         using var iter = Container.GetItemQueryIterator<TeacherPayment>(pageDef, requestOptions: partitionOpts);
         while (iter.HasMoreResults)
@@ -108,6 +127,9 @@ public sealed class TeacherPaymentRepository : CosmosRepository<TeacherPayment>
             items.AddRange(page);
         }
 
-        return (items, total);
+        return (items, total, totalAmount);
     }
+
+    private sealed record TotalAmountRow(
+        [property: JsonPropertyName("totalAmount")] decimal? TotalAmount);
 }

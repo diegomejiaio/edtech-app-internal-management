@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { toIsoDate } from '@/lib/dashboard-period';
 import { formatTableDate } from '@/lib/dates';
-import { flattenInfiniteItems, getInfiniteTotal, useInfiniteExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense, useCatalog } from '@/hooks';
+import { flattenInfiniteItems, getInfiniteTotal, getInfiniteTotalAmount, useInfiniteExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense, useCatalog } from '@/hooks';
 import { DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { PageHeader, PageHeaderButton } from '@/components/layout';
 import { SchedulePicker, CatalogSelect } from '@/components/pickers';
@@ -61,6 +61,10 @@ export default function ExpensesPage() {
   });
   const expenses = useMemo(() => flattenInfiniteItems(data, { sortBy: (e) => e.date }), [data]);
   const total = getInfiniteTotal(data);
+  const totalAmount = useMemo(
+    () => getInfiniteTotalAmount(data, (expense) => expense.amount),
+    [data],
+  );
   const createMutation = useCreateExpense(client);
   const updateMutation = useUpdateExpense(client);
   const deleteMutation = useDeleteExpense(client);
@@ -159,6 +163,11 @@ export default function ExpensesPage() {
             label: 'Registrar primer gasto',
             onClick: openCreate,
           },
+        }}
+        summary={{
+          label: 'Total gastado (periodo filtrado)',
+          value: `S/ ${totalAmount.toFixed(2)}`,
+          description: `${total} ${total === 1 ? 'registro' : 'registros'}`,
         }}
         actions={(e) => (
           <RowActions

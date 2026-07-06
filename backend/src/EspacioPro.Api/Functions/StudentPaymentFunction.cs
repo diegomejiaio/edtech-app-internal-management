@@ -62,8 +62,8 @@ public sealed class StudentPaymentFunction
         if (!TryParseDate(req.Query["to"].FirstOrDefault(), out var to))
             return req.ValidationError("to", "to must be ISO date YYYY-MM-DD.");
 
-        var (items, total) = await _repo.SearchAsync(enrollmentId, studentId, from, to, includeInactive, limit, offset, search, ct);
-        return new OkObjectResult(new Paginated<StudentPayment>(items, total, limit, offset));
+        var (items, total, totalAmount) = await _repo.SearchAsync(enrollmentId, studentId, from, to, includeInactive, limit, offset, search, ct);
+        return new OkObjectResult(new Paginated<StudentPayment>(items, total, limit, offset, totalAmount));
     }
 
     /// <summary>GET /api/v1/student-payments/{id}.</summary>

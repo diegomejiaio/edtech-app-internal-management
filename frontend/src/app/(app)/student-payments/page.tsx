@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { formatTableDate } from '@/lib/dates';
 import { toIsoDate, presetRange, rangeToIso, type DateRange } from '@/lib/dashboard-period';
-import { flattenInfiniteItems, getInfiniteTotal, useEnrollment, useStudentPayments, useInfiniteStudentPayments, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from '@/hooks';
+import { flattenInfiniteItems, getInfiniteTotal, getInfiniteTotalAmount, useEnrollment, useStudentPayments, useInfiniteStudentPayments, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from '@/hooks';
 import { DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, ReadOnlyField, type Column } from '@/components/data';
 import { PageHeader, PageHeaderButton } from '@/components/layout';
 import { EnrollmentPicker, CatalogSelect } from '@/components/pickers';
@@ -69,6 +69,10 @@ export default function StudentPaymentsPage() {
   );
   const studentPayments = useMemo(() => flattenInfiniteItems(data, { sortBy: (p) => p.date }), [data]);
   const total = getInfiniteTotal(data);
+  const totalAmount = useMemo(
+    () => getInfiniteTotalAmount(data, (payment) => payment.amount),
+    [data],
+  );
   const defaultIso = useMemo(() => rangeToIso(presetRange('last30Days')!), []);
   const filtersActive = debouncedSearch.length > 0 || from !== defaultIso.from || to !== defaultIso.to;
   const createMutation = useCreateStudentPayment(client);
@@ -181,6 +185,11 @@ export default function StudentPaymentsPage() {
             label: 'Registrar primer pago',
             onClick: openCreate,
           },
+        }}
+        summary={{
+          label: 'Total cobrado (periodo filtrado)',
+          value: formatMoney(totalAmount),
+          description: `${total} ${total === 1 ? 'registro' : 'registros'}`,
         }}
         actions={(p) => (
           <RowActions

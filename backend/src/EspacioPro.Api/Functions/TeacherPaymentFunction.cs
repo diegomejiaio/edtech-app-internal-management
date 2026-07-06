@@ -55,8 +55,8 @@ public sealed class TeacherPaymentFunction
         if (!TryParseDate(req.Query["to"].FirstOrDefault(), out var to))
             return req.ValidationError("to", "to must be ISO date YYYY-MM-DD.");
 
-        var (items, total) = await _repo.SearchAsync(teacherId, from, to, includeInactive, limit, offset, ct);
-        return new OkObjectResult(new Paginated<TeacherPayment>(items, total, limit, offset));
+        var (items, total, totalAmount) = await _repo.SearchAsync(teacherId, from, to, includeInactive, limit, offset, ct);
+        return new OkObjectResult(new Paginated<TeacherPayment>(items, total, limit, offset, totalAmount));
     }
 
     /// <summary>GET /api/v1/teacher-payments/{id}.</summary>

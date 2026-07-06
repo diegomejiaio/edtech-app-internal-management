@@ -44,6 +44,8 @@ export interface PaginatedResponse<T> {
   total: number;
   limit: number;
   offset: number;
+  /** Optional aggregate for financial lists (student/teacher payments and expenses). */
+  totalAmount?: number;
 }
 
 // ---------------------------------------------------------------------------

@@ -59,8 +59,8 @@ public sealed class ExpenseFunction
         if (!TryParseDate(req.Query["to"].FirstOrDefault(), out var to))
             return req.ValidationError("to", "to must be ISO date YYYY-MM-DD.");
 
-        var (items, total) = await _repo.SearchAsync(search, from, to, category, scheduleId, includeInactive, limit, offset, ct);
-        return new OkObjectResult(new Paginated<Expense>(items, total, limit, offset));
+        var (items, total, totalAmount) = await _repo.SearchAsync(search, from, to, category, scheduleId, includeInactive, limit, offset, ct);
+        return new OkObjectResult(new Paginated<Expense>(items, total, limit, offset, totalAmount));
     }
 
     /// <summary>GET /api/v1/expenses/{id}.</summary>

@@ -232,7 +232,8 @@ await client.put(`/schedules/${id}`, body, { ifMatch: schedule._etag });
   "items": [ /* ... */ ],
   "total": 142,
   "limit": 25,
-  "offset": 50
+  "offset": 50,
+  "totalAmount": 12890.5 // optional, only for financial list endpoints
 }
 ```
 
@@ -253,6 +254,7 @@ export interface Paginated<T> {
   total: number;
   limit: number;
   offset: number;
+  totalAmount?: number;
 }
 ```
 
@@ -401,7 +403,7 @@ No need to manually strip server-managed fields. The contract is "PUT what you g
 | Catalog item language | Spanish (user-editable) |
 | Error format | RFC 7807 + ASP.NET `errors` for 422 |
 | Concurrency | `_etag` + `If-Match` on Schedule, Enrollment PUT only |
-| Pagination | `limit/offset` + `{items, total, limit, offset}` envelope |
+| Pagination | `limit/offset` + `{items, total, limit, offset}` envelope (`totalAmount` optional in financial lists) |
 | Correlation | `x-correlation-id` header, frontend generates UUIDv4 |
 | Auth header | `Authorization: Bearer <clerk-jwt>` |
 | Soft delete | `DELETE` → 204, `PUT active=true` to restore |

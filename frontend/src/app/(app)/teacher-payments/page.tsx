@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { toIsoDate } from '@/lib/dashboard-period';
 import { formatTableDate } from '@/lib/dates';
-import { flattenInfiniteItems, getInfiniteTotal, useInfiniteTeacherPayments, useCreateTeacherPayment, useUpdateTeacherPayment, useDeleteTeacherPayment } from '@/hooks';
+import { flattenInfiniteItems, getInfiniteTotal, getInfiniteTotalAmount, useInfiniteTeacherPayments, useCreateTeacherPayment, useUpdateTeacherPayment, useDeleteTeacherPayment } from '@/hooks';
 import { DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { PageHeader, PageHeaderButton } from '@/components/layout';
 import { TeacherPicker, CatalogSelect } from '@/components/pickers';
@@ -42,6 +42,10 @@ export default function TeacherPaymentsPage() {
   });
   const teacherPayments = useMemo(() => flattenInfiniteItems(data, { sortBy: (p) => p.date }), [data]);
   const total = getInfiniteTotal(data);
+  const totalAmount = useMemo(
+    () => getInfiniteTotalAmount(data, (payment) => payment.amount),
+    [data],
+  );
   const createMutation = useCreateTeacherPayment(client);
   const updateMutation = useUpdateTeacherPayment(client);
   const deleteMutation = useDeleteTeacherPayment(client);
@@ -112,6 +116,11 @@ export default function TeacherPaymentsPage() {
             label: 'Registrar primer pago',
             onClick: openCreate,
           },
+        }}
+        summary={{
+          label: 'Total pagado a profesores (periodo filtrado)',
+          value: `S/ ${totalAmount.toFixed(2)}`,
+          description: `${total} ${total === 1 ? 'registro' : 'registros'}`,
         }}
         actions={(p) => (
           <RowActions
