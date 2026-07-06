@@ -35,7 +35,7 @@ export type { Enrollment, EnrollmentBody, EnrollmentListParams, EnrollmentPaymen
 
 // Student Payments
 export { getStudentPayments, getStudentPayment, createStudentPayment, updateStudentPayment, deleteStudentPayment, getDebtors } from './student-payments';
-export type { StudentPayment, StudentPaymentBody, StudentPaymentListParams, Debtor, DebtorParams } from './student-payments';
+export type { StudentPayment, StudentPaymentBody, StudentPaymentListParams, Debtor, DebtorsByScheduleResponse, DebtorParams } from './student-payments';
 
 // Teacher Payments
 export { getTeacherPayments as getAllTeacherPayments, getTeacherPayment, createTeacherPayment, updateTeacherPayment, deleteTeacherPayment } from './teacher-payments';

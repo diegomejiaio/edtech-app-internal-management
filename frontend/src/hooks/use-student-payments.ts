@@ -13,7 +13,7 @@ import {
   type StudentPayment,
   type StudentPaymentBody,
   type StudentPaymentListParams,
-  type Debtor,
+  type DebtorsByScheduleResponse,
   type DebtorParams,
   type PaginatedResponse,
 } from '@/lib/api';
@@ -50,7 +50,7 @@ export function useInfiniteStudentPayments(
 }
 
 export function useDebtors(client: ApiClient, params: DebtorParams | undefined) {
-  return useQuery<Debtor[]>({
+  return useQuery<DebtorsByScheduleResponse>({
     queryKey: ['student-payments', 'debtors', params],
     queryFn: () => getDebtors(client, params!),
     enabled: !!params?.scheduleId && !!params?.month,

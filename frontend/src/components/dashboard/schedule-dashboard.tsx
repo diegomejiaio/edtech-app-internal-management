@@ -10,6 +10,7 @@
  */
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -31,6 +32,8 @@ import { ScrollTable } from '@/components/ui/scroll-table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FilterBar } from '@/components/ui/filter-bar';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Command,
@@ -40,7 +43,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { Check, ChevronsUpDown, Users, UserCheck, AlertCircle, Percent } from 'lucide-react';
+import { Check, ChevronsUpDown, Users, UserCheck, AlertCircle, Percent, Wallet } from 'lucide-react';
 import type { ApiClient, ScheduleWithCounts } from '@/lib/api';
 import { useSchedules, useScheduleDashboard } from '@/hooks';
 import { StatCard } from '@/components/ui/stat-card';
@@ -63,6 +66,7 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
   const [month, setMonth] = useState(currentMonthInPeru());
   const [pickerOpen, setPickerOpen] = useState(false);
   const [scheduleSearch, setScheduleSearch] = useState('');
+  const [showDebtorsOnly, setShowDebtorsOnly] = useState(false);
 
   const { data: scheduleList, isLoading: listLoading } = useSchedules(client, {
     status: ['active'],
@@ -102,6 +106,13 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
     client,
     dashboardScheduleId,
     month,
+  );
+
+  const visibleEnrollments = useMemo(
+    () => showDebtorsOnly
+      ? (dashboard?.enrollments ?? []).filter((enrollment) => !enrollment.paidThisMonth)
+      : (dashboard?.enrollments ?? []),
+    [dashboard?.enrollments, showDebtorsOnly],
   );
 
   return (
@@ -196,7 +207,12 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="mb-3 flex justify-end">
+              <Button variant="link" size="sm" className="h-auto p-0" asChild>
+                <Link href={`/collections?month=${dashboard.month}`}>Ver cobranzas del mes</Link>
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
               <StatCard
                 label="Inscritos"
                 value={dashboard.summary.enrolled}
@@ -209,7 +225,18 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
                 valueClassName="text-success"
               />
               <StatCard
-                label="Saldo pendiente"
+                label="Deudores"
+                value={dashboard.summary.debtors}
+                icon={AlertCircle}
+                valueClassName={dashboard.summary.debtors > 0 ? 'text-destructive' : undefined}
+              />
+              <StatCard
+                label="Esperado"
+                value={currency(dashboard.summary.expectedAmount)}
+                icon={Wallet}
+              />
+              <StatCard
+                label="Por cobrar (mes)"
                 value={currency(dashboard.summary.pendingAmount)}
                 icon={AlertCircle}
                 valueClassName={
@@ -238,17 +265,29 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
 
       {dashboard && (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base">
               Alumnos inscritos — {dashboard.month}
             </CardTitle>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="showDebtorsOnly"
+                checked={showDebtorsOnly}
+                onCheckedChange={setShowDebtorsOnly}
+              />
+              <Label htmlFor="showDebtorsOnly" className="text-xs text-muted-foreground">
+                Solo deudores
+              </Label>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-            {dashboard.enrollments.length === 0 ? (
+            {visibleEnrollments.length === 0 ? (
               <EmptyState
                 icon={Users}
-                title="Sin inscripciones"
-                description="No hay alumnos inscritos en este horario"
+                title={showDebtorsOnly ? 'Sin deudores en este mes' : 'Sin inscripciones'}
+                description={showDebtorsOnly
+                  ? 'Todos los alumnos registraron pagos durante este mes.'
+                  : 'No hay alumnos inscritos en este horario'}
                 className="py-12"
               />
             ) : (
@@ -266,7 +305,7 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {dashboard.enrollments.map((e) => (
+                    {visibleEnrollments.map((e) => (
                       <TableRow key={e.enrollmentId}>
                         <TableCell className="font-medium">{e.studentName}</TableCell>
                         <TableCell>{e.studentDoc}</TableCell>

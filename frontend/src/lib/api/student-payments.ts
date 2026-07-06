@@ -49,8 +49,18 @@ export interface StudentPaymentListParams extends ListParams {
 export interface Debtor {
   enrollmentId: string;
   studentId: string;
-  studentFullName: string;
+  studentName: string;
+  studentDoc: string;
+  amount: number;
   lastPaymentDate?: string | null;
+}
+
+/** Response envelope for `GET /student-payments/debtors`. */
+export interface DebtorsByScheduleResponse {
+  scheduleId: string;
+  scheduleName: string;
+  month: string;
+  debtors: Debtor[];
 }
 
 /** Required params for `GET /student-payments/debtors`. */
@@ -113,7 +123,7 @@ export const deleteStudentPayment = (
 export const getDebtors = (
   client: ApiClient,
   params: DebtorParams,
-): Promise<Debtor[]> =>
-  client.get<Debtor[]>('/student-payments/debtors', {
+): Promise<DebtorsByScheduleResponse> =>
+  client.get<DebtorsByScheduleResponse>('/student-payments/debtors', {
     params: params as unknown as Record<string, string>,
   });

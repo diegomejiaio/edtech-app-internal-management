@@ -352,6 +352,26 @@ Subset of dashboard data. Same query plan steps 2-3, returns only `paidThisMonth
 
 **Why separate endpoint**: documented in PRD M6 explicitly. Front may call it from a "debtor list" view that's not the full dashboard.
 
+**Response envelope**:
+
+```jsonc
+{
+  "scheduleId": "guid",
+  "scheduleName": "Melamina · Intermedio",
+  "month": "2026-07",
+  "debtors": [
+    {
+      "enrollmentId": "guid",
+      "studentId": "guid",
+      "studentName": "Nombre Apellido",
+      "studentDoc": "DNI 12345678",
+      "amount": 280.0,
+      "lastPaymentDate": "2026-06-18" // null when never paid
+    }
+  ]
+}
+```
+
 ### 6.3 Student history (`GET /students/{id}/enrollments` + payments per enrollment)
 
 **Use case**: M3 "ver historial".

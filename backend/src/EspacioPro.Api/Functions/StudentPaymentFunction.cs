@@ -206,9 +206,10 @@ public sealed class StudentPaymentFunction
             offset: 0,
             ct);
 
-        // Q3: last-payment-date per enrollment within the month.
+        // Q3: last-payment-date per enrollment within the selected month.
         var enrollmentIds = enrollments.Select(e => e.Id).ToArray();
         var lastDates = await _repo.GetLastPaymentDatesAsync(enrollmentIds, monthStart, monthEnd, ct);
+        var historicalLastDates = await _repo.GetLastPaymentDatesAsync(enrollmentIds, DateOnly.MinValue, monthEnd, ct);
 
         var debtors = enrollments
             .Where(e => !lastDates.ContainsKey(e.Id))
@@ -217,7 +218,8 @@ public sealed class StudentPaymentFunction
                 StudentId: e.StudentId,
                 StudentName: e.StudentName,
                 StudentDoc: e.StudentDoc,
-                LastPaymentDate: null))
+                Amount: e.SchedulePrice,
+                LastPaymentDate: historicalLastDates.TryGetValue(e.Id, out var lastPaymentDate) ? lastPaymentDate : null))
             .ToList();
 
         return new OkObjectResult(new
@@ -307,5 +309,6 @@ public sealed class StudentPaymentFunction
         string StudentId,
         string StudentName,
         string StudentDoc,
+        decimal Amount,
         DateOnly? LastPaymentDate);
 }
