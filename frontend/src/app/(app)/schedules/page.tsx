@@ -8,15 +8,16 @@
 
 import { useMemo, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { formatTableDate } from '@/lib/dates';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteSchedules, useCreateSchedule, useUpdateSchedule, useDeleteSchedule } from '@/hooks';
-import { PageHeader, DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, StatusMultiSelect, StatusBadgeMenu, type Column, type StatusOption } from '@/components/data';
+import { DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, StatusMultiSelect, StatusBadgeMenu, type Column, type StatusOption } from '@/components/data';
+import { PageHeader, PageHeaderButton } from '@/components/layout';
 import { TeacherPicker, CatalogSelect } from '@/components/pickers';
 import { ScheduleDashboard } from '@/components/dashboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -158,11 +159,11 @@ export default function SchedulesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Horarios"
-        description="Gestión de horarios y dashboard"
-        action={<Button onClick={openCreate}>Nuevo horario</Button>}
-      />
+      <PageHeader title="Horarios" subtitle="Gestión de horarios y dashboard">
+        <PageHeaderButton icon={Plus} onClick={openCreate} shortcutKey="n">
+          Nuevo horario
+        </PageHeaderButton>
+      </PageHeader>
 
       <Tabs defaultValue="list">
         <TabsList>

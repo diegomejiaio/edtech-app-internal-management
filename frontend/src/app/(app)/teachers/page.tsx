@@ -8,11 +8,12 @@
 
 import { useMemo, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteTeachers, useCreateTeacher, useUpdateTeacher, useDeleteTeacher } from '@/hooks';
-import { PageHeader, DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
-import { Button } from '@/components/ui/button';
+import { DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { PageHeader, PageHeaderButton } from '@/components/layout';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -93,12 +94,11 @@ export default function TeachersPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Profesores"
-        description="Gestión de profesores"
-        backHref="/catalogs"
-        action={<Button onClick={openCreate}>Nuevo profesor</Button>}
-      />
+      <PageHeader title="Profesores" subtitle="Gestión de profesores" backHref="/catalogs">
+        <PageHeaderButton icon={Plus} onClick={openCreate} shortcutKey="n">
+          Nuevo profesor
+        </PageHeaderButton>
+      </PageHeader>
 
       <SearchBar
         placeholder="Buscar por nombre, documento o teléfono..."

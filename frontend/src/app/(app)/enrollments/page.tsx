@@ -5,14 +5,15 @@
  */
 
 import { useMemo, useState, type FormEvent } from 'react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { formatTableDate } from '@/lib/dates';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteEnrollments, useUpdateEnrollment, useDeleteEnrollment } from '@/hooks';
-import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, ReadOnlyField, StatusMultiSelect, StatusBadgeMenu, type Column, type StatusOption } from '@/components/data';
+import { DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, ReadOnlyField, StatusMultiSelect, StatusBadgeMenu, type Column, type StatusOption } from '@/components/data';
+import { PageHeader, PageHeaderButton } from '@/components/layout';
 import { EnrollmentWizard } from '@/components/enrollments/enrollment-wizard';
 import { EnrollmentPaymentsBlock } from '@/components/enrollments/enrollment-payments-block';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -116,11 +117,11 @@ export default function EnrollmentsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Inscripciones"
-        description="Gestión de inscripciones"
-        action={<Button onClick={openCreate}>Nueva inscripción</Button>}
-      />
+      <PageHeader title="Inscripciones" subtitle="Gestión de inscripciones">
+        <PageHeaderButton icon={Plus} onClick={openCreate} shortcutKey="n">
+          Nueva inscripción
+        </PageHeaderButton>
+      </PageHeader>
 
       <div className="flex justify-end">
         <StatusMultiSelect

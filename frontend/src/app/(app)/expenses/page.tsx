@@ -5,14 +5,15 @@
  */
 
 import { useMemo, useState, type FormEvent } from 'react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { toIsoDate } from '@/lib/dashboard-period';
 import { formatTableDate } from '@/lib/dates';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense, useCatalog } from '@/hooks';
-import { PageHeader, DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { PageHeader, PageHeaderButton } from '@/components/layout';
 import { SchedulePicker, CatalogSelect } from '@/components/pickers';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -93,11 +94,11 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Gastos"
-        description="Registro de gastos operativos"
-        action={<Button onClick={openCreate}>Nuevo gasto</Button>}
-      />
+      <PageHeader title="Gastos" subtitle="Registro de gastos operativos">
+        <PageHeaderButton icon={Plus} onClick={openCreate} shortcutKey="n">
+          Nuevo gasto
+        </PageHeaderButton>
+      </PageHeader>
 
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div className="flex-1">

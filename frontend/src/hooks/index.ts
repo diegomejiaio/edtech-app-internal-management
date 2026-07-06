@@ -20,3 +20,4 @@ export { flattenInfiniteItems, getInfiniteTotal } from './infinite-list';
 export { useIsMobile } from './use-mobile';
 export { useModKey } from './use-mod-key';
 export { useKeyboardShortcut } from './use-keyboard-shortcut';
+export { getRouteTitle, useDocumentTitle } from './use-document-title';

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { AuthGate } from '@/components/auth';
 import { AppSidebar } from '@/components/layout';
 import { ErrorBoundary } from '@/components/data';
+import { getRouteTitle, useDocumentTitle } from '@/hooks';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +23,7 @@ import { cn } from '@/lib/utils';
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const fullBleed = pathname.startsWith('/crm');
+  useDocumentTitle(getRouteTitle(pathname));
 
   return (
     <AuthGate>

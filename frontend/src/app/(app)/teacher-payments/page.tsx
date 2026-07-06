@@ -5,14 +5,15 @@
  */
 
 import { useMemo, useState, type FormEvent } from 'react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { toIsoDate } from '@/lib/dashboard-period';
 import { formatTableDate } from '@/lib/dates';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteTeacherPayments, useCreateTeacherPayment, useUpdateTeacherPayment, useDeleteTeacherPayment } from '@/hooks';
-import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
+import { PageHeader, PageHeaderButton } from '@/components/layout';
 import { TeacherPicker, CatalogSelect } from '@/components/pickers';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getApiErrorMessage, isApiError } from '@/lib/api';
@@ -80,11 +81,11 @@ export default function TeacherPaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Pagos de profesores"
-        description="Registro de honorarios"
-        action={<Button onClick={openCreate}>Nuevo pago</Button>}
-      />
+      <PageHeader title="Pagos de profesores" subtitle="Registro de honorarios">
+        <PageHeaderButton icon={Plus} onClick={openCreate} shortcutKey="n">
+          Nuevo pago
+        </PageHeaderButton>
+      </PageHeader>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
         <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="sm:w-40" aria-label="Desde" />

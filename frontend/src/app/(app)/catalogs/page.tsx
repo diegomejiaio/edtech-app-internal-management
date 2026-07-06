@@ -13,7 +13,8 @@ import { toast } from 'sonner';
 import { Pencil } from 'lucide-react';
 import { useApiClient } from '@/hooks/use-api-client';
 import { useCatalogs, useAddCatalogItem, useDisableCatalogItem } from '@/hooks';
-import { PageHeader, FormSheetDialog } from '@/components/data';
+import { FormSheetDialog } from '@/components/data';
+import { PageHeader } from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -70,7 +71,7 @@ export default function CatalogsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Catálogos"
-        description="Datos maestros del sistema (cursos, niveles, medios de pago, etc.)"
+        subtitle="Datos maestros del sistema (cursos, niveles, medios de pago, etc.)"
       />
 
       {isLoading && (

@@ -5,12 +5,14 @@
  */
 
 import { useMemo, useState, useEffect, type FormEvent } from 'react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApiClient } from '@/hooks/use-api-client';
 import { formatTableDate } from '@/lib/dates';
 import { toIsoDate, presetRange, rangeToIso, type DateRange } from '@/lib/dashboard-period';
 import { flattenInfiniteItems, getInfiniteTotal, useEnrollment, useStudentPayments, useInfiniteStudentPayments, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from '@/hooks';
-import { PageHeader, DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, ReadOnlyField, type Column } from '@/components/data';
+import { DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, ReadOnlyField, type Column } from '@/components/data';
+import { PageHeader, PageHeaderButton } from '@/components/layout';
 import { EnrollmentPicker, CatalogSelect } from '@/components/pickers';
 import { FilterBar, SearchInput } from '@/components/ui/filter-bar';
 import { PeriodFilter } from '@/components/dashboard/period-filter';
@@ -131,11 +133,11 @@ export default function StudentPaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Pagos de alumnos"
-        description="Registro de pagos por inscripción"
-        action={<Button onClick={openCreate}>Nuevo pago</Button>}
-      />
+      <PageHeader title="Pagos de alumnos" subtitle="Registro de pagos por inscripción">
+        <PageHeaderButton icon={Plus} onClick={openCreate} shortcutKey="n">
+          Nuevo pago
+        </PageHeaderButton>
+      </PageHeader>
 
       <FilterBar>
         <SearchInput
