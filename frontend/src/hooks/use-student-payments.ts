@@ -61,10 +61,13 @@ export function useCreateStudentPayment(client: ApiClient) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: StudentPaymentBody) => createStudentPayment(client, body),
-    onSuccess: () => {
+    onSuccess: (_created, body) => {
       keepFirstInfinitePage(qc, ['student-payments', 'infinite']);
+      keepFirstInfinitePage(qc, ['enrollments', body.enrollmentId, 'payments', 'infinite']);
       keepFirstInfinitePage(qc, ['schedules', 'infinite']);
       qc.invalidateQueries({ queryKey: ['student-payments'] });
+      qc.invalidateQueries({ queryKey: ['enrollments', body.enrollmentId, 'payments'] });
+      qc.invalidateQueries({ queryKey: ['enrollments'] });
       qc.invalidateQueries({ queryKey: ['schedules'] });
     },
   });
@@ -75,9 +78,12 @@ export function useUpdateStudentPayment(client: ApiClient) {
   return useMutation({
     mutationFn: (vars: { id: string; body: StudentPaymentBody; ifMatch?: string }) =>
       updateStudentPayment(client, vars.id, vars.body, vars.ifMatch),
-    onSuccess: () => {
+    onSuccess: (_updated, vars) => {
       keepFirstInfinitePage(qc, ['student-payments', 'infinite']);
+      keepFirstInfinitePage(qc, ['enrollments', vars.body.enrollmentId, 'payments', 'infinite']);
       qc.invalidateQueries({ queryKey: ['student-payments'] });
+      qc.invalidateQueries({ queryKey: ['enrollments', vars.body.enrollmentId, 'payments'] });
+      qc.invalidateQueries({ queryKey: ['enrollments'] });
     },
   });
 }
@@ -90,6 +96,7 @@ export function useDeleteStudentPayment(client: ApiClient) {
       keepFirstInfinitePage(qc, ['student-payments', 'infinite']);
       keepFirstInfinitePage(qc, ['schedules', 'infinite']);
       qc.invalidateQueries({ queryKey: ['student-payments'] });
+      qc.invalidateQueries({ queryKey: ['enrollments'] });
       qc.invalidateQueries({ queryKey: ['schedules'] });
     },
   });

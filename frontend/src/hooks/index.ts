@@ -9,7 +9,7 @@ export { useCatalogs, useCatalog, useReplaceCatalogItems, useAddCatalogItem, use
 export { useStudents, useInfiniteStudents, useStudent, useStudentEnrollments, useCreateStudent, useUpdateStudent, useDeleteStudent } from './use-students';
 export { useTeachers, useInfiniteTeachers, useTeacher, useCreateTeacher, useUpdateTeacher, useDeleteTeacher } from './use-teachers';
 export { useSchedules, useInfiniteSchedules, useSchedule, useScheduleDashboard, useInfiniteScheduleSessions, useInfiniteScheduleEnrollments, useUpdateScheduleSession, useDeleteScheduleSession, useCreateSchedule, useUpdateSchedule, useDeleteSchedule } from './use-schedules';
-export { useEnrollments, useInfiniteEnrollments, useEnrollment, useCreateEnrollment, useUpdateEnrollment, useDeleteEnrollment } from './use-enrollments';
+export { useEnrollments, useInfiniteEnrollments, useEnrollment, useInfiniteEnrollmentPayments, useCreateEnrollment, useUpdateEnrollment, useDeleteEnrollment } from './use-enrollments';
 export { useStudentPayments, useInfiniteStudentPayments, useDebtors, useCreateStudentPayment, useUpdateStudentPayment, useDeleteStudentPayment } from './use-student-payments';
 export { useTeacherPayments, useInfiniteTeacherPayments, useCreateTeacherPayment, useUpdateTeacherPayment, useDeleteTeacherPayment } from './use-teacher-payments';
 export { useExpenses, useInfiniteExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from './use-expenses';

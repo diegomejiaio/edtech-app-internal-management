@@ -8,7 +8,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { getSchedules } from './schedules';
-import { getEnrollments } from './enrollments';
+import { getEnrollments, getEnrollmentPayments } from './enrollments';
 import type { ApiClient } from './client';
 
 function makeClient(): ApiClient {
@@ -70,5 +70,23 @@ describe('getEnrollments status serialization', () => {
 
     const params = (client.get as ReturnType<typeof vi.fn>).mock.calls[0][1].params;
     expect(params.status).toBeUndefined();
+  });
+});
+
+describe('getEnrollmentPayments endpoint contract', () => {
+  it('uses the enrollment nested endpoint and forwards date filters', async () => {
+    const client = makeClient();
+    await getEnrollmentPayments(client, 'enr-123', { from: '2026-01-01', to: '2026-01-31', limit: 50 });
+
+    expect(client.get).toHaveBeenCalledWith(
+      '/enrollments/enr-123/payments',
+      expect.objectContaining({
+        params: expect.objectContaining({
+          from: '2026-01-01',
+          to: '2026-01-31',
+          limit: 50,
+        }),
+      }),
+    );
   });
 });

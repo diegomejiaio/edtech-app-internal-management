@@ -13,12 +13,14 @@ import { flattenInfiniteItems, getInfiniteTotal, useInfiniteEnrollments, useUpda
 import { DataTable, RowActions, FormSheetDialog, ConfirmDeleteDialog, ReadOnlyField, StatusMultiSelect, StatusBadgeMenu, type Column, type StatusOption } from '@/components/data';
 import { PageHeader, PageHeaderButton } from '@/components/layout';
 import { EnrollmentWizard } from '@/components/enrollments/enrollment-wizard';
-import { EnrollmentPaymentsBlock } from '@/components/enrollments/enrollment-payments-block';
+import { EnrollmentPaymentsBlock, type EnrollmentPaymentSummary } from '@/components/enrollments/enrollment-payments-block';
+import { Button } from '@/components/ui/button';
+import { FormSheet, FormSheetContent, FormSheetFooter, FormSheetHeader } from '@/components/ui/form-sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getApiErrorMessage, isApiError, isConflict } from '@/lib/api';
-import { formatCurrency } from '@/lib/money';
+import { formatCurrency, subtractMoney } from '@/lib/money';
 import { STATUS_LABELS, STATUS_VARIANTS, TERMINAL_STATUSES } from '@/lib/status';
 import type { Enrollment, EnrollmentBody, EnrollmentStatus } from '@/lib/api';
 
@@ -63,8 +65,10 @@ export default function EnrollmentsPage() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Enrollment | null>(null);
+  const [paymentsDetailTarget, setPaymentsDetailTarget] = useState<Enrollment | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Enrollment | null>(null);
   const [editPrice, setEditPrice] = useState<string>('');
+  const [paymentSummaryByEnrollmentId, setPaymentSummaryByEnrollmentId] = useState<Record<string, EnrollmentPaymentSummary>>({});
 
   function openCreate() { setWizardOpen(true); }
   function openEdit(e: Enrollment) { setEditing(e); setEditPrice(e.schedulePrice.toString()); setFormOpen(true); }
@@ -110,6 +114,27 @@ export default function EnrollmentsPage() {
       });
   }
 
+  function handlePaymentSummaryChange(summary: EnrollmentPaymentSummary) {
+    setPaymentSummaryByEnrollmentId((previous) => {
+      const existing = previous[summary.enrollmentId];
+      if (
+        existing &&
+        existing.totalPaid === summary.totalPaid &&
+        existing.schedulePrice === summary.schedulePrice &&
+        existing.pendingAmount === summary.pendingAmount &&
+        existing.paymentCount === summary.paymentCount &&
+        existing.highestInstallment === summary.highestInstallment
+      ) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        [summary.enrollmentId]: summary,
+      };
+    });
+  }
+
   const columns: Column<Enrollment>[] = [
     ...baseColumns,
     {
@@ -124,6 +149,28 @@ export default function EnrollmentsPage() {
           onChange={(next) => handleStatusChange(e, next)}
         />
       ),
+    },
+    {
+      key: 'paymentProgress',
+      header: 'Pagos',
+      cell: (e) => {
+        const summary = paymentSummaryByEnrollmentId[e.id];
+        if (!summary) {
+          return <span className="text-xs text-muted-foreground">Ver detalle para cargar pagos</span>;
+        }
+
+        const pending = summary.pendingAmount ?? Math.max(0, subtractMoney(e.schedulePrice, summary.totalPaid));
+        return (
+          <div className="space-y-0.5 text-xs">
+            <p className="font-medium tabular-nums">
+              {formatCurrency(summary.totalPaid)} / {formatCurrency(e.schedulePrice)}
+            </p>
+            <p className="text-muted-foreground">
+              Pendiente {formatCurrency(pending)} · Última cuota {summary.highestInstallment > 0 ? `#${summary.highestInstallment}` : '—'}
+            </p>
+          </div>
+        );
+      },
     },
   ];
 
@@ -166,6 +213,7 @@ export default function EnrollmentsPage() {
         }}
         actions={(e) => (
           <RowActions
+            onView={() => setPaymentsDetailTarget(e)}
             onEdit={() => openEdit(e)}
             onDelete={() => setDeleteTarget(e)}
           />
@@ -213,8 +261,58 @@ export default function EnrollmentsPage() {
           </Select>
         </div>
 
-        {editing && <EnrollmentPaymentsBlock enrollmentId={editing.id} />}
+        {editing && (
+          <EnrollmentPaymentsBlock
+            enrollmentId={editing.id}
+            schedulePrice={editing.schedulePrice}
+            onSummaryChange={handlePaymentSummaryChange}
+          />
+        )}
       </FormSheetDialog>
+
+      <FormSheet
+        open={!!paymentsDetailTarget}
+        onOpenChange={(open) => {
+          if (!open) setPaymentsDetailTarget(null);
+        }}
+        width="w-full sm:w-[38rem] sm:max-w-2xl"
+      >
+        <FormSheetHeader
+          title="Detalle de pagos de inscripción"
+          description="Revisa historial, cuotas y registra pagos sin salir de Inscripciones."
+        />
+        <FormSheetContent className="space-y-4">
+          {paymentsDetailTarget && (
+            <>
+              <div className="grid grid-cols-1 gap-3 rounded-md border bg-muted/30 p-3 text-sm sm:grid-cols-2">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Alumno</p>
+                  <p className="font-medium">{paymentsDetailTarget.studentName}</p>
+                  <p className="text-xs text-muted-foreground">{paymentsDetailTarget.studentDoc}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Horario</p>
+                  <p className="font-medium">{paymentsDetailTarget.scheduleName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Precio {formatCurrency(paymentsDetailTarget.schedulePrice)}
+                  </p>
+                </div>
+              </div>
+
+              <EnrollmentPaymentsBlock
+                enrollmentId={paymentsDetailTarget.id}
+                schedulePrice={paymentsDetailTarget.schedulePrice}
+                onSummaryChange={handlePaymentSummaryChange}
+              />
+            </>
+          )}
+        </FormSheetContent>
+        <FormSheetFooter>
+          <Button type="button" variant="outline" onClick={() => setPaymentsDetailTarget(null)}>
+            Cerrar
+          </Button>
+        </FormSheetFooter>
+      </FormSheet>
 
       <ConfirmDeleteDialog
         open={!!deleteTarget}

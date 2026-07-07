@@ -6,6 +6,7 @@ import { getNextOffset, keepFirstInfinitePage } from './infinite-list';
 import {
   getEnrollments,
   getEnrollment,
+  getEnrollmentPayments,
   createEnrollment,
   updateEnrollment,
   deleteEnrollment,
@@ -13,10 +14,12 @@ import {
   type Enrollment,
   type EnrollmentBody,
   type EnrollmentListParams,
+  type EnrollmentPaymentParams,
   type PaginatedResponse,
 } from '@/lib/api';
 
 type InfiniteEnrollmentListParams = Omit<EnrollmentListParams, 'offset'>;
+type InfiniteEnrollmentPaymentParams = Omit<EnrollmentPaymentParams, 'offset'>;
 
 export function useEnrollments(client: ApiClient, params?: EnrollmentListParams) {
   return useQuery<PaginatedResponse<Enrollment>>({
@@ -42,6 +45,23 @@ export function useEnrollment(client: ApiClient, id: string | undefined) {
     queryKey: ['enrollments', id],
     queryFn: () => getEnrollment(client, id!),
     enabled: !!id,
+  });
+}
+
+export function useInfiniteEnrollmentPayments(
+  client: ApiClient,
+  enrollmentId: string | undefined,
+  params?: InfiniteEnrollmentPaymentParams,
+  options?: { enabled?: boolean },
+) {
+  const limit = params?.limit ?? 25;
+
+  return useInfiniteQuery({
+    queryKey: ['enrollments', enrollmentId, 'payments', 'infinite', params],
+    queryFn: ({ pageParam }) => getEnrollmentPayments(client, enrollmentId!, { ...params, limit, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: getNextOffset,
+    enabled: (options?.enabled ?? true) && !!enrollmentId,
   });
 }
 

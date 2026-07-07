@@ -1,5 +1,6 @@
 import type { BaseEntity, EnrollmentStatus, ListParams, PaginatedResponse } from './types';
 import type { ApiClient } from './client';
+import type { StudentPayment } from './student-payments';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -104,8 +105,8 @@ export const getEnrollmentPayments = (
   client: ApiClient,
   enrollmentId: string,
   params?: EnrollmentPaymentParams,
-): Promise<PaginatedResponse<unknown>> =>
-  client.get<PaginatedResponse<unknown>>(
+): Promise<PaginatedResponse<StudentPayment>> =>
+  client.get<PaginatedResponse<StudentPayment>>(
     `/enrollments/${encodeURIComponent(enrollmentId)}/payments`,
     { params: params as Record<string, string | number | boolean | undefined> },
   );
