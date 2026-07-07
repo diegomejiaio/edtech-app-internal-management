@@ -19,11 +19,11 @@ import {
 } from '@/hooks';
 import type { ApiClient } from '@/lib/api';
 import {
-  formatCurrency,
   presetRange,
   rangeToIso,
   type DateRange,
 } from '@/lib/dashboard-period';
+import { formatCurrency, subtractMoney, sumMoney } from '@/lib/money';
 import { PeriodFilter } from './period-filter';
 
 interface GlobalKpisProps {
@@ -57,15 +57,9 @@ export function GlobalKpis({ client }: GlobalKpisProps) {
   const activeEnrollments = enrollmentsQuery.data?.items ?? [];
   const activeStudents = new Set(activeEnrollments.map((e) => e.studentId)).size;
   const activeSchedules = schedulesQuery.data?.total ?? 0;
-  const income = (paymentsQuery.data?.items ?? []).reduce(
-    (sum, p) => sum + (p.amount ?? 0),
-    0,
-  );
-  const expenses = (expensesQuery.data?.items ?? []).reduce(
-    (sum, e) => sum + (e.amount ?? 0),
-    0,
-  );
-  const balance = income - expenses;
+  const income = sumMoney((paymentsQuery.data?.items ?? []).map((payment) => payment.amount ?? 0));
+  const expenses = sumMoney((expensesQuery.data?.items ?? []).map((expense) => expense.amount ?? 0));
+  const balance = subtractMoney(income, expenses);
 
   return (
     <div className="space-y-3">

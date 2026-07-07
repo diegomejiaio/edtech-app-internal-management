@@ -26,12 +26,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DOC_TYPE_LABELS } from '@/lib/api';
 import { formatAuditMetadata } from '@/lib/audit';
 import { formatTableDate } from '@/lib/dates';
+import { formatCurrency, subtractMoney, sumMoney } from '@/lib/money';
 import { STATUS_LABELS, STATUS_VARIANTS } from '@/lib/status';
 import type { Enrollment, StudentPayment } from '@/lib/api';
-
-function currency(value: number | undefined) {
-  return `S/ ${(value ?? 0).toFixed(2)}`;
-}
 
 export function StudentDetailView() {
   const searchParams = useSearchParams();
@@ -54,17 +51,20 @@ export function StudentDetailView() {
   const billableEnrollments = useMemo(() => enrollments.filter((e) => e.status !== 'cancelled'), [enrollments]);
 
   const student = studentQuery.data;
-  const totalPaid = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
+  const totalPaid = useMemo(() => sumMoney(payments.map((payment) => payment.amount)), [payments]);
   const paidByEnrollment = useMemo(() => {
     const totals = new Map<string, number>();
     for (const payment of payments) {
-      totals.set(payment.enrollmentId, (totals.get(payment.enrollmentId) ?? 0) + payment.amount);
+      totals.set(
+        payment.enrollmentId,
+        sumMoney([totals.get(payment.enrollmentId) ?? 0, payment.amount]),
+      );
     }
     return totals;
   }, [payments]);
   const pendingBalance = useMemo(() => {
-    const totalPrice = billableEnrollments.reduce((sum, enrollment) => sum + enrollment.schedulePrice, 0);
-    return Math.max(0, totalPrice - totalPaid);
+    const totalPrice = sumMoney(billableEnrollments.map((enrollment) => enrollment.schedulePrice));
+    return Math.max(0, subtractMoney(totalPrice, totalPaid));
   }, [billableEnrollments, totalPaid]);
   const lastPaymentDate = useMemo(() => {
     if (payments.length === 0) return student?.lastPaymentDate ?? null;
@@ -74,11 +74,12 @@ export function StudentDetailView() {
   const enrollmentColumns: Column<Enrollment>[] = [
     { key: 'schedule', header: 'Horario', cell: (e) => e.scheduleName },
     { key: 'date', header: 'Fecha inscripción', cell: (e) => formatTableDate(e.enrollmentDate) },
-    { key: 'price', header: 'Precio', cell: (e) => currency(e.schedulePrice) },
+    { key: 'price', header: 'Precio', cell: (e) => formatCurrency(e.schedulePrice), className: 'text-right tabular-nums' },
     {
       key: 'balance',
       header: 'Saldo',
-      cell: (e) => currency(e.status === 'cancelled' ? 0 : Math.max(0, e.schedulePrice - (paidByEnrollment.get(e.id) ?? 0))),
+      cell: (e) => formatCurrency(e.status === 'cancelled' ? 0 : Math.max(0, subtractMoney(e.schedulePrice, paidByEnrollment.get(e.id) ?? 0))),
+      className: 'text-right tabular-nums',
     },
     {
       key: 'status',
@@ -96,7 +97,7 @@ export function StudentDetailView() {
   const paymentColumns: Column<StudentPayment>[] = [
     { key: 'date', header: 'Fecha', cell: (p) => formatTableDate(p.date) },
     { key: 'schedule', header: 'Horario', cell: (p) => p.scheduleName },
-    { key: 'amount', header: 'Monto', cell: (p) => currency(p.amount) },
+    { key: 'amount', header: 'Monto', cell: (p) => formatCurrency(p.amount), className: 'text-right tabular-nums' },
     { key: 'installment', header: 'Cuota', cell: (p) => `#${p.installmentNumber}` },
     { key: 'method', header: 'Medio', cell: (p) => p.paymentMethod },
     {
@@ -111,7 +112,7 @@ export function StudentDetailView() {
   const activeColumns: Column<Enrollment>[] = [
     { key: 'schedule', header: 'Horario', cell: (e) => e.scheduleName },
     { key: 'date', header: 'Inscrito el', cell: (e) => formatTableDate(e.enrollmentDate) },
-    { key: 'price', header: 'Precio', cell: (e) => currency(e.schedulePrice) },
+    { key: 'price', header: 'Precio', cell: (e) => formatCurrency(e.schedulePrice), className: 'text-right tabular-nums' },
   ];
 
   const fullName = student ? `${student.firstName} ${student.lastName}` : 'Alumno';
@@ -133,10 +134,10 @@ export function StudentDetailView() {
 
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="Inscripciones" value={student?.enrollmentCount ?? enrollments.length} icon={BookOpen} isLoading={studentQuery.isLoading} />
-        <StatCard label="Total pagado" value={currency(totalPaid)} icon={CircleDollarSign} isLoading={paymentsQuery.isLoading} />
+        <StatCard label="Total pagado" value={formatCurrency(totalPaid)} icon={CircleDollarSign} isLoading={paymentsQuery.isLoading} />
         <StatCard
           label="Saldo pendiente"
-          value={currency(pendingBalance)}
+          value={formatCurrency(pendingBalance)}
           icon={Wallet}
           isLoading={enrollmentsQuery.isLoading || paymentsQuery.isLoading}
           valueClassName={pendingBalance > 0 ? 'text-orange-500' : undefined}

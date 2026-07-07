@@ -42,14 +42,14 @@ describe('getInfiniteTotalAmount', () => {
   it('falls back to summing loaded rows when totalAmount is missing', () => {
     const data = buildInfiniteData([
       {
-        items: [{ amount: 10.25 }, { amount: 5.30 }],
-        total: 2,
+        items: [{ amount: 0.1 }, { amount: 0.2 }, { amount: 0.3 }],
+        total: 3,
         limit: 25,
         offset: 0,
       },
     ]);
 
     const totalAmount = getInfiniteTotalAmount(data, (row) => row.amount);
-    expect(totalAmount).toBeCloseTo(15.55, 2);
+    expect(totalAmount).toBe(0.6);
   });
 });

@@ -23,16 +23,14 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { getApiErrorMessage, isApiError } from '@/lib/api';
 import type { StudentPayment, StudentPaymentBody } from '@/lib/api';
-import { subtractMoney, sumMoney, toMoneyCents } from '@/lib/money';
-
-const formatMoney = (value: number) => `S/ ${value.toFixed(2)}`;
+import { formatCurrency, subtractMoney, sumMoney, toMoneyCents } from '@/lib/money';
 
 const columns: Column<StudentPayment>[] = [
   { key: 'code', header: 'Código', cell: (p) => p.code ? <span className="font-mono text-xs font-medium">{p.code}</span> : '—' },
   { key: 'student', header: 'Alumno', cell: (p) => p.studentName },
   { key: 'schedule', header: 'Horario', cell: (p) => p.scheduleName },
   { key: 'date', header: 'Fecha', cell: (p) => formatTableDate(p.date) },
-  { key: 'amount', header: 'Monto', cell: (p) => formatMoney(p.amount) },
+  { key: 'amount', header: 'Monto', cell: (p) => formatCurrency(p.amount), className: 'text-right tabular-nums' },
   { key: 'installment', header: 'Cuota', cell: (p) => `#${p.installmentNumber}` },
   { key: 'method', header: 'Medio', cell: (p) => p.paymentMethod },
   {
@@ -160,7 +158,7 @@ export default function StudentPaymentsPage() {
     }
     const normalizedAmount = sumMoney([amount]);
     if (maxAllowedAmount !== undefined && toMoneyCents(normalizedAmount) > toMoneyCents(maxAllowedAmount)) {
-      toast.error(`El monto supera el saldo pendiente (${formatMoney(maxAllowedAmount)})`);
+      toast.error(`El monto supera el saldo pendiente (${formatCurrency(maxAllowedAmount)})`);
       return;
     }
 
@@ -270,7 +268,7 @@ export default function StudentPaymentsPage() {
         }}
         summary={{
           label: 'Total cobrado (periodo filtrado)',
-          value: formatMoney(totalAmount),
+          value: formatCurrency(totalAmount),
           description: `${total} ${total === 1 ? 'registro' : 'registros'}`,
         }}
         actions={(p) => (
@@ -321,7 +319,7 @@ export default function StudentPaymentsPage() {
               {selectedPendingAmount !== undefined && (
                 <div className="text-right text-sm">
                   <p className="text-muted-foreground">Saldo pendiente</p>
-                  <p className="font-semibold">{formatMoney(selectedPendingAmount)}</p>
+                  <p className="font-semibold">{formatCurrency(selectedPendingAmount)}</p>
                 </div>
               )}
             </div>
@@ -330,15 +328,15 @@ export default function StudentPaymentsPage() {
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <div className="rounded-md border bg-background p-2">
                   <p className="text-xs text-muted-foreground">Precio</p>
-                  <p className="font-medium">{formatMoney(selectedEnrollment.schedulePrice)}</p>
+                  <p className="font-medium">{formatCurrency(selectedEnrollment.schedulePrice)}</p>
                 </div>
                 <div className="rounded-md border bg-background p-2">
                   <p className="text-xs text-muted-foreground">Pagado</p>
-                  <p className="font-medium">{formatMoney(selectedPaymentsTotal)}</p>
+                  <p className="font-medium">{formatCurrency(selectedPaymentsTotal)}</p>
                 </div>
                 <div className="rounded-md border bg-background p-2">
                   <p className="text-xs text-muted-foreground">Pendiente</p>
-                  <p className="font-medium">{formatMoney(selectedPendingAmount ?? 0)}</p>
+                  <p className="font-medium">{formatCurrency(selectedPendingAmount ?? 0)}</p>
                 </div>
               </div>
             )}
@@ -360,7 +358,7 @@ export default function StudentPaymentsPage() {
                   <div key={payment.id} className="flex items-start justify-between gap-3 p-2 text-sm">
                     <div className="min-w-0">
                       <p className="font-medium">
-                        {formatMoney(payment.amount)} · Cuota {payment.installmentNumber}
+                        {formatCurrency(payment.amount)} · Cuota {payment.installmentNumber}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {formatTableDate(payment.date)} · {payment.paymentMethod}

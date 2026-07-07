@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getApiErrorMessage, isApiError, isConflict } from '@/lib/api';
+import { formatCurrency } from '@/lib/money';
 import { STATUS_LABELS, STATUS_VARIANTS, TERMINAL_STATUSES } from '@/lib/status';
 import type { Enrollment, EnrollmentBody, EnrollmentStatus } from '@/lib/api';
 
@@ -31,7 +32,7 @@ const baseColumns: Column<Enrollment>[] = [
   { key: 'doc', header: 'Documento', cell: (e) => e.studentDoc },
   { key: 'schedule', header: 'Horario', cell: (e) => e.scheduleName },
   { key: 'date', header: 'Fecha inscripción', cell: (e) => formatTableDate(e.enrollmentDate) },
-  { key: 'price', header: 'Precio', cell: (e) => `S/ ${e.schedulePrice.toFixed(2)}` },
+  { key: 'price', header: 'Precio', cell: (e) => formatCurrency(e.schedulePrice), className: 'text-right tabular-nums' },
 ];
 
 export default function EnrollmentsPage() {

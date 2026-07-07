@@ -49,12 +49,9 @@ import { useSchedules, useScheduleDashboard } from '@/hooks';
 import { StatCard } from '@/components/ui/stat-card';
 import { cn } from '@/lib/utils';
 import { currentMonthInPeru, formatTableDate, isScheduleActiveInMonth } from '@/lib/dates';
+import { formatCurrency } from '@/lib/money';
 function formatScheduleTitle(schedule: ScheduleWithCounts): string {
   return `${schedule.course} · ${schedule.level} · ${schedule.weekdays} ${schedule.startTime}`;
-}
-
-function currency(value: number): string {
-  return `S/ ${value.toFixed(2)}`;
 }
 
 interface ScheduleDashboardProps {
@@ -232,12 +229,12 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
               />
               <StatCard
                 label="Esperado"
-                value={currency(dashboard.summary.expectedAmount)}
+                value={formatCurrency(dashboard.summary.expectedAmount)}
                 icon={Wallet}
               />
               <StatCard
                 label="Por cobrar (mes)"
-                value={currency(dashboard.summary.pendingAmount)}
+                value={formatCurrency(dashboard.summary.pendingAmount)}
                 icon={AlertCircle}
                 valueClassName={
                   dashboard.summary.pendingAmount > 0 ? 'text-destructive' : undefined
@@ -297,9 +294,9 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
                     <TableRow>
                       <TableHead>Alumno</TableHead>
                       <TableHead>Documento</TableHead>
-                      <TableHead>Precio</TableHead>
-                      <TableHead>Pagado</TableHead>
-                      <TableHead>Saldo</TableHead>
+                      <TableHead className="text-right tabular-nums">Precio</TableHead>
+                      <TableHead className="text-right tabular-nums">Pagado</TableHead>
+                      <TableHead className="text-right tabular-nums">Saldo</TableHead>
                       <TableHead>Estado pago</TableHead>
                       <TableHead>Último pago</TableHead>
                     </TableRow>
@@ -309,16 +306,16 @@ export function ScheduleDashboard({ client }: ScheduleDashboardProps) {
                       <TableRow key={e.enrollmentId}>
                         <TableCell className="font-medium">{e.studentName}</TableCell>
                         <TableCell>{e.studentDoc}</TableCell>
-                        <TableCell>{currency(e.amount)}</TableCell>
-                        <TableCell>{currency(e.paidAmount)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatCurrency(e.amount)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatCurrency(e.paidAmount)}</TableCell>
                         <TableCell
                           className={
                             e.pendingAmount > 0
-                              ? 'font-medium text-destructive'
-                              : 'text-muted-foreground'
+                              ? 'font-medium text-right tabular-nums text-destructive'
+                              : 'text-right tabular-nums text-muted-foreground'
                           }
                         >
-                          {currency(e.pendingAmount)}
+                          {formatCurrency(e.pendingAmount)}
                         </TableCell>
                         <TableCell>
                           {e.paidThisMonth ? (

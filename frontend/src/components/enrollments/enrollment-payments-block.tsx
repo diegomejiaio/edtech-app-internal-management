@@ -28,6 +28,7 @@ import {
 import { formatTableDate } from '@/lib/dates';
 import { toIsoDate } from '@/lib/dashboard-period';
 import { getApiErrorMessage, isApiError } from '@/lib/api';
+import { formatCurrency } from '@/lib/money';
 import type { StudentPayment } from '@/lib/api';
 
 interface EnrollmentPaymentsBlockProps {
@@ -145,7 +146,7 @@ export function EnrollmentPaymentsBlock({ enrollmentId }: EnrollmentPaymentsBloc
             <div key={p.id} className="p-2.5 text-sm flex items-start justify-between gap-3">
               <div className="min-w-0 space-y-0.5">
                 <div className="font-medium">
-                  S/ {p.amount.toFixed(2)} · Cuota {p.installmentNumber}
+                  {formatCurrency(p.amount)} · Cuota {p.installmentNumber}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {formatTableDate(p.date)} · {p.paymentMethod}
@@ -252,7 +253,7 @@ export function EnrollmentPaymentsBlock({ enrollmentId }: EnrollmentPaymentsBloc
         onConfirm={confirmDeletePayment}
         title="¿Eliminar pago?"
         description={paymentToDelete
-          ? `Se eliminará el pago de S/ ${paymentToDelete.amount.toFixed(2)} (cuota ${paymentToDelete.installmentNumber}). Esta acción se puede revertir.`
+          ? `Se eliminará el pago de ${formatCurrency(paymentToDelete.amount)} (cuota ${paymentToDelete.installmentNumber}). Esta acción se puede revertir.`
           : undefined}
         confirmLabel="Eliminar"
         loadingLabel="Eliminando..."

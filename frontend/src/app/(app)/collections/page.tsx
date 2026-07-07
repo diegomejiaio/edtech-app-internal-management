@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { currentMonthInPeru, formatTableDate } from '@/lib/dates';
 import { getDebtors, type Debtor } from '@/lib/api';
-import { sumMoney } from '@/lib/money';
+import { formatCurrency, sumMoney } from '@/lib/money';
 
 interface DebtorTableRow extends Debtor {
   scheduleId: string;
@@ -49,8 +49,8 @@ const columns: Column<DebtorTableRow>[] = [
   {
     key: 'amount',
     header: 'Saldo',
-    cell: (debtor) => `S/ ${debtor.amount.toFixed(2)}`,
-    className: 'font-medium text-destructive',
+    cell: (debtor) => formatCurrency(debtor.amount),
+    className: 'font-medium text-right tabular-nums text-destructive',
   },
 ];
 
@@ -142,7 +142,7 @@ export default function CollectionsPage() {
         }}
         summary={{
           label: 'Total adeudado (mes)',
-          value: `S/ ${totalPending.toFixed(2)}`,
+          value: formatCurrency(totalPending),
           description: `${debtorRows.length} ${debtorRows.length === 1 ? 'deudor' : 'deudores'}`,
         }}
         animated={false}

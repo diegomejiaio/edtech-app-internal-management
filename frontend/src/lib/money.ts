@@ -1,4 +1,14 @@
 const CENTS_FACTOR = 100;
+const PEN_CURRENCY_FORMATTER = new Intl.NumberFormat('es-PE', {
+  style: 'currency',
+  currency: 'PEN',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+export function formatCurrency(value: number | null | undefined): string {
+  return PEN_CURRENCY_FORMATTER.format(value ?? 0);
+}
 
 export function toMoneyCents(value: number): number {
   if (!Number.isFinite(value)) return 0;

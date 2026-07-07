@@ -51,6 +51,7 @@ import {
 } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toIsoDate } from '@/lib/dashboard-period';
+import { formatCurrency, fromMoneyCents, toMoneyCents } from '@/lib/money';
 
 interface EnrollmentWizardProps {
   open: boolean;
@@ -110,11 +111,15 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
     createPaymentMutation.isPending;
 
   // Pack payment distribution (derived): what the student paid vs. how it's split.
-  const packTotalReceived = Number.parseFloat(totalReceived) || 0;
-  const amountBasico = Number.parseFloat(amount) || 0;
-  const amountAvanzado = Number.parseFloat(amount2) || 0;
-  const packRemaining = packTotalReceived - amountBasico - amountAvanzado;
-  const packBalances = isPack && packTotalReceived > 0 && Math.abs(packRemaining) < 0.001;
+  const packTotalReceivedCents = toMoneyCents(Number.parseFloat(totalReceived) || 0);
+  const amountBasicoCents = toMoneyCents(Number.parseFloat(amount) || 0);
+  const amountAvanzadoCents = toMoneyCents(Number.parseFloat(amount2) || 0);
+  const packTotalReceived = fromMoneyCents(packTotalReceivedCents);
+  const amountBasico = fromMoneyCents(amountBasicoCents);
+  const amountAvanzado = fromMoneyCents(amountAvanzadoCents);
+  const packRemainingCents = packTotalReceivedCents - amountBasicoCents - amountAvanzadoCents;
+  const packRemaining = fromMoneyCents(packRemainingCents);
+  const packBalances = isPack && packTotalReceivedCents > 0 && packRemainingCents === 0;
 
   // Creates one initial payment; shared by both pack legs. `paymentMethod` is
   // guaranteed set by the caller (validated before any write in pack mode).
@@ -200,7 +205,7 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
         toast.error('Selecciona el medio de pago del pago inicial');
         return;
       }
-      if (Math.abs(packRemaining) > 0.001) {
+      if (packRemainingCents !== 0) {
         toast.error('La distribución del pago no cuadra con el total recibido');
         return;
       }
@@ -581,7 +586,7 @@ export function EnrollmentWizard({ open, onOpenChange, onSuccess }: EnrollmentWi
               >
                 {packBalances
                   ? 'Distribución completa ✓'
-                  : `Restante por asignar: S/ ${packRemaining.toFixed(2)}`}
+                  : `Restante por asignar: ${formatCurrency(packRemaining)}`}
               </p>
             )}
           </>

@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getApiErrorMessage, isApiError } from '@/lib/api';
+import { formatCurrency } from '@/lib/money';
 import type { Expense, ExpenseBody } from '@/lib/api';
 
 const columns: Column<Expense>[] = [
@@ -25,7 +26,7 @@ const columns: Column<Expense>[] = [
   { key: 'date', header: 'Fecha', cell: (e) => formatTableDate(e.date) },
   { key: 'category', header: 'Categoría', cell: (e) => e.category },
   { key: 'description', header: 'Descripción', cell: (e) => e.description },
-  { key: 'amount', header: 'Monto', cell: (e) => `S/ ${e.amount.toFixed(2)}` },
+  { key: 'amount', header: 'Monto', cell: (e) => formatCurrency(e.amount), className: 'text-right tabular-nums' },
   { key: 'method', header: 'Medio', cell: (e) => e.paymentMethod },
   { key: 'schedule', header: 'Horario', cell: (e) => e.scheduleName ?? '—' },
 ];
@@ -166,7 +167,7 @@ export default function ExpensesPage() {
         }}
         summary={{
           label: 'Total gastado (periodo filtrado)',
-          value: `S/ ${totalAmount.toFixed(2)}`,
+          value: formatCurrency(totalAmount),
           description: `${total} ${total === 1 ? 'registro' : 'registros'}`,
         }}
         actions={(e) => (

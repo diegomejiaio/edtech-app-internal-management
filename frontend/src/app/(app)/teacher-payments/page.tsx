@@ -17,6 +17,7 @@ import { TeacherPicker, CatalogSelect } from '@/components/pickers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getApiErrorMessage, isApiError } from '@/lib/api';
+import { formatCurrency } from '@/lib/money';
 import type { TeacherPayment, TeacherPaymentBody } from '@/lib/api';
 
 const columns: Column<TeacherPayment>[] = [
@@ -24,7 +25,7 @@ const columns: Column<TeacherPayment>[] = [
   { key: 'teacher', header: 'Profesor', cell: (p) => p.teacherName },
   { key: 'doc', header: 'Documento', cell: (p) => p.teacherDoc },
   { key: 'date', header: 'Fecha', cell: (p) => formatTableDate(p.date) },
-  { key: 'amount', header: 'Monto', cell: (p) => `S/ ${p.amount.toFixed(2)}` },
+  { key: 'amount', header: 'Monto', cell: (p) => formatCurrency(p.amount), className: 'text-right tabular-nums' },
   { key: 'concept', header: 'Concepto', cell: (p) => p.concept },
   { key: 'method', header: 'Medio', cell: (p) => p.paymentMethod },
 ];
@@ -119,7 +120,7 @@ export default function TeacherPaymentsPage() {
         }}
         summary={{
           label: 'Total pagado a profesores (periodo filtrado)',
-          value: `S/ ${totalAmount.toFixed(2)}`,
+          value: formatCurrency(totalAmount),
           description: `${total} ${total === 1 ? 'registro' : 'registros'}`,
         }}
         actions={(p) => (

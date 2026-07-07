@@ -70,12 +70,3 @@ export function presetRange(preset: PeriodPreset, now: Date = new Date()): DateR
 export function rangeToIso(range: DateRange): { from: string; to: string } {
   return { from: toIsoDate(range.from), to: toIsoDate(range.to) };
 }
-
-/** Formats a numeric amount as Peruvian Soles. */
-export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-PE', {
-    style: 'currency',
-    currency: 'PEN',
-    maximumFractionDigits: 0,
-  }).format(value);
-}

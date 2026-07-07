@@ -25,12 +25,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DOC_TYPE_LABELS } from '@/lib/api';
 import { formatAuditMetadata } from '@/lib/audit';
 import { formatTableDate } from '@/lib/dates';
+import { formatCurrency, sumMoney } from '@/lib/money';
 import { STATUS_LABELS, STATUS_VARIANTS } from '@/lib/status';
 import type { ScheduleWithCounts, TeacherPayment } from '@/lib/api';
-
-function currency(value: number | undefined) {
-  return `S/ ${(value ?? 0).toFixed(2)}`;
-}
 
 export function TeacherDetailView() {
   const searchParams = useSearchParams();
@@ -57,7 +54,7 @@ export function TeacherDetailView() {
     () => activeSchedules.reduce((sum, s) => sum + (s.enrolledActiveCount ?? 0), 0),
     [activeSchedules],
   );
-  const totalPaid = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
+  const totalPaid = useMemo(() => sumMoney(payments.map((payment) => payment.amount)), [payments]);
 
   const teacher = teacherQuery.data;
 
@@ -81,7 +78,7 @@ export function TeacherDetailView() {
 
   const paymentColumns: Column<TeacherPayment>[] = [
     { key: 'date', header: 'Fecha', cell: (p) => formatTableDate(p.date) },
-    { key: 'amount', header: 'Monto', cell: (p) => currency(p.amount) },
+    { key: 'amount', header: 'Monto', cell: (p) => formatCurrency(p.amount), className: 'text-right tabular-nums' },
     { key: 'concept', header: 'Concepto', cell: (p) => p.concept },
     { key: 'method', header: 'Medio', cell: (p) => p.paymentMethod },
     { key: 'notes', header: 'Notas', cell: (p) => p.notes ?? '—' },
@@ -108,7 +105,7 @@ export function TeacherDetailView() {
         <StatCard label="Horarios activos" value={activeSchedules.length} icon={CalendarRange} isLoading={schedulesQuery.isLoading} />
         <StatCard label="Total horarios" value={getInfiniteTotal(schedulesQuery.data) ?? schedules.length} icon={BookOpen} isLoading={schedulesQuery.isLoading} />
         <StatCard label="Alumnos activos" value={totalStudents} icon={Users} isLoading={schedulesQuery.isLoading} />
-        <StatCard label="Total pagado" value={currency(totalPaid)} icon={CircleDollarSign} isLoading={paymentsQuery.isLoading} />
+        <StatCard label="Total pagado" value={formatCurrency(totalPaid)} icon={CircleDollarSign} isLoading={paymentsQuery.isLoading} />
       </div>
 
       <Card>

@@ -2,6 +2,7 @@
 
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 import type { PaginatedResponse } from '@/lib/api';
+import { sumMoney } from '@/lib/money';
 
 export function getNextOffset<T>(
   lastPage: PaginatedResponse<T>,
@@ -68,9 +69,11 @@ export function getInfiniteTotalAmount<T>(
     return backendTotalAmount;
   }
 
-  return pages
-    .flatMap((page) => page.items)
-    .reduce((sum, item) => sum + amountSelector(item), 0);
+  return sumMoney(
+    pages
+      .flatMap((page) => page.items)
+      .map((item) => amountSelector(item)),
+  );
 }
 
 export function keepFirstInfinitePage(

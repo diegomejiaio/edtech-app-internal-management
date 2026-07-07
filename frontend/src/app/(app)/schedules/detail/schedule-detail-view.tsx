@@ -27,14 +27,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ATTENDANCE_STATUS_LABELS, getApiErrorMessage, isApiError } from '@/lib/api';
 import { formatAuditMetadata } from '@/lib/audit';
 import { currentMonthInPeru, formatTableDate } from '@/lib/dates';
+import { formatCurrency, subtractMoney } from '@/lib/money';
 import { STATUS_LABELS, STATUS_VARIANTS, TERMINAL_STATUSES } from '@/lib/status';
 import type { AttendanceStatus, ScheduleEnrollment, ScheduleSession, ScheduleSessionStatus } from '@/lib/api';
 
 const attendanceStatuses: AttendanceStatus[] = ['present', 'absent', 'late', 'pending'];
-
-function currency(value: number | undefined) {
-  return `S/ ${(value ?? 0).toFixed(2)}`;
-}
 
 type ScheduleEnrollmentRow = ScheduleEnrollment & {
   amount: number;
@@ -90,7 +87,7 @@ export function ScheduleDetailView() {
         ...enrollment,
         amount,
         paidAmount,
-        pendingAmount: Math.max(amount - paidAmount, 0),
+        pendingAmount: Math.max(subtractMoney(amount, paidAmount), 0),
       };
     }),
     [dashboardEnrollmentsById, enrollmentQuery.data, schedule?.price],
@@ -132,9 +129,9 @@ export function ScheduleDetailView() {
         />
       ),
     },
-    { key: 'amount', header: 'Monto', cell: (e) => currency(e.amount) },
-    { key: 'paid', header: 'Pagado', cell: (e) => currency(e.paidAmount) },
-    { key: 'pending', header: 'Pendiente', cell: (e) => currency(e.pendingAmount) },
+    { key: 'amount', header: 'Monto', cell: (e) => formatCurrency(e.amount), className: 'text-right tabular-nums' },
+    { key: 'paid', header: 'Pagado', cell: (e) => formatCurrency(e.paidAmount), className: 'text-right tabular-nums' },
+    { key: 'pending', header: 'Pendiente', cell: (e) => formatCurrency(e.pendingAmount), className: 'text-right tabular-nums' },
   ];
 
   function applySessionStatus(status: ScheduleSessionStatus) {
@@ -284,7 +281,7 @@ export function ScheduleDetailView() {
         />
         <StatCard
           label="Saldo pendiente"
-          value={currency(dashboard?.summary.pendingAmount)}
+          value={formatCurrency(dashboard?.summary.pendingAmount)}
           icon={CircleDollarSign}
           isLoading={dashboardQuery.isLoading}
           valueClassName={(dashboard?.summary.pendingAmount ?? 0) > 0 ? 'text-destructive' : undefined}
@@ -310,7 +307,7 @@ export function ScheduleDetailView() {
               <Info label="Fecha fin proyectada" value={schedule?.projectedEndDate ? formatTableDate(schedule.projectedEndDate) : '—'} />
               <Info label="Duración total" value={schedule?.courseDurationHours ? `${schedule.courseDurationHours} h` : '—'} />
               <Info label="Capacidad" value={schedule ? `${schedule.enrolledActiveCount}/${schedule.capacity}` : '—'} />
-              <Info label="Precio" value={schedule ? currency(schedule.price) : '—'} />
+              <Info label="Precio" value={schedule ? formatCurrency(schedule.price) : '—'} />
               <Info label="Estado" value={schedule ? STATUS_LABELS.schedule[schedule.status] : '—'} />
               <Info label="Creado por" value={formatAuditMetadata(schedule?.createdBy, schedule?.createdAt)} />
               <Info label="Última edición" value={formatAuditMetadata(schedule?.updatedBy, schedule?.updatedAt)} />

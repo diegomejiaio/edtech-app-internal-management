@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fromMoneyCents, subtractMoney, sumMoney, toMoneyCents } from './money';
+import { formatCurrency, fromMoneyCents, subtractMoney, sumMoney, toMoneyCents } from './money';
 
 describe('money helpers', () => {
   it('converts to cents with decimal rounding', () => {
@@ -10,6 +10,11 @@ describe('money helpers', () => {
   it('sums money values without float drift', () => {
     expect(sumMoney([0.1, 0.2, 0.3])).toBe(0.6);
     expect(sumMoney([10.25, 5.3])).toBe(15.55);
+  });
+
+  it('formats PEN currency in es-PE with fixed cents', () => {
+    expect(formatCurrency(1250)).toMatch(/^S\/\s?1,250\.00$/);
+    expect(formatCurrency(0.5)).toMatch(/^S\/\s?0\.50$/);
   });
 
   it('subtracts money using cent precision', () => {

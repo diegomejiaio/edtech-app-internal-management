@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getApiErrorMessage, isApiError, isConflict } from '@/lib/api';
+import { formatCurrency } from '@/lib/money';
 import { STATUS_LABELS, STATUS_VARIANTS, TERMINAL_STATUSES } from '@/lib/status';
 import type { ScheduleWithCounts, ScheduleBody, ScheduleStatus } from '@/lib/api';
 
@@ -36,7 +37,7 @@ const baseColumns: Column<ScheduleWithCounts>[] = [
   { key: 'teacher', header: 'Profesor', cell: (s) => s.teacherName || '—' },
   { key: 'schedule', header: 'Horario', cell: (s) => `${s.weekdays} ${s.startTime}–${s.endTime}` },
   { key: 'capacity', header: 'Ocupación', cell: (s) => `${s.enrolledActiveCount}/${s.capacity} (${Math.round(s.occupancyPct * 100)}%)` },
-  { key: 'price', header: 'Precio', cell: (s) => `S/ ${s.price.toFixed(2)}` },
+  { key: 'price', header: 'Precio', cell: (s) => formatCurrency(s.price), className: 'text-right tabular-nums' },
 ];
 
 export default function SchedulesPage() {
