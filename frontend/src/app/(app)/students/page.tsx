@@ -14,6 +14,7 @@ import { useApiClient } from '@/hooks/use-api-client';
 import { flattenInfiniteItems, getInfiniteTotal, useInfiniteStudents, useCreateStudent, useUpdateStudent, useDeleteStudent } from '@/hooks';
 import { DataTable, RowActions, SearchBar, FormSheetDialog, ConfirmDeleteDialog, type Column } from '@/components/data';
 import { PageHeader, PageHeaderButton } from '@/components/layout';
+import { EnrollmentWizard } from '@/components/enrollments/enrollment-wizard';
 import { CatalogSelect } from '@/components/pickers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -92,6 +93,7 @@ export default function StudentsPage() {
   const deleteMutation = useDeleteStudent(client);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [editing, setEditing] = useState<Student | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
   const [pickedSource, setPickedSource] = useState<string | undefined>();
@@ -141,8 +143,11 @@ export default function StudentsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Alumnos" subtitle="Gestión de alumnos registrados">
-        <PageHeaderButton icon={Plus} onClick={openCreate} shortcutKey="n">
-          Nuevo alumno
+        <PageHeaderButton icon={Plus} onClick={() => setWizardOpen(true)} shortcutKey="n">
+          Registrar alumno + matrícula
+        </PageHeaderButton>
+        <PageHeaderButton variant="outline" onClick={openCreate}>
+          Solo alumno
         </PageHeaderButton>
       </PageHeader>
 
@@ -234,6 +239,17 @@ export default function StudentsPage() {
           <CatalogSelect client={client} catalogCode="studentSources" value={pickedSource} onChange={setPickedSource} placeholder="¿Cómo nos encontró?" />
         </div>
       </FormSheetDialog>
+
+      {wizardOpen && (
+        <EnrollmentWizard
+          open={wizardOpen}
+          onOpenChange={setWizardOpen}
+          onSuccess={() => {
+            setSearch('');
+            void refetch();
+          }}
+        />
+      )}
 
       {/* Delete confirmation */}
       <ConfirmDeleteDialog
