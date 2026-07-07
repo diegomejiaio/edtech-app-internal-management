@@ -17,6 +17,9 @@ export interface Student extends BaseEntity {
   email?: string | null;
   source?: string | null;
   notes?: string | null;
+  enrollmentCount?: number;
+  lastPaymentDate?: string | null;
+  totalPaidAmount?: number;
 }
 
 /** Extended student returned by `GET /students/{id}` with derived fields. */

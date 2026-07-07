@@ -177,6 +177,46 @@ public sealed class EnrollmentRepository : CosmosRepository<Enrollment>
         return CountSingleAsync(query, ct);
     }
 
+    /// <summary>
+    /// Returns active enrollment counts grouped by student id.
+    /// Used by Student list KPIs without per-row requests.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, int>> GetActiveCountsByStudentAsync(
+        IReadOnlyCollection<string> studentIds,
+        CancellationToken ct = default)
+    {
+        if (studentIds.Count == 0)
+            return new Dictionary<string, int>(0);
+
+        var query = new QueryDefinition(@"
+            SELECT c.studentId AS studentId, COUNT(1) AS enrollmentCount
+              FROM c
+             WHERE c.type = @type
+               AND c.active = true
+               AND c.status = @active
+               AND ARRAY_CONTAINS(@studentIds, c.studentId)
+             GROUP BY c.studentId")
+            .WithParameter("@type", TypeDiscriminator)
+            .WithParameter("@active", EnumWire.ToCamel(EnrollmentStatus.Active))
+            .WithParameter("@studentIds", studentIds.ToArray());
+
+        var result = new Dictionary<string, int>(studentIds.Count);
+        using var iter = Container.GetItemQueryIterator<StudentEnrollmentCountRow>(
+            query,
+            requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) });
+
+        while (iter.HasMoreResults)
+        {
+            var page = await iter.ReadNextAsync(ct);
+            foreach (var row in page)
+            {
+                result[row.StudentId] = row.EnrollmentCount;
+            }
+        }
+
+        return result;
+    }
+
     private async Task<int> CountSingleAsync(QueryDefinition query, CancellationToken ct)
     {
         using var iter = Container.GetItemQueryIterator<int>(
@@ -191,4 +231,6 @@ public sealed class EnrollmentRepository : CosmosRepository<Enrollment>
         }
         return total;
     }
+
+    private sealed record StudentEnrollmentCountRow(string StudentId, int EnrollmentCount);
 }

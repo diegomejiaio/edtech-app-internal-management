@@ -1259,6 +1259,18 @@ components:
               nullable: true
               description: Free-form catalog reference to studentSources.
             notes: { type: string, nullable: true }
+            enrollmentCount:
+              type: integer
+              minimum: 0
+              description: Derived KPI for active enrollments of the student.
+            lastPaymentDate:
+              type: string
+              format: date
+              nullable: true
+              description: Derived KPI with the most recent active payment date.
+            totalPaidAmount:
+              type: number
+              description: Derived KPI with the historical total active payments for the student.
 
     StudentCreate:
       type: object

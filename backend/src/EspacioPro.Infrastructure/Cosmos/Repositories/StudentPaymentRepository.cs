@@ -245,10 +245,93 @@ public sealed class StudentPaymentRepository : CosmosRepository<StudentPayment>
         return result;
     }
 
+    /// <summary>
+    /// Returns the latest active payment date grouped by student id across all dates.
+    /// Used by the students list KPI row (no per-student requests).
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, DateOnly>> GetLastPaymentDatesByStudentAsync(
+        IReadOnlyCollection<string> studentIds,
+        CancellationToken ct = default)
+    {
+        if (studentIds.Count == 0)
+            return new Dictionary<string, DateOnly>(0);
+
+        var query = new QueryDefinition(@"
+            SELECT c.studentId AS studentId, MAX(c.date) AS lastDate
+              FROM c
+             WHERE c.type = @type
+               AND c.active = true
+               AND ARRAY_CONTAINS(@studentIds, c.studentId)
+             GROUP BY c.studentId")
+            .WithParameter("@type", TypeDiscriminator)
+            .WithParameter("@studentIds", studentIds.ToArray());
+
+        var result = new Dictionary<string, DateOnly>(studentIds.Count);
+        using var iter = Container.GetItemQueryIterator<StudentLastPaymentRow>(
+            query,
+            requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) });
+
+        while (iter.HasMoreResults)
+        {
+            var page = await iter.ReadNextAsync(ct);
+            foreach (var row in page)
+            {
+                if (DateOnly.TryParse(row.LastDate, out var lastDate))
+                    result[row.StudentId] = lastDate;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Returns total active payments grouped by student id across all dates.
+    /// Used by the students list KPI row (no per-student requests).
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, decimal>> GetTotalPaidAmountsByStudentAsync(
+        IReadOnlyCollection<string> studentIds,
+        CancellationToken ct = default)
+    {
+        if (studentIds.Count == 0)
+            return new Dictionary<string, decimal>(0);
+
+        var query = new QueryDefinition(@"
+            SELECT c.studentId AS studentId, SUM(c.amount) AS totalAmount
+              FROM c
+             WHERE c.type = @type
+               AND c.active = true
+               AND ARRAY_CONTAINS(@studentIds, c.studentId)
+             GROUP BY c.studentId")
+            .WithParameter("@type", TypeDiscriminator)
+            .WithParameter("@studentIds", studentIds.ToArray());
+
+        var result = new Dictionary<string, decimal>(studentIds.Count);
+        using var iter = Container.GetItemQueryIterator<StudentPaymentTotalRow>(
+            query,
+            requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(TypeDiscriminator) });
+
+        while (iter.HasMoreResults)
+        {
+            var page = await iter.ReadNextAsync(ct);
+            foreach (var row in page)
+            {
+                result[row.StudentId] = row.TotalAmount;
+            }
+        }
+
+        return result;
+    }
+
     private sealed record DebtorRow(string EnrollmentId, string LastDate);
 
     private sealed record PaymentTotalRow(
         [property: JsonPropertyName("enrollmentId")] string EnrollmentId,
+        [property: JsonPropertyName("totalAmount")] decimal TotalAmount);
+
+    private sealed record StudentLastPaymentRow(string StudentId, string LastDate);
+
+    private sealed record StudentPaymentTotalRow(
+        [property: JsonPropertyName("studentId")] string StudentId,
         [property: JsonPropertyName("totalAmount")] decimal TotalAmount);
 
     private sealed record TotalAmountRow(

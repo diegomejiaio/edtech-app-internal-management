@@ -3,6 +3,7 @@ using EspacioPro.Api.Common;
 using EspacioPro.Application.Common;
 using EspacioPro.Domain.Common;
 using EspacioPro.Domain.Entities;
+using System.Text.Json.Serialization;
 using EspacioPro.Infrastructure.Cosmos.Repositories;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -27,15 +28,18 @@ public sealed class StudentFunction
 
     private readonly StudentRepository _repo;
     private readonly EnrollmentRepository _enrollmentRepo;
+    private readonly StudentPaymentRepository _paymentRepo;
     private readonly ILogger<StudentFunction> _logger;
 
     public StudentFunction(
         StudentRepository repo,
         EnrollmentRepository enrollmentRepo,
+        StudentPaymentRepository paymentRepo,
         ILogger<StudentFunction> logger)
     {
         _repo = repo;
         _enrollmentRepo = enrollmentRepo;
+        _paymentRepo = paymentRepo;
         _logger = logger;
     }
 
@@ -62,7 +66,26 @@ public sealed class StudentFunction
         }
 
         var (items, total) = await _repo.SearchAsync(search, docType, source, includeInactive, limit, offset, ct);
-        return new OkObjectResult(new Paginated<Student>(items, total, limit, offset));
+        var studentIds = items.Select(student => student.Id).ToArray();
+
+        var activeEnrollmentCountsTask = _enrollmentRepo.GetActiveCountsByStudentAsync(studentIds, ct);
+        var lastPaymentDatesTask = _paymentRepo.GetLastPaymentDatesByStudentAsync(studentIds, ct);
+        var totalPaidAmountsTask = _paymentRepo.GetTotalPaidAmountsByStudentAsync(studentIds, ct);
+        await Task.WhenAll(activeEnrollmentCountsTask, lastPaymentDatesTask, totalPaidAmountsTask);
+
+        var activeEnrollmentCounts = activeEnrollmentCountsTask.Result;
+        var lastPaymentDates = lastPaymentDatesTask.Result;
+        var totalPaidAmounts = totalPaidAmountsTask.Result;
+
+        var responseItems = items
+            .Select(student => StudentListItemResponse.From(
+                student,
+                activeEnrollmentCounts.GetValueOrDefault(student.Id),
+                lastPaymentDates.TryGetValue(student.Id, out var lastPaymentDate) ? lastPaymentDate : null,
+                totalPaidAmounts.GetValueOrDefault(student.Id)))
+            .ToArray();
+
+        return new OkObjectResult(new Paginated<StudentListItemResponse>(responseItems, total, limit, offset));
     }
 
     /// <summary>
@@ -213,6 +236,60 @@ public sealed class StudentFunction
         if (req.Active is { } active)
             target.Active = active;
         return target;
+    }
+
+    private sealed record StudentListItemResponse(
+        [property: JsonPropertyName("id")] string Id,
+        [property: JsonPropertyName("type")] string Type,
+        [property: JsonPropertyName("active")] bool Active,
+        [property: JsonPropertyName("createdAt")] string CreatedAt,
+        [property: JsonPropertyName("createdBy")] AuditUser? CreatedBy,
+        [property: JsonPropertyName("updatedAt")] string UpdatedAt,
+        [property: JsonPropertyName("updatedBy")] AuditUser? UpdatedBy,
+        [property: JsonPropertyName("deletedAt")] string? DeletedAt,
+        [property: JsonPropertyName("deletedBy")] AuditUser? DeletedBy,
+        [property: JsonPropertyName("_etag")] string? ETag,
+        [property: JsonPropertyName("code")] string? Code,
+        [property: JsonPropertyName("firstName")] string FirstName,
+        [property: JsonPropertyName("lastName")] string LastName,
+        [property: JsonPropertyName("docType")] DocType DocType,
+        [property: JsonPropertyName("docNumber")] string DocNumber,
+        [property: JsonPropertyName("phone")] string? Phone,
+        [property: JsonPropertyName("email")] string? Email,
+        [property: JsonPropertyName("source")] string? Source,
+        [property: JsonPropertyName("notes")] string? Notes,
+        [property: JsonPropertyName("enrollmentCount")] int EnrollmentCount,
+        [property: JsonPropertyName("lastPaymentDate")] string? LastPaymentDate,
+        [property: JsonPropertyName("totalPaidAmount")] decimal TotalPaidAmount)
+    {
+        public static StudentListItemResponse From(
+            Student student,
+            int enrollmentCount,
+            DateOnly? lastPaymentDate,
+            decimal totalPaidAmount) =>
+            new(
+                student.Id,
+                student.Type,
+                student.Active,
+                student.CreatedAt,
+                student.CreatedBy,
+                student.UpdatedAt,
+                student.UpdatedBy,
+                student.DeletedAt,
+                student.DeletedBy,
+                student.ETag,
+                student.Code,
+                student.FirstName,
+                student.LastName,
+                student.DocType,
+                student.DocNumber,
+                student.Phone,
+                student.Email,
+                student.Source,
+                student.Notes,
+                enrollmentCount,
+                lastPaymentDate?.ToString("yyyy-MM-dd"),
+                totalPaidAmount);
     }
 
     private sealed record StudentWriteRequest(

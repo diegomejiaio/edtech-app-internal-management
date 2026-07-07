@@ -20,6 +20,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { getApiErrorMessage, isApiError, isConflict, DOC_TYPE_LABELS } from '@/lib/api';
+import { formatTableDate } from '@/lib/dates';
+import { formatCurrency } from '@/lib/money';
 import type { Student, StudentBody, DocType } from '@/lib/api';
 
 const DOC_TYPES: DocType[] = ['dni', 'ce', 'passport'];
@@ -28,6 +30,29 @@ const columns: Column<Student>[] = [
   { key: 'code', header: 'Código', cell: (s) => s.code ? <span className="font-mono text-xs font-medium">{s.code}</span> : '—' },
   { key: 'name', header: 'Nombre', cell: (s) => `${s.firstName} ${s.lastName}` },
   { key: 'doc', header: 'Documento', cell: (s) => `${DOC_TYPE_LABELS[s.docType]} ${s.docNumber}` },
+  {
+    key: 'kpis',
+    header: 'KPIs',
+    cell: (s) => (
+      <div className="space-y-0.5 text-xs">
+        <p className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">Inscripciones activas</span>
+          <span className="font-medium tabular-nums">{typeof s.enrollmentCount === 'number' ? s.enrollmentCount : '—'}</span>
+        </p>
+        <p className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">Último pago</span>
+          <span>{s.lastPaymentDate ? formatTableDate(s.lastPaymentDate) : '—'}</span>
+        </p>
+        <p className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">Total pagado</span>
+          <span className="tabular-nums">
+            {typeof s.totalPaidAmount === 'number' ? formatCurrency(s.totalPaidAmount) : '—'}
+          </span>
+        </p>
+      </div>
+    ),
+    className: 'min-w-[16rem] align-top',
+  },
   { key: 'phone', header: 'Teléfono', cell: (s) => s.phone ?? '—' },
   { key: 'email', header: 'Email', cell: (s) => s.email ?? '—' },
   {

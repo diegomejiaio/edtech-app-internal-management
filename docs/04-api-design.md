@@ -116,7 +116,7 @@ Status codes follow §3. All collection endpoints support `?limit`, `?offset`, `
 
 | Method | URI | Filters | Notes |
 |---|---|---|---|
-| GET | `/students` | `?search=<name-or-doc>&docType=DNI` | Full-text on `firstName+lastName+docNumber` (LIKE in Cosmos) |
+| GET | `/students` | `?search=<name-or-doc>&docType=DNI` | Full-text on `firstName+lastName+docNumber` (LIKE in Cosmos). Each row also includes derived KPIs: `enrollmentCount`, `lastPaymentDate`, `totalPaidAmount`. |
 | GET | `/students/{id}` | — | Includes derived `enrollmentCount`, `lastPaymentDate` |
 | POST | `/students` | — | Returns 409 if `docType+docNumber` already active |
 | PUT | `/students/{id}` | — | Full replace |
