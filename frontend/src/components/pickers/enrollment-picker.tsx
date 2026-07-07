@@ -7,20 +7,11 @@
  */
 
 import { useState } from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
 import type { ApiClient, Enrollment } from '@/lib/api';
+import { formatTableDate } from '@/lib/dates';
+import { formatCurrency } from '@/lib/money';
 import { useEnrollments } from '@/hooks';
+import { EntityCombobox } from './entity-combobox';
 
 interface EnrollmentPickerProps {
   client: ApiClient;
@@ -43,72 +34,57 @@ export function EnrollmentPicker({
   studentId,
   scheduleId,
 }: EnrollmentPickerProps) {
-  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  const { data } = useEnrollments(client, {
+  const { data, isLoading } = useEnrollments(client, {
     studentId,
     scheduleId,
     status: ['active'],
-    limit: 20,
+    limit: 100,
   });
 
-  const filtered = data?.items.filter((e) =>
-    !search ||
-    e.studentName.toLowerCase().includes(search.toLowerCase()) ||
-    e.scheduleName.toLowerCase().includes(search.toLowerCase()),
+  const term = search.trim().toLowerCase();
+  const filtered = data?.items.filter((enrollment) =>
+    !term ||
+    [
+      enrollment.studentName,
+      enrollment.studentDoc,
+      enrollment.scheduleName,
+      enrollment.code,
+    ].join(' ').toLowerCase().includes(term),
   ) ?? [];
-
-  const selected = data?.items.find((e) => e.id === value);
-  const displayLabel = selected
-    ? `${selected.studentName} → ${selected.scheduleName}`
-    : undefined;
+  const emptyMessage = term.length > 0
+    ? 'Sin resultados para la búsqueda'
+    : 'No hay inscripciones activas';
 
   return (
-    <>
-      {name && <input type="hidden" name={name} value={value ?? ''} />}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between font-normal"
-          >
-            <span className="truncate">{displayLabel ?? placeholder}</span>
-            <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[450px] p-0" align="start">
-          <Command shouldFilter={false}>
-            <CommandInput
-              placeholder="Buscar por alumno o horario..."
-              value={search}
-              onValueChange={setSearch}
-            />
-            <CommandList>
-              <CommandEmpty>Sin inscripciones activas</CommandEmpty>
-              <CommandGroup>
-                {filtered.map((e) => (
-                  <CommandItem
-                    key={e.id}
-                    value={e.id}
-                    onSelect={() => { onChange(e.id, e); setOpen(false); }}
-                  >
-                    <Check className={cn('mr-2 size-4', value === e.id ? 'opacity-100' : 'opacity-0')} />
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{e.studentName}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {e.scheduleName} · {e.enrollmentDate}
-                      </p>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-    </>
+    <EntityCombobox
+      value={value}
+      items={filtered}
+      selectedItems={data?.items ?? []}
+      onChange={onChange}
+      getItemId={(enrollment) => enrollment.id}
+      getItemLabel={(enrollment) => `${enrollment.studentName} → ${enrollment.scheduleName}`}
+      renderItem={(enrollment) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium">{enrollment.studentName}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {enrollment.studentDoc} · {enrollment.scheduleName}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            Inscrito {formatTableDate(enrollment.enrollmentDate)} · {formatCurrency(enrollment.schedulePrice)}
+          </p>
+        </div>
+      )}
+      placeholder={placeholder}
+      searchValue={search}
+      onSearchValueChange={setSearch}
+      searchPlaceholder="Buscar por alumno, documento, horario o código..."
+      emptyMessage={emptyMessage}
+      loadingMessage="Cargando inscripciones..."
+      isLoading={isLoading}
+      name={name}
+      popoverWidthClassName="w-[520px]"
+    />
   );
 }

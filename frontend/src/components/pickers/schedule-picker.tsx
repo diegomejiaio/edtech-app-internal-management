@@ -1,26 +1,10 @@
 'use client';
 
-/**
- * Searchable schedule picker (combobox).
- *
- * Displays course · level · weekdays · time · start date for each option.
- */
-
 import { useState } from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
 import type { ApiClient, ScheduleWithCounts } from '@/lib/api';
+import { formatTableDate } from '@/lib/dates';
 import { useSchedules } from '@/hooks';
+import { EntityCombobox } from './entity-combobox';
 
 interface SchedulePickerProps {
   client: ApiClient;
@@ -33,14 +17,7 @@ interface SchedulePickerProps {
 }
 
 function formatScheduleLabel(s: ScheduleWithCounts): string {
-  return `${s.course} · ${s.level} · ${s.weekdays} ${s.startTime} · ${formatDateOnly(s.startDate)}`;
-}
-
-function formatDateOnly(date: string | undefined): string {
-  if (!date) return '—';
-  const [year, month, day] = date.split('-');
-  if (!year || !month || !day) return date;
-  return `${day}/${month}/${year}`;
+  return `${s.course} · ${s.level} · ${s.weekdays} ${s.startTime}`;
 }
 
 export function SchedulePicker({
@@ -51,10 +28,9 @@ export function SchedulePicker({
   name,
   activeOnly = true,
 }: SchedulePickerProps) {
-  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  const { data } = useSchedules(client, {
+  const { data, isLoading } = useSchedules(client, {
     status: activeOnly ? ['active'] : undefined,
     limit: 50,
   });
@@ -64,59 +40,44 @@ export function SchedulePicker({
     const term = search.toLowerCase();
     return !term || [
       formatScheduleLabel(s),
+      s.code,
       s.teacherName,
       s.startDate,
     ].join(' ').toLowerCase().includes(term);
   }) ?? [];
 
-  const selected = data?.items.find((s) => s.id === value);
-  const displayLabel = selected ? formatScheduleLabel(selected) : undefined;
+  const emptyMessage = search.trim().length > 0
+    ? 'Sin resultados para la búsqueda'
+    : 'No hay horarios disponibles';
 
   return (
-    <>
-      {name && <input type="hidden" name={name} value={value ?? ''} />}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between font-normal"
-          >
-            <span className="truncate">{displayLabel ?? placeholder}</span>
-            <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[450px] p-0" align="start">
-          <Command shouldFilter={false}>
-            <CommandInput
-              placeholder="Buscar por curso, nivel, profesor o fecha..."
-              value={search}
-              onValueChange={setSearch}
-            />
-            <CommandList>
-              <CommandEmpty>Sin resultados</CommandEmpty>
-              <CommandGroup>
-                {filtered.map((s) => (
-                  <CommandItem
-                    key={s.id}
-                    value={s.id}
-                    onSelect={() => { onChange(s.id, s); setOpen(false); }}
-                  >
-                    <Check className={cn('mr-2 size-4', value === s.id ? 'opacity-100' : 'opacity-0')} />
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{s.course} · {s.level}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        Inicio {formatDateOnly(s.startDate)} · {s.weekdays} {s.startTime}–{s.endTime} · Prof. {s.teacherName} · {s.enrolledActiveCount}/{s.capacity}
-                      </p>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-    </>
+    <EntityCombobox
+      value={value}
+      items={filtered}
+      selectedItems={data?.items ?? []}
+      onChange={onChange}
+      getItemId={(schedule) => schedule.id}
+      getItemLabel={formatScheduleLabel}
+      renderItem={(schedule) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium">{schedule.course} · {schedule.level}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {schedule.weekdays} {schedule.startTime}–{schedule.endTime} · Prof. {schedule.teacherName}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            Inicio {formatTableDate(schedule.startDate)} · Cupos {schedule.enrolledActiveCount}/{schedule.capacity}
+          </p>
+        </div>
+      )}
+      placeholder={placeholder}
+      searchValue={search}
+      onSearchValueChange={setSearch}
+      searchPlaceholder="Buscar por curso, nivel, profesor, código o fecha..."
+      emptyMessage={emptyMessage}
+      loadingMessage="Cargando horarios..."
+      isLoading={isLoading}
+      name={name}
+      popoverWidthClassName="w-[520px]"
+    />
   );
 }

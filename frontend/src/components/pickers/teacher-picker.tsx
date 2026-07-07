@@ -5,20 +5,9 @@
  */
 
 import { useState } from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import type { ApiClient, Teacher } from '@/lib/api';
+import { DOC_TYPE_LABELS, type ApiClient, type Teacher } from '@/lib/api';
 import { useTeachers } from '@/hooks';
+import { EntityCombobox } from './entity-combobox';
 
 interface TeacherPickerProps {
   client: ApiClient;
@@ -35,62 +24,42 @@ export function TeacherPicker({
   placeholder = 'Seleccionar profesor...',
   name,
 }: TeacherPickerProps) {
-  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  const { data } = useTeachers(client, {
+  const { data, isLoading } = useTeachers(client, {
     search: search || undefined,
-    limit: 10,
+    limit: 25,
   });
-
-  const selected = data?.items.find((t) => t.id === value);
-  const displayLabel = selected
-    ? `${selected.firstName} ${selected.lastName}`
-    : undefined;
+  const teachers = data?.items ?? [];
+  const emptyMessage = search.trim().length > 0
+    ? 'Sin resultados para la búsqueda'
+    : 'No hay profesores registrados';
 
   return (
-    <>
-      {name && <input type="hidden" name={name} value={value ?? ''} />}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between font-normal"
-          >
-            <span className="truncate">{displayLabel ?? placeholder}</span>
-            <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[350px] p-0" align="start">
-          <Command shouldFilter={false}>
-            <CommandInput
-              placeholder="Buscar por nombre..."
-              value={search}
-              onValueChange={setSearch}
-            />
-            <CommandList>
-              <CommandEmpty>Sin resultados</CommandEmpty>
-              <CommandGroup>
-                {data?.items.map((t) => (
-                  <CommandItem
-                    key={t.id}
-                    value={t.id}
-                    onSelect={() => { onChange(t.id, t); setOpen(false); }}
-                  >
-                    <Check className={cn('mr-2 size-4', value === t.id ? 'opacity-100' : 'opacity-0')} />
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{t.firstName} {t.lastName}</p>
-                      <p className="truncate text-xs text-muted-foreground">{t.specialty ?? 'Sin especialidad'}</p>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-    </>
+    <EntityCombobox
+      value={value}
+      items={teachers}
+      onChange={onChange}
+      getItemId={(teacher) => teacher.id}
+      getItemLabel={(teacher) => `${teacher.firstName} ${teacher.lastName}`}
+      renderItem={(teacher) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium">{teacher.firstName} {teacher.lastName}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {DOC_TYPE_LABELS[teacher.docType]} {teacher.docNumber}
+            {teacher.specialty ? ` · ${teacher.specialty}` : ''}
+          </p>
+        </div>
+      )}
+      placeholder={placeholder}
+      searchValue={search}
+      onSearchValueChange={setSearch}
+      searchPlaceholder="Buscar por nombre o documento..."
+      emptyMessage={emptyMessage}
+      loadingMessage="Cargando profesores..."
+      isLoading={isLoading}
+      name={name}
+      popoverWidthClassName="w-[420px]"
+    />
   );
 }
