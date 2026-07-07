@@ -28,9 +28,23 @@ export class BasePage {
     return this.page.locator('nav a').allTextContents();
   }
 
+  private firstRowAction(actionName: RegExp | string): Locator {
+    return this.rows.getByRole('button', { name: actionName }).first();
+  }
+
+  async hasAnyRowAction(actionName: RegExp | string, timeout = 15_000): Promise<boolean> {
+    try {
+      await expect(this.firstRowAction(actionName)).toBeVisible({ timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async openFirstRowAction(actionName: RegExp | string) {
-    await expect(this.rows.first()).toBeVisible();
-    await this.rows.first().getByRole('button', { name: actionName }).click();
+    const action = this.firstRowAction(actionName);
+    await expect(action).toBeVisible({ timeout: 15_000 });
+    await action.click();
   }
 
   async selectFirstComboboxOption(scope: Locator, comboIndex = 0) {

@@ -14,7 +14,7 @@ test.describe('Enrollment payments block @session-features', () => {
   test('lists payments when editing an enrollment @regression', async ({ page }) => {
     const enrollments = new EnrollmentsPage(page);
     await enrollments.goto();
-    test.skip((await enrollments.rows.count()) === 0, 'Requires at least one existing enrollment.');
+    test.skip(!(await enrollments.hasAnyRowAction(/editar/i, 20_000)), 'Requires at least one existing enrollment.');
 
     await enrollments.openFirstEnrollmentForEdit();
     await expect(enrollments.dialog.getByText('Pagos de esta inscripción')).toBeVisible();
@@ -29,7 +29,7 @@ test.describe('Enrollment payments block @session-features', () => {
     const notes = `E2E pago matrícula ${suffix}`;
 
     await enrollments.goto();
-    test.skip((await enrollments.rows.count()) === 0, 'Requires at least one existing enrollment.');
+    test.skip(!(await enrollments.hasAnyRowAction(/editar/i, 20_000)), 'Requires at least one existing enrollment.');
 
     await enrollments.openFirstEnrollmentForEdit();
     await enrollments.openRegisterPaymentForm();

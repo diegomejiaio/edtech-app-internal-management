@@ -110,6 +110,7 @@ hamburger before clicking nav links — see `openSidebarIfCollapsed` in
 |------------------------------------------------------|---------------------------------------|--------------------------------------------------------|
 | Dialog stays `data-state="open"` past 60 s          | Cosmos throttling, Function cold start | Tag `@write-heavy`, run serial                         |
 | Page snapshot shows only `region "Notifications"`    | Backend read timed out                | Reduce workers, retry, or `@mocked` if test is UI-only |
+| Table test thinks there are rows but only empty-state copy is rendered | `table tbody tr` also matches the placeholder row | Use `BasePage.hasAnyRowAction(/editar/i, timeout)` before opening row actions |
 | `getByText('X')` strict-mode violation               | Substring matches sibling copy        | Use `{ exact: true }` or scope to nearest container    |
 | Catalog `"X" ya existe` toast                        | Persisted data from prior run         | Append `Date.now()` suffix to test value               |
 | Combobox `.first()` clicks wrong picker              | Index drift after subform expands     | Use `selectFirstCommandItemByLabel` / `…SelectOptionByLabel` |
