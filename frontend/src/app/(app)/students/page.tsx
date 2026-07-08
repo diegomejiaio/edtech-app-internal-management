@@ -27,35 +27,75 @@ import type { Student, StudentBody, DocType } from '@/lib/api';
 
 const DOC_TYPES: DocType[] = ['dni', 'ce', 'passport'];
 
+function getStudentFullName(student: Student) {
+  return `${student.firstName} ${student.lastName}`;
+}
+
 const columns: Column<Student>[] = [
-  { key: 'code', header: 'Código', cell: (s) => s.code ? <span className="font-mono text-xs font-medium">{s.code}</span> : '—' },
-  { key: 'name', header: 'Nombre', cell: (s) => `${s.firstName} ${s.lastName}` },
-  { key: 'doc', header: 'Documento', cell: (s) => `${DOC_TYPE_LABELS[s.docType]} ${s.docNumber}` },
   {
-    key: 'kpis',
-    header: 'KPIs',
+    key: 'student',
+    header: 'Alumno',
     cell: (s) => (
-      <div className="space-y-0.5 text-xs">
-        <p className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground">Inscripciones activas</span>
-          <span className="font-medium tabular-nums">{typeof s.enrollmentCount === 'number' ? s.enrollmentCount : '—'}</span>
+      <div className="max-w-64 space-y-1">
+        <p className="truncate font-medium" title={getStudentFullName(s)}>
+          {getStudentFullName(s)}
         </p>
-        <p className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground">Último pago</span>
-          <span>{s.lastPaymentDate ? formatTableDate(s.lastPaymentDate) : '—'}</span>
-        </p>
-        <p className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground">Total pagado</span>
-          <span className="tabular-nums">
-            {typeof s.totalPaidAmount === 'number' ? formatCurrency(s.totalPaidAmount) : '—'}
-          </span>
-        </p>
+        <p className="font-mono text-xs text-muted-foreground">{s.code ?? 'Sin código'}</p>
       </div>
     ),
     className: 'min-w-[16rem] align-top',
   },
-  { key: 'phone', header: 'Teléfono', cell: (s) => s.phone ?? '—' },
-  { key: 'email', header: 'Email', cell: (s) => s.email ?? '—' },
+  {
+    key: 'doc',
+    header: 'Documento',
+    cell: (s) => `${DOC_TYPE_LABELS[s.docType]} ${s.docNumber}`,
+    className: 'min-w-32 align-top',
+  },
+  {
+    key: 'enrollmentCount',
+    header: 'Inscripciones',
+    cell: (s) => (
+      <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-muted px-2 text-xs font-semibold tabular-nums">
+        {typeof s.enrollmentCount === 'number' ? s.enrollmentCount : '—'}
+      </span>
+    ),
+    className: 'w-28 text-center align-top',
+  },
+  {
+    key: 'lastPayment',
+    header: 'Último pago',
+    cell: (s) => (
+      <span className={s.lastPaymentDate ? 'tabular-nums' : 'text-muted-foreground'}>
+        {s.lastPaymentDate ? formatTableDate(s.lastPaymentDate) : 'Sin pagos'}
+      </span>
+    ),
+    className: 'min-w-28 align-top',
+  },
+  {
+    key: 'totalPaid',
+    header: 'Total pagado',
+    cell: (s) => (
+      <span className="font-medium tabular-nums">
+        {typeof s.totalPaidAmount === 'number' ? formatCurrency(s.totalPaidAmount) : '—'}
+      </span>
+    ),
+    className: 'min-w-32 text-right align-top',
+  },
+  {
+    key: 'contact',
+    header: 'Contacto',
+    cell: (s) => (
+      <div className="max-w-64 space-y-1">
+        <p className="truncate" title={s.phone ?? undefined}>
+          {s.phone ?? 'Sin teléfono'}
+        </p>
+        <p className="truncate text-xs text-muted-foreground" title={s.email ?? undefined}>
+          {s.email ?? 'Sin email'}
+        </p>
+      </div>
+    ),
+    className: 'min-w-[14rem] align-top',
+  },
   {
     key: 'active',
     header: 'Estado',
@@ -64,6 +104,7 @@ const columns: Column<Student>[] = [
         {s.active ? 'Activo' : 'Inactivo'}
       </Badge>
     ),
+    className: 'w-24 align-top',
   },
 ];
 
