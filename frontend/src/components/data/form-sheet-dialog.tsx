@@ -60,7 +60,7 @@ export function FormSheetDialog({
 }: FormSheetDialogProps) {
   return (
     <FormSheet open={open} onOpenChange={onOpenChange}>
-      <form onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
+      <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <FormSheetHeader title={title} description={description} />
         <FormSheetContent className="space-y-4">
           <AnimatePresence mode="wait">

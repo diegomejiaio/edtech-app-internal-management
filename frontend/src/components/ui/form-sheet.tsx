@@ -55,7 +55,7 @@ export function FormSheet({
 }: FormSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className={cn("p-0 flex flex-col", width, className)}>
+      <SheetContent className={cn("min-h-0 overflow-hidden p-0 flex flex-col", width, className)}>
         {children}
       </SheetContent>
     </Sheet>
@@ -119,7 +119,7 @@ export function FormSheetContent({
   className,
 }: FormSheetContentProps) {
   return (
-    <ScrollArea className="flex-1">
+    <ScrollArea className="min-h-0 flex-1">
       <div className={cn("px-6 py-4", className)}>{children}</div>
     </ScrollArea>
   );
