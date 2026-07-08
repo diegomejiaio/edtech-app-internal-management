@@ -49,7 +49,7 @@ const columns: Column<Student>[] = [
     key: 'doc',
     header: 'Documento',
     cell: (s) => `${DOC_TYPE_LABELS[s.docType]} ${s.docNumber}`,
-    className: 'min-w-32 align-top',
+    className: 'min-w-32 align-middle',
   },
   {
     key: 'enrollmentCount',
@@ -59,7 +59,7 @@ const columns: Column<Student>[] = [
         {typeof s.enrollmentCount === 'number' ? s.enrollmentCount : '—'}
       </span>
     ),
-    className: 'w-28 text-center align-top',
+    className: 'w-28 text-center align-middle',
   },
   {
     key: 'lastPayment',
@@ -69,7 +69,7 @@ const columns: Column<Student>[] = [
         {s.lastPaymentDate ? formatTableDate(s.lastPaymentDate) : 'Sin pagos'}
       </span>
     ),
-    className: 'min-w-28 align-top',
+    className: 'min-w-28 align-middle',
   },
   {
     key: 'totalPaid',
@@ -79,7 +79,7 @@ const columns: Column<Student>[] = [
         {typeof s.totalPaidAmount === 'number' ? formatCurrency(s.totalPaidAmount) : '—'}
       </span>
     ),
-    className: 'min-w-32 text-right align-top',
+    className: 'min-w-32 text-right align-middle',
   },
   {
     key: 'contact',
@@ -104,7 +104,7 @@ const columns: Column<Student>[] = [
         {s.active ? 'Activo' : 'Inactivo'}
       </Badge>
     ),
-    className: 'w-24 align-top',
+    className: 'w-24 align-middle',
   },
 ];
 
@@ -184,11 +184,11 @@ export default function StudentsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Alumnos" subtitle="Gestión de alumnos registrados">
-        <PageHeaderButton icon={Plus} onClick={() => setWizardOpen(true)} shortcutKey="n">
-          Registrar alumno + matrícula
+        <PageHeaderButton icon={Plus} onClick={openCreate} shortcutKey="n">
+          Registrar alumno
         </PageHeaderButton>
-        <PageHeaderButton variant="outline" onClick={openCreate}>
-          Solo alumno
+        <PageHeaderButton variant="outline" onClick={() => setWizardOpen(true)}>
+          Inscribir alumno
         </PageHeaderButton>
       </PageHeader>
 

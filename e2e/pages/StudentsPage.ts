@@ -15,7 +15,7 @@ export class StudentsPage extends BasePage {
   }
 
   async clickNewStudent() {
-    await this.page.getByRole('button', { name: /nuevo alumno/i }).click();
+    await this.page.getByRole('button', { name: /registrar alumno/i }).click();
   }
 
   async createStudent(data: {
